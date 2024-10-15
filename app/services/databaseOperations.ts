@@ -1,0 +1,169 @@
+import { supabase } from '@/lib/supabase';
+
+
+export async function upsertOrderData(orderData: any, shopId: number): Promise<void> {
+    const orderInsertData = {
+      shop_id: shopId,
+      order_sn: orderData.order_sn,
+      buyer_user_id: orderData.buyer_user_id,
+      buyer_username: orderData.buyer_username,
+      create_time: orderData.create_time,
+      pay_time: orderData.pay_time || orderData.create_time,
+      order_status: orderData.order_status,
+      currency: orderData.currency,
+      total_amount: orderData.total_amount,
+      shipping_carrier: orderData.shipping_carrier,
+      estimated_shipping_fee: orderData.estimated_shipping_fee,
+      actual_shipping_fee_confirmed: orderData.actual_shipping_fee_confirmed,
+      cod: orderData.cod,
+      days_to_ship: orderData.days_to_ship,
+      ship_by_date: orderData.ship_by_date,
+      payment_method: orderData.payment_method,
+      fulfillment_flag: orderData.fulfillment_flag,
+      message_to_seller: orderData.message_to_seller,
+      note: orderData.note,
+      note_update_time: orderData.note_update_time,
+      order_chargeable_weight_gram: orderData.order_chargeable_weight_gram,
+      pickup_done_time: orderData.pickup_done_time,
+      update_time: orderData.update_time,
+      cancel_by: orderData.cancel_by,
+      cancel_reason: orderData.cancel_reason,
+    };
+  
+    try {
+      const { error } = await supabase
+        .from('orders2')
+        .upsert(orderInsertData);
+  
+      if (error) {
+        throw new Error(`Gagal menyimpan data pesanan: ${error.message}`);
+      }
+  
+      console.log(`Data pesanan berhasil disimpan untuk order_sn: ${orderData.order_sn}`);
+    } catch (error) {
+      console.error('Error dalam upsertOrderData:', error);
+      // Tangani error sesuai kebutuhan
+    }
+  }
+  
+  export async function upsertOrderItems(orderData: any): Promise<void> {
+    for (const item of orderData.item_list) {
+      const itemData = {
+        order_sn: orderData.order_sn,
+        order_item_id: item.order_item_id,
+        item_id: item.item_id,
+        item_name: item.item_name,
+        item_sku: item.item_sku,
+        model_id: item.model_id,
+        model_name: item.model_name,
+        model_sku: item.model_sku,
+        model_quantity_purchased: item.model_quantity_purchased,
+        model_original_price: item.model_original_price,
+        model_discounted_price: item.model_discounted_price,
+        wholesale: item.wholesale,
+        weight: item.weight,
+        add_on_deal: item.add_on_deal,
+        main_item: item.main_item,
+        add_on_deal_id: item.add_on_deal_id,
+        promotion_type: item.promotion_type,
+        promotion_id: item.promotion_id,
+        promotion_group_id: item.promotion_group_id,
+        image_url: item.image_info.image_url
+      };
+  
+      try {
+        const { error } = await supabase
+          .from('order_items2')
+          .upsert(itemData, { onConflict: 'order_sn,order_item_id,model_id' });
+  
+        if (error) {
+          throw new Error(`Gagal menyimpan data item pesanan: ${error.message}`);
+        }
+      } catch (error) {
+        console.error('Error dalam upsertOrderItems:', error);
+        // Tangani error sesuai kebutuhan
+      }
+    }
+  }
+  
+  export async function upsertLogisticData(orderData: any, shopId: number): Promise<void> {
+    for (const pkg of orderData.package_list) {
+      const logisticData = {
+        order_sn: orderData.order_sn,
+        package_number: pkg.package_number,
+        logistics_status: pkg.logistics_status,
+        shipping_carrier: pkg.shipping_carrier,
+        parcel_chargeable_weight_gram: pkg.parcel_chargeable_weight_gram,
+        recipient_name: orderData.recipient_address.name,
+        recipient_phone: orderData.recipient_address.phone,
+        recipient_town: orderData.recipient_address.town,
+        recipient_district: orderData.recipient_address.district,
+        recipient_city: orderData.recipient_address.city,
+        recipient_state: orderData.recipient_address.state,
+        recipient_region: orderData.recipient_address.region,
+        recipient_zipcode: orderData.recipient_address.zipcode,
+        recipient_full_address: orderData.recipient_address.full_address,
+      };
+  
+      try {
+        const { error } = await supabase
+          .from('logistic2')
+          .upsert(logisticData);
+  
+        if (error) {
+          throw new Error(`Gagal menyimpan data logistik: ${error.message}`);
+        }
+      } catch (error) {
+        console.error('Error dalam upsertLogisticData:', error);
+        // Tangani error sesuai kebutuhan
+      }
+    }
+  }
+
+  export async function trackingUpdate(data: any): Promise<void> {
+    try {
+      const orderSn = data.data.ordersn;
+      const trackingNo = data.data.tracking_no;
+      const packageNumber = data.data.package_number;
+  
+      console.log(`Menerima pembaruan pelacakan: OrderSN: ${orderSn}, Nomor Pelacakan: ${trackingNo}`);
+  
+      // Cek apakah nomor pesanan (order_sn) tersedia di tabel 'orders'
+      try {
+        const { data: orderData, error: orderError } = await supabase
+          .from('orders')
+          .select('order_sn')
+          .eq('order_sn', orderSn)
+          .single();
+  
+        if (orderError) throw orderError;
+  
+        if (orderData) {
+          console.log(`OrderSN ${orderSn} ditemukan di tabel orders`);
+          try {
+            const { data: logisticData, error: logisticError } = await supabase
+              .from('logistic')
+              .upsert({
+                order_sn: orderSn,
+                tracking_number: trackingNo,
+                package_number: packageNumber
+              });
+  
+            if (logisticError) throw logisticError;
+  
+            if (logisticData) {
+              console.log(`Nomor pelacakan berhasil diperbarui untuk OrderSN: ${orderSn}`);
+            }
+          } catch (error) {
+            console.error('Gagal memperbarui nomor pelacakan:', error);
+          }
+        } else {
+          console.warn(`OrderSN ${orderSn} tidak ditemukan di tabel orders`);
+        }
+      } catch (error) {
+        console.error('Gagal memeriksa OrderSN di tabel orders:', error);
+      }
+    } catch (error) {
+      console.error('Terjadi kesalahan saat menangani callback pesanan:', error);
+    }
+  }
