@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Phone, Video, User, CheckCircle2 } from "lucide-react"
+import { Send, Phone, Video, User, CheckCircle2, ChevronLeft } from "lucide-react"
 import { useSendMessage } from '@/app/hooks/useSendMessage';
 import { useSSE } from '@/app/hooks/useSSE';
 
@@ -19,8 +19,8 @@ interface Conversation {
   shop_id: number;
   shop_name: string;
   latest_message_content: {
-    text: string;
-  };
+    text?: string;
+  } | null;
   last_message_timestamp: number;
   unread_count: number; // Tambahkan properti ini
 }
@@ -38,6 +38,8 @@ const WebChatPage: React.FC = () => {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState(''); // Tambahkan state untuk pesan baru
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [showConversationList, setShowConversationList] = useState(true);
 
   const { conversations, updateConversationList } = useConversationList();
   const { 
@@ -58,6 +60,16 @@ const WebChatPage: React.FC = () => {
   const { sendMessage, isLoading: isSendingMessage, error: sendMessageError } = useSendMessage();
 
   const { data: sseData, error: sseError } = useSSE('api/webhook'); // Ganti dengan URL SSE yang sesuai
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -84,7 +96,7 @@ const WebChatPage: React.FC = () => {
       };
       addNewMessage(newMessage);
     }
-  }, [sseData, selectedConversation]); // Hapus selectedConversationData dan addNewMessage dari dependency array
+  }, [sseData, selectedConversation]);
 
   const handleSendMessage = async () => {
     if (!selectedConversationData || !newMessage.trim()) return;
@@ -114,80 +126,101 @@ const WebChatPage: React.FC = () => {
     }
   };
 
+  const handleConversationSelect = (conversation: Conversation) => {
+    setSelectedShop(conversation.shop_id);
+    setSelectedConversation(conversation.conversation_id);
+    if (isMobileView) {
+      setShowConversationList(false);
+    }
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden">
       {/* Daftar Percakapan */}
-      <div className="w-1/4 min-w-[250px] max-w-xs border-r bg-muted/20 flex flex-col">
-        <div className="p-4 border-b flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Percakapan</h2>
-        </div>
-        <ScrollArea className="flex-grow">
-          {conversations.map((conversation) => (
-            <div
-              key={conversation.conversation_id}
-              className={`flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer ${
-                selectedConversation === conversation.conversation_id ? 'bg-muted/50' : ''
-              }`}
-              onClick={() => {
-                setSelectedShop(conversation.shop_id);
-                setSelectedConversation(conversation.conversation_id);
-              }}
-            >
-              <Avatar>
-                <AvatarImage src={conversation.to_avatar} />
-                <AvatarFallback><User /></AvatarFallback>
-              </Avatar>
-              <div className="flex-1 overflow-hidden">
-                <div className="flex justify-between items-baseline">
-                  <div className="flex items-center">
-                    <p className="font-medium truncate">{conversation.shop_name}</p>
-                    {conversation.unread_count > 0 && (
-                      <div className="w-2 h-2 bg-red-500 rounded-full ml-2"></div>
+      {(!isMobileView || (isMobileView && showConversationList)) && (
+        <div className={`${isMobileView ? 'w-full' : 'w-1/4 min-w-[250px] max-w-xs'} border-r bg-muted/20 flex flex-col`}>
+          <div className="p-4 border-b">
+            <h2 className="text-lg font-semibold">Percakapan</h2>
+          </div>
+          <ScrollArea className="flex-grow">
+            {conversations.map((conversation) => (
+              <div
+                key={conversation.conversation_id}
+                className={`flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer ${
+                  selectedConversation === conversation.conversation_id ? 'bg-muted/50' : ''
+                }`}
+                onClick={() => handleConversationSelect(conversation)}
+              >
+                <Avatar>
+                  <AvatarImage src={conversation.to_avatar} />
+                  <AvatarFallback><User /></AvatarFallback>
+                </Avatar>
+                <div className="flex-1 overflow-hidden">
+                  <div className="flex justify-between items-baseline">
+                    <div className="flex items-center">
+                      <p className="font-medium truncate">{conversation.shop_name}</p>
+                      {conversation.unread_count > 0 && (
+                        <div className="w-2 h-2 bg-red-500 rounded-full ml-2"></div>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(conversation.last_message_timestamp / 1000000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm font-bold">{conversation.to_name}</p>
+                    {conversation.to_id != conversation.shop_id && (
+                      <CheckCircle2 className="h-3 w-3 text-primary" />
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(conversation.last_message_timestamp / 1000000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                  <p className="text-sm text-muted-foreground truncate">{conversation.latest_message_content?.text}</p>
                 </div>
-                <div className="flex justify-between items-center">
-                  <p className="text-sm font-bold">{conversation.to_name}</p>
-                  {conversation.to_id != conversation.shop_id && (
-                    <CheckCircle2 className="h-3 w-3 text-primary" />
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground truncate">{conversation.latest_message_content?.text}</p>
               </div>
-            </div>
-          ))}
-        </ScrollArea>
-      </div>
+            ))}
+          </ScrollArea>
+        </div>
+      )}
 
       {/* Area Chat */}
-      {selectedConversation && selectedConversationData ? (
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Header Chat */}
-          <div className="p-4 border-b flex justify-between items-center">
-            <div className="flex items-center gap-3 overflow-hidden">
-              <Avatar>
-                <AvatarImage src={selectedConversationData.to_avatar} />
-                <AvatarFallback><User /></AvatarFallback>
-              </Avatar>
-              <div className="overflow-hidden">
-                <p className="font-medium truncate">{selectedConversationData.shop_name}</p>
-                <p className="text-sm font-bold truncate">{selectedConversationData.to_name}</p>
-              </div>
-            </div>
-            <div className="flex-shrink-0">
-              <Button variant="ghost" size="icon">
-                <Phone className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon">
-                <Video className="h-4 w-4" />
-              </Button>
-            </div>
+      {(!isMobileView || (isMobileView && !showConversationList)) && (
+        <div className="flex-1 flex flex-col min-w-0 h-full">
+          {/* Header Chat - Selalu terlihat */}
+          <div className="p-4 border-b flex items-center sticky top-0 bg-background z-10">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowConversationList(true)}
+              className="mr-2"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+            {selectedConversation && selectedConversationData ? (
+              <>
+                <div className="flex items-center gap-3 overflow-hidden flex-grow">
+                  <Avatar>
+                    <AvatarImage src={selectedConversationData.to_avatar} />
+                    <AvatarFallback><User /></AvatarFallback>
+                  </Avatar>
+                  <div className="overflow-hidden">
+                    <p className="font-medium truncate">{selectedConversationData.shop_name}</p>
+                    <p className="text-sm font-bold truncate">{selectedConversationData.to_name}</p>
+                  </div>
+                </div>
+                <div className="flex-shrink-0">
+                  <Button variant="ghost" size="icon">
+                    <Phone className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon">
+                    <Video className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <p className="text-muted-foreground">Pilih percakapan untuk memulai chat</p>
+            )}
           </div>
 
-          {/* Pesan-pesan */}
+          {/* Area Pesan - Dapat di-scroll */}
           <ScrollArea className="flex-grow p-4">
             {isLoading ? (
               <div>Memuat pesan...</div>
@@ -213,7 +246,7 @@ const WebChatPage: React.FC = () => {
             )}
           </ScrollArea>
 
-          {/* Area Input */}
+          {/* Area Input - Selalu terlihat di bawah */}
           <div className="p-4 border-t">
             <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex gap-2">
               <Input
@@ -237,10 +270,6 @@ const WebChatPage: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
-      ) : (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground">Pilih percakapan untuk memulai chat</p>
         </div>
       )}
     </div>

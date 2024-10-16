@@ -518,7 +518,7 @@ export class ShopeeAPI {
     }
   }
 
-  async readConversation(shopId: number, accessToken: string, conversationId: string, lastReadMessageId: string): Promise<any> {
+  async readConversation(shopId: number, accessToken: string, conversationId: number, lastReadMessageId: string): Promise<any> {
     const url = 'https://partner.shopeemobile.com/api/v2/sellerchat/read_conversation';
     const path = '/api/v2/sellerchat/read_conversation';
     const [timest, sign] = this._generateSign(path, accessToken, shopId);
