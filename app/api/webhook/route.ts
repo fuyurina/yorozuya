@@ -3,12 +3,13 @@ import { shopeeApi } from '@/lib/shopeeConfig';
 import { supabase } from '@/lib/supabase';
 import { upsertOrderData, upsertOrderItems, upsertLogisticData, trackingUpdate } from '@/app/services/databaseOperations';
 
-// Tambahkan ini di bagian atas file
+// Simpan semua koneksi SSE aktif
 const clients = new Set<ReadableStreamDefaultController>();
 
 export async function POST(req: NextRequest) {
   // Segera kirim respons 200
   const res = NextResponse.json({ received: true }, { status: 200 });
+  
 
   // Proses data webhook secara asinkron
   const webhookData = await req.json();
@@ -19,7 +20,6 @@ export async function POST(req: NextRequest) {
   return res;
 }
 
-// Tambahkan route GET untuk SSE
 export async function GET(req: NextRequest) {
   const stream = new ReadableStream({
     start(controller) {
@@ -39,14 +39,13 @@ export async function GET(req: NextRequest) {
   });
 }
 
-// Fungsi untuk mengirim pesan ke semua klien
 function sendEventToAll(data: any) {
-  const message = `data: ${JSON.stringify(data)}\n\n`;
+  const event = `data: ${JSON.stringify(data)}\n\n`;
   clients.forEach(client => {
     try {
-      client.enqueue(message);
+      client.enqueue(event);
     } catch (error) {
-      console.error('Error mengirim pesan ke klien:', error);
+      console.error('Error mengirim event ke klien:', error);
       clients.delete(client);
     }
   });
@@ -55,7 +54,6 @@ function sendEventToAll(data: any) {
 async function processWebhookData(webhookData: any) {
   try {
     const code = webhookData.code;
-    
     
     const handlers: { [key: number]: (data: any) => Promise<void> } = {
       10: handleChat,
@@ -71,15 +69,20 @@ async function processWebhookData(webhookData: any) {
 }
 
 async function handleChat(data: any) {
-  const messageType = data.data?.content?.message_type;
+  const messageType = data.content?.message_type;
+  console.log('Received message type:', messageType);
   if (messageType === 'text') {
     const chatData = {
-      type: 'chat',
-      message_id: data.data.content.message_id,
-      from_user_name: data.data.content.from_user_name,
-      to_user_name: data.data.content.to_user_name,
-      text: data.data.content.content.text,
-      created_timestamp: data.data.content.created_timestamp
+      type: 'new_message',
+      conversation_id: data.content.conversation_id,
+      message_id: data.content.message_id,
+      sender: data.content.from_id,
+      sender_name: data.content.from_user_name,
+      receiver: data.content.to_id,
+      receiver_name: data.content.to_user_name,
+      content: data.content.content.text,
+      timestamp: data.content.created_timestamp,
+      shop_id: data.shop_id
     };
     console.log('Received text chat from Shopee', chatData);
     sendEventToAll(chatData);
@@ -97,7 +100,6 @@ async function handleOrder(data: any) {
 async function handleTrackingUpdate(data: any): Promise<void> {
   await trackingUpdate(data);
 }
-
 
 // Fungsi-fungsi helper (perlu diimplementasikan)
 async function updateOrderStatus(shop_id: number, ordersn: string, status: string, updateTime: number) {
@@ -144,6 +146,6 @@ async function updateOrderStatus(shop_id: number, ordersn: string, status: strin
 }
 
 async function handleOther(data: any) {
-    console.log('Handling other type of data', data);
-    // Implementasi logika penanganan lainnya di sini
-  }
+  console.log('Handling other type of data', data);
+  // Implementasi logika penanganan lainnya di sini
+}

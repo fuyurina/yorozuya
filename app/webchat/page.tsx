@@ -1,15 +1,14 @@
 'use client'
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useConversationList } from '@/app/hooks/useWebchat';
 import { useConversationMessages } from '@/app/hooks/useGetMessage';
-import { useSendMessage } from '@/app/hooks/useSendMessage';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, Phone, Video, User, CheckCircle2 } from "lucide-react"
+import { useSendMessage } from '@/app/hooks/useSendMessage';
 import { useSSE } from '@/app/hooks/useSSE';
-
 
 interface Conversation {
   conversation_id: string;
@@ -26,6 +25,7 @@ interface Conversation {
   unread_count: number; // Tambahkan properti ini
 }
 
+// Hapus interface Message karena tidak digunakan
 interface Message {
   id: string;
   sender: 'buyer' | 'seller';
@@ -36,22 +36,28 @@ interface Message {
 const WebChatPage: React.FC = () => {
   const [selectedShop, setSelectedShop] = useState<number | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [inputMessage, setInputMessage] = useState("");
+  const [newMessage, setNewMessage] = useState(''); // Tambahkan state untuk pesan baru
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { conversations, isLoading: isLoadingConversations, error: conversationsError } = useConversationList();
+  const { conversations, updateConversationList } = useConversationList();
   const { 
     messages, 
-    isLoading: isLoadingMessages, 
-    error: messagesError, 
-    sendMessage, 
+    setMessages, 
+    isLoading, 
+    error, 
     loadMoreMessages, 
-    hasMoreMessages 
+    hasMoreMessages,
+    addNewMessage 
   } = useConversationMessages(selectedConversation, selectedShop || 0);
-  const { sendMessage: sendMessageApi, isLoading: isSendingMessage, error: sendMessageError } = useSendMessage();
-  const { lastMessage, isConnected } = useSSE('/api/webhook');
 
-  const selectedConversationData = conversations.find(conv => conv.conversation_id === selectedConversation);
+  const selectedConversationData = useMemo(() => 
+    conversations.find(conv => conv.conversation_id === selectedConversation),
+    [conversations, selectedConversation]
+  );
+
+  const { sendMessage, isLoading: isSendingMessage, error: sendMessageError } = useSendMessage();
+
+  const { data: sseData, error: sseError } = useSSE('api/webhook'); // Ganti dengan URL SSE yang sesuai
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -59,60 +65,54 @@ const WebChatPage: React.FC = () => {
     }
   }, [messages]);
 
+  // Ubah useEffect untuk memperbarui daftar percakapan
   useEffect(() => {
-    if (lastMessage) {
-      const newMessage = JSON.parse(lastMessage);
-      if (newMessage.conversation_id === selectedConversation) {
-        const formattedMessage: Message = {
-          id: newMessage.message_id,
-          sender: newMessage.from_id === selectedConversationData?.to_id ? 'buyer' : 'seller',
-          content: newMessage.content.text,
-          time: new Date(newMessage.created_timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-        sendMessage(formattedMessage);
-      }
+    if (sseData && sseData.type === 'new_message') {
+      console.log('Pesan baru diterima:', sseData);
+      updateConversationList(sseData);
     }
-  }, [lastMessage, selectedConversation, selectedConversationData]);
+  }, [sseData]); // Hapus updateConversationList dari dependency array
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputMessage.trim() !== '' && selectedConversation && selectedConversationData) {
-      try {
-        const response = await sendMessageApi({
-          toId: selectedConversationData.to_id,
-          content: inputMessage,
-          shopId: selectedConversationData.shop_id,
-        });
-        
-        const newMessage: Message = {
-          id: response.message_id,
-          sender: 'seller',
-          content: inputMessage,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-        
-        sendMessage(newMessage);
-        setInputMessage('');
-      } catch (error) {
-        console.error('Gagal mengirim pesan:', error);
-      }
+  // Ubah useEffect untuk memperbarui pesan dalam percakapan yang dipilih
+  useEffect(() => {
+    if (sseData && sseData.type === 'new_message' && sseData.conversation_id === selectedConversation) {
+      const newMessage: Message = {
+        id: sseData.message_id,
+        sender: sseData.sender === selectedConversationData?.to_id ? 'buyer' : 'seller',
+        content: sseData.content,
+        time: new Date(sseData.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      addNewMessage(newMessage);
+    }
+  }, [sseData, selectedConversation]); // Hapus selectedConversationData dan addNewMessage dari dependency array
+
+  const handleSendMessage = async () => {
+    if (!selectedConversationData || !newMessage.trim()) return;
+
+    try {
+      const sentMessage = await sendMessage({
+        toId: selectedConversationData.to_id,
+        content: newMessage,
+        shopId: selectedConversationData.shop_id,
+      });
+      
+      // Tambahkan pesan yang berhasil dikirim ke daftar pesan
+      const newSentMessage: Message = {
+        id: sentMessage.data.message_id,
+        sender: 'seller',
+        content: newMessage,
+        time: new Date(sentMessage.data.created_timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      
+      // Update state messages dengan pesan baru
+      setMessages(prevMessages => [...prevMessages, newSentMessage]);
+      
+      // Reset input setelah mengirim
+      setNewMessage('');
+    } catch (error) {
+      console.error('Gagal mengirim pesan:', error);
     }
   };
-
-  // Pindahkan indikator koneksi ke dalam komponen utama
-  const connectionStatus = isConnected ? (
-    <div className="text-green-500 text-sm">Terhubung</div>
-  ) : (
-    <div className="text-red-500 text-sm">Terputus</div>
-  );
-
-  if (isLoadingConversations) {
-    return <div>Memuat daftar percakapan...</div>;
-  }
-
-  if (conversationsError) {
-    return <div>Error: {conversationsError}</div>;
-  }
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
@@ -120,7 +120,6 @@ const WebChatPage: React.FC = () => {
       <div className="w-1/4 min-w-[250px] max-w-xs border-r bg-muted/20 flex flex-col">
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-lg font-semibold">Percakapan</h2>
-          {connectionStatus} {/* Tambahkan indikator koneksi di sini */}
         </div>
         <ScrollArea className="flex-grow">
           {conversations.map((conversation) => (
@@ -190,10 +189,10 @@ const WebChatPage: React.FC = () => {
 
           {/* Pesan-pesan */}
           <ScrollArea className="flex-grow p-4">
-            {isLoadingMessages ? (
+            {isLoading ? (
               <div>Memuat pesan...</div>
-            ) : messagesError ? (
-              <div>Error: {messagesError}</div>
+            ) : error ? (
+              <div>Error: {error}</div>
             ) : (
               <>
                 {hasMoreMessages && (
@@ -215,19 +214,29 @@ const WebChatPage: React.FC = () => {
           </ScrollArea>
 
           {/* Area Input */}
-          <form onSubmit={handleSendMessage} className="p-4 border-t flex gap-2">
-            <Input
-              placeholder="Ketik pesan..."
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              className="flex-1 min-w-0"
-              disabled={isSendingMessage}
-            />
-            <Button type="submit" className="flex-shrink-0" disabled={isSendingMessage}>
-              <Send className="h-4 w-4 mr-2" />
-              {isSendingMessage ? 'Mengirim...' : 'Kirim'}
-            </Button>
-          </form>
+          <div className="p-4 border-t">
+            <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex gap-2">
+              <Input
+                type="text"
+                placeholder="Ketik pesan..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                className="flex-grow"
+                disabled={isSendingMessage}
+              />
+              <Button type="submit" disabled={!newMessage.trim() || isSendingMessage}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </form>
+            {sendMessageError && (
+              <p className="text-red-500 text-sm mt-2">{sendMessageError}</p>
+            )}
+            {sseError && (
+              <div className="text-red-500 text-sm p-2">
+                Error SSE: {sseError}
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center">

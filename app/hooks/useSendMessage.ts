@@ -16,7 +16,8 @@ export function useSendMessage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/msg/send_message', {
+      const uniqueParam = Date.now(); // Membuat parameter unik menggunakan timestamp
+      const response = await fetch(`/api/msg/send_message?_=${uniqueParam}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
