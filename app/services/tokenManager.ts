@@ -90,7 +90,7 @@ export async function getValidAccessToken(shopId: number): Promise<string> {
         const shopInfo = await redis.hgetall(`shopee:token:${shopId}`);
         
         if (shopInfo && shopInfo.access_token) {
-            return shopInfo.access_token;
+            return JSON.parse(shopInfo.access_token);
         }
         
         // Jika tidak ada di Redis, ambil dari database
@@ -104,7 +104,7 @@ export async function getValidAccessToken(shopId: number): Promise<string> {
         
         if (data && data.access_token) {
             // Simpan kembali ke Redis untuk penggunaan selanjutnya
-            await redis.hset(`shopee:token:${shopId}`, 'access_token', data.access_token);
+            await redis.hset(`shopee:token:${shopId}`, 'access_token', JSON.stringify(data.access_token));
             await redis.expire(`shopee:token:${shopId}`, 24 * 60 * 60); // Expire setelah 1 hari
             
             return data.access_token;
