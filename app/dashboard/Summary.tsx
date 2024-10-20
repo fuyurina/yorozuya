@@ -21,17 +21,17 @@ export function OrdersSummary({ summary }: OrdersSummaryProps) {
           <CardContent className="p-4">
             <div className="grid grid-cols-2 gap-2">
               <div className="flex items-center">
-                <ShoppingCart className="h-6 w-6 mr-2" />
+                <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 mr-2" />
                 <div>
-                  <div className="text-xs font-medium">TOTAL PESANAN</div>
-                  <div className="text-xl font-bold">{summary.totalOrders}</div>
+                  <div className="text-[12px] sm:text-xs font-medium">TOTAL PESANAN</div>
+                  <div className="text-base sm:text-xl font-bold">{summary.totalOrders}</div>
                 </div>
               </div>
               <div className="flex items-center justify-end">
-                <DollarSign className="h-6 w-6 mr-2" />
+                <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 mr-2" />
                 <div>
-                  <div className="text-xs font-medium">TOTAL OMSET</div>
-                  <div className="text-xl font-bold">Rp {summary.totalOmset.toLocaleString('id-ID')}</div>
+                  <div className="text-[12px] sm:text-xs font-medium">TOTAL OMSET</div>
+                  <div className="text-base sm:text-xl font-bold">Rp {summary.totalOmset.toLocaleString('id-ID')}</div>
                 </div>
               </div>
             </div>
@@ -41,10 +41,10 @@ export function OrdersSummary({ summary }: OrdersSummaryProps) {
           <CardContent className="p-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center">
-                <BarChart2 className="h-6 w-6 mr-2" />
+                <BarChart2 className="h-5 w-5 sm:h-6 sm:w-6 mr-2" />
                 <div>
-                  <div className="text-xs font-medium">TOTAL IKLAN</div>
-                  <div className="text-xl font-bold">Rp {summary.totalIklan.toLocaleString('id-ID')}</div>
+                  <div className="text-[12px] sm:text-xs font-medium">TOTAL IKLAN</div>
+                  <div className="text-base sm:text-xl font-bold">Rp {summary.totalIklan.toLocaleString('id-ID')}</div>
                 </div>
               </div>
               <div className="flex flex-col items-end">
@@ -60,9 +60,7 @@ export function OrdersSummary({ summary }: OrdersSummaryProps) {
                     <ChevronDown className="h-4 w-4" />
                   )}
                 </Button>
-                <div className="text-xs text-right">
-                  Diperbarui: {new Date().toLocaleString('id-ID')}
-                </div>
+                
               </div>
             </div>
           </CardContent>

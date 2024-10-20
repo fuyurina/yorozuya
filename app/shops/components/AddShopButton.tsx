@@ -1,8 +1,13 @@
 'use client';
 
 import React from 'react';
+import { Button } from "@/components/ui/button";
+import { PlusCircle } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 export function AddShopButton() {
+  const { toast } = useToast();
+
   const handleAddShop = async () => {
     try {
       const response = await fetch('/api/generate-auth-url');
@@ -13,20 +18,18 @@ export function AddShopButton() {
       window.location.href = data.authUrl;
     } catch (error) {
       console.error('Gagal menghasilkan URL otorisasi:', error);
-      if (error instanceof Error) {
-        alert(`Terjadi kesalahan saat mencoba menambahkan toko: ${error.message}`);
-      } else {
-        alert('Terjadi kesalahan yang tidak diketahui saat mencoba menambahkan toko');
-      }
+      toast({
+        variant: "destructive",
+        title: "Terjadi kesalahan",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan yang tidak diketahui saat mencoba menambahkan toko",
+      });
     }
   };
 
   return (
-    <button
-      onClick={handleAddShop}
-      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-    >
+    <Button onClick={handleAddShop} variant="outline" size="sm">
+      <PlusCircle className="mr-2 h-4 w-4" />
       Tambah Toko Baru
-    </button>
+    </Button>
   );
 }

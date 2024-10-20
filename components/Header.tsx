@@ -1,14 +1,19 @@
+'use client'
+
 import { CircleUser, Menu, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MobileSidebar } from "./mobile-sidebar"
+import { useState } from "react"
 
 export function Header() {
+  const [open, setOpen] = useState(false)
+
   return (
     <header className="flex h-[53px] items-center gap-4 border-b bg-muted/40 px-4 lg:px-6">
-      <Sheet>
+      <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <Button
             variant="outline"
@@ -19,8 +24,8 @@ export function Header() {
             <span className="sr-only">Toggle navigation menu</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-[350px] max-w-[350px] flex flex-col">
-          <MobileSidebar />
+        <SheetContent side="left" className="w-[330px] max-w-[330px] flex flex-col">
+          <MobileSidebar onNavigate={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
       <div className="w-full flex-1">

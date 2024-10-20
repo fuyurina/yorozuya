@@ -170,7 +170,7 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead className="font-bold uppercase text-xs text-black w-10 text-center whitespace-nowrap">#</TableHead>
-              <TableHead className="font-bold uppercase text-xs text-black whitespace-nowrap min-w-[100px]">Toko</TableHead>
+              <TableHead className="font-bold uppercase text-xs text-black whitespace-nowrap min-w-[80px] sm:min-w-[100px]">Toko</TableHead>
               <TableHead className="font-bold uppercase text-xs text-black whitespace-nowrap min-w-[120px]">Tanggal</TableHead>
               <TableHead className="font-bold uppercase text-xs text-black whitespace-nowrap min-w-[150px]">No. Pesanan</TableHead>
               <TableHead className="font-bold uppercase text-xs text-black whitespace-nowrap min-w-[100px]">Username</TableHead>
@@ -196,7 +196,7 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
                   }
                 >
                   <TableCell className="text-xs text-gray-600 text-center whitespace-nowrap">{index + 1}</TableCell>
-                  <TableCell className="text-xs text-gray-600 whitespace-nowrap">{order.shop_name}</TableCell>
+                  <TableCell className="text-xs text-gray-600 whitespace-nowrap max-w-[80px] sm:max-w-none overflow-hidden text-ellipsis">{order.shop_name}</TableCell>
                   <TableCell className="text-xs text-gray-600 whitespace-nowrap">{formatDate(order.pay_time)}</TableCell>
                   <TableCell className="text-xs text-gray-600 whitespace-nowrap">{order.order_sn}</TableCell>
                   <TableCell className="text-xs text-gray-600 whitespace-nowrap">{order.buyer_username || '-'}</TableCell>
