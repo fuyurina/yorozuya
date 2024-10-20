@@ -1,6 +1,7 @@
 import Redis from 'ioredis';
 
-const REDIS_URL = process.env.REDIS_URL;
+const REDIS_URL = process.env.NEXT_PUBLIC_REDIS_URL;
+console.log('REDIS_URL:', REDIS_URL);
 
 if (!REDIS_URL) {
   throw new Error('REDIS_URL tidak ditemukan di environment variables');
