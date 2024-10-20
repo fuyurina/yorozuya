@@ -74,7 +74,11 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
     setFilteredOrders(filtered)
   }
 
-  const getStatusColor = (status: string): string => {
+  // Tambahkan tipe untuk status
+  type OrderStatus = "READY_TO_SHIP" | "PROCESSED" | "SHIPPED" | "CANCELLED" | "IN_CANCEL" | "TO_RETURN";
+
+  // Perbaiki tipe fungsi getStatusColor dan getStatusIcon
+  const getStatusColor = (status: OrderStatus): string => {
     switch (status) {
       case "READY_TO_SHIP":
         return "bg-green-600 text-white";
@@ -93,7 +97,7 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: OrderStatus) => {
     switch (status) {
       case "READY_TO_SHIP":
         return <Package size={14} className="inline-block mr-1" />;
@@ -200,8 +204,8 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
                   <TableCell className="text-xs text-gray-600 whitespace-nowrap">{order.sku_qty || '-'}</TableCell>
                   <TableCell className="text-xs text-gray-600 whitespace-nowrap">{order.shipping_carrier || '-'} ({order.tracking_number || '-'})</TableCell>
                   <TableCell className="text-xs text-gray-600 whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.order_status)}`}>
-                      {getStatusIcon(order.order_status)}
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.order_status as OrderStatus)}`}>
+                      {getStatusIcon(order.order_status as OrderStatus)}
                       {order.order_status}
                     </span>
                   </TableCell>
