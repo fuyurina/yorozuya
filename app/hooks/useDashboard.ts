@@ -12,6 +12,8 @@ export type DashboardSummary = {
   omsetPerToko: Record<string, number>;
   totalOrders: number;
   totalOmset: number;
+  totalIklan: number;
+  iklanPerToko: { [key: string]: number }
 }
 
 export type DashboardData = {
@@ -49,25 +51,34 @@ async function getOrderDetails(order_sn: string, shop_id: string, retries = 3): 
       if (error) throw error;
       
       if (!data || data.length === 0) {
-        console.log(`Tidak ada data yang dikembalikan untuk order_sn: ${order_sn}`);
         return null;
       }
       
       return data[0];
     } catch (error) {
-      console.error(`Percobaan ${attempt + 1}/${retries} gagal:`, error);
-      
       if (attempt === retries - 1) {
-        console.error('Semua percobaan gagal untuk memanggil get_sku_qty_and_total_price');
         return null;
       }
       
-      // Tunggu sebentar sebelum mencoba lagi
       await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
     }
   }
   return null;
 }
+
+const fetchAdsData = async () => {
+  try {
+    const response = await fetch(`/api/ads?_timestamp=${Date.now()}`);
+    if (!response.ok) {
+      throw new Error('Gagal mengambil data iklan');
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error saat mengambil data iklan:', error);
+    return null;
+  }
+};
 
 export const useDashboard = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData>({
@@ -75,7 +86,9 @@ export const useDashboard = () => {
       pesananPerToko: {},
       omsetPerToko: {},
       totalOrders: 0,
-      totalOmset: 0
+      totalOmset: 0,
+      totalIklan: 0,
+      iklanPerToko: {}
     },
     orders: []
   }); 
@@ -128,33 +141,46 @@ export const useDashboard = () => {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      console.log('Mengambil data dashboard...');
       const { data: orders, error } = await supabase
         .from('dashboard_view')
         .select('*');
 
       if (error) {
-        console.error('Error mengambil data:', error);
         throw new Error('Gagal mengambil data dari dashboard_view');
       }
-
-      console.log('Jumlah pesanan yang diambil:', orders.length);
 
       const summary: DashboardSummary = {
         pesananPerToko: {},
         omsetPerToko: {},
         totalOrders: 0,
-        totalOmset: 0
+        totalOmset: 0,
+        totalIklan: 0,
+        iklanPerToko: {}
       };
 
       orders.forEach(order => processOrder(order, summary));
 
       setDashboardData({ summary, orders });
+
+      const adsData = await fetchAdsData();
+      if (adsData) {
+        setDashboardData(prevData => {
+          const newSummary = { ...prevData.summary };
+          newSummary.totalIklan = parseFloat(adsData.total_cost.replace('Rp. ', '').replace('.', '').replace(',', '.'));
+          newSummary.iklanPerToko = {};
+          adsData.ads_data.forEach((ad: AdData) => {
+            newSummary.iklanPerToko[ad.shop_name] = parseFloat(ad.cost.replace('Rp. ', '').replace('.', '').replace(',', '.'));
+          });
+          return {
+            ...prevData,
+            summary: newSummary
+          };
+        });
+      }
     };
 
     fetchInitialData();
 
-    // Set up realtime subscription
     const subscription = supabase
       .channel('orders')
       .on('postgres_changes', {
@@ -163,32 +189,23 @@ export const useDashboard = () => {
         table: 'orders',
         filter: `order_status=in.(${trackedStatuses.join(',')})`
       }, async (payload) => {
-        console.log('Perubahan realtime terdeteksi:', payload);
         const newOrder = payload.new as OrderItem;
         
         if (newOrder.order_status === 'READY_TO_SHIP') {
-          console.log('Pesanan baru READY_TO_SHIP terdeteksi:', newOrder.order_sn);
-          
-          // Langsung tambahkan pesanan ke daftar
           setDashboardData(prevData => {
             const newSummary = { ...prevData.summary };
             processOrder(newOrder, newSummary);
-            console.log('Summary diperbarui:', newSummary);
 
-            console.log('Menambahkan pesanan baru ke daftar');
             return {
               summary: newSummary,
               orders: [newOrder, ...prevData.orders]
             };
           });
 
-          // Ambil detail pesanan secara asynchronous
           try {
             const orderDetails = await getOrderDetails(newOrder.order_sn, newOrder.shop_id);
-            console.log('Detail pesanan diterima:', orderDetails);
             
             if (orderDetails) {
-              // Update pesanan dengan detail yang baru diterima
               setDashboardData(prevData => {
                 const updatedOrders = prevData.orders.map(order => 
                   order.order_sn === newOrder.order_sn 
@@ -197,14 +214,11 @@ export const useDashboard = () => {
                 );
 
                 const newSummary = { ...prevData.summary };
-                // Proses ulang summary dengan data yang diperbarui
                 newSummary.pesananPerToko = {};
                 newSummary.omsetPerToko = {};
                 newSummary.totalOrders = 0;
                 newSummary.totalOmset = 0;
                 updatedOrders.forEach(order => processOrder(order, newSummary));
-
-                console.log('Summary diperbarui dengan detail pesanan:', newSummary);
 
                 return {
                   summary: newSummary,
@@ -213,28 +227,24 @@ export const useDashboard = () => {
               });
             }
           } catch (error) {
-            console.error('Gagal mengambil detail pesanan:', error);
+            // Error handling bisa ditambahkan di sini jika diperlukan
           }
         } else {
-          console.log('Pembaruan status pesanan terdeteksi:', newOrder.order_sn, newOrder.order_status);
           setDashboardData(prevData => {
             const existingOrderIndex = prevData.orders.findIndex(order => order.order_sn === newOrder.order_sn);
             
             if (existingOrderIndex !== -1) {
-              console.log('Pesanan ditemukan di indeks:', existingOrderIndex);
               const updatedOrders = [...prevData.orders];
               updatedOrders[existingOrderIndex] = {
                 ...updatedOrders[existingOrderIndex],
                 order_status: newOrder.order_status
               };
               
-              console.log('Status pesanan diperbarui');
               return {
                 summary: prevData.summary,
                 orders: updatedOrders
               };
             } else {
-              console.log('Pesanan tidak ditemukan dalam daftar, tidak ada perubahan');
               return prevData;
             }
           });
@@ -244,7 +254,6 @@ export const useDashboard = () => {
 
     const unsubscribeLogistic = setupLogisticSubscription();
 
-    // Cleanup subscription on component unmount
     return () => {
       subscription.unsubscribe();
       unsubscribeLogistic();
@@ -253,3 +262,8 @@ export const useDashboard = () => {
 
   return dashboardData;
 };
+
+interface AdData {
+  shop_name: string;
+  cost: string;
+}

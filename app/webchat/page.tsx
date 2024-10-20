@@ -6,9 +6,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Phone, Video, User, CheckCircle2, ChevronLeft } from "lucide-react"
+import { Send, Phone, Video, User, CheckCircle2, ChevronLeft, Filter } from "lucide-react"
 import { useSendMessage } from '@/app/hooks/useSendMessage';
 import { useSSE } from '@/app/hooks/useSSE';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface Conversation {
   conversation_id: string;
@@ -40,6 +42,9 @@ const WebChatPage: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isMobileView, setIsMobileView] = useState(false);
   const [showConversationList, setShowConversationList] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedShops, setSelectedShops] = useState<number[]>([]);
+  const [statusFilter, setStatusFilter] = useState<'SEMUA' | 'BELUM DIBACA' | 'BELUM DIBALAS'>('SEMUA');
 
   const { conversations, updateConversationList } = useConversationList();
   const { 
@@ -134,66 +139,136 @@ const WebChatPage: React.FC = () => {
     }
   };
 
+  const filteredConversations = useMemo(() => {
+    return conversations.filter(conversation => {
+      const matchesSearch = conversation.to_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            conversation.shop_name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesShopFilter = selectedShops.length === 0 || selectedShops.includes(conversation.shop_id);
+      const matchesStatusFilter = 
+        statusFilter === 'SEMUA' ? true :
+        statusFilter === 'BELUM DIBACA' ? conversation.unread_count > 0 :
+        statusFilter === 'BELUM DIBALAS' ? (conversation.latest_message_content?.text && conversation.to_id !== conversation.shop_id) : true;
+
+      return matchesSearch && matchesShopFilter && matchesStatusFilter;
+    });
+  }, [conversations, searchQuery, selectedShops, statusFilter]);
+
+  const uniqueShops = useMemo(() => {
+    const shops = new Set(conversations.map(conv => conv.shop_id));
+    return Array.from(shops);
+  }, [conversations]);
+
   return (
-    <div className="flex h-screen w-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden">
       {/* Daftar Percakapan */}
       {(!isMobileView || (isMobileView && showConversationList)) && (
-        <div className={`${isMobileView ? 'w-full' : 'w-1/4 min-w-[250px] max-w-xs'} border-r bg-muted/20 flex flex-col`}>
-          <div className="p-4 border-b">
-            <h2 className="text-lg font-semibold">Percakapan</h2>
+        <div className={`${isMobileView ? 'w-full' : 'w-1/3 md:w-1/4 lg:w-1/5'} border-r bg-muted/20 flex flex-col h-full`}>
+          {/* Kolom Pencarian dan Filter */}
+          <div className="p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Input
+                type="text"
+                placeholder="Cari percakapan..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-grow"
+              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div>
+                    <h4 className="font-medium mb-2">Filter Toko:</h4>
+                    {uniqueShops.map(shopId => (
+                      <label key={shopId} className="flex items-center mb-1">
+                        <input
+                          type="checkbox"
+                          checked={selectedShops.includes(shopId)}
+                          onChange={() => {
+                            setSelectedShops(prev =>
+                              prev.includes(shopId)
+                                ? prev.filter(id => id !== shopId)
+                                : [...prev, shopId]
+                            );
+                          }}
+                          className="mr-2"
+                        />
+                        {conversations.find(conv => conv.shop_id === shopId)?.shop_name}
+                      </label>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'SEMUA' | 'BELUM DIBACA' | 'BELUM DIBALAS')}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="SEMUA">Semua</TabsTrigger>
+                <TabsTrigger value="BELUM DIBACA">Belum Dibaca</TabsTrigger>
+                <TabsTrigger value="BELUM DIBALAS">Belum Dibalas</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
-          <ScrollArea className="flex-grow">
-            {conversations.map((conversation) => (
-              <div
-                key={conversation.conversation_id}
-                className={`flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer ${
-                  selectedConversation === conversation.conversation_id ? 'bg-muted/50' : ''
-                }`}
-                onClick={() => handleConversationSelect(conversation)}
-              >
-                <Avatar>
-                  <AvatarImage src={conversation.to_avatar} />
-                  <AvatarFallback><User /></AvatarFallback>
-                </Avatar>
-                <div className="flex-1 overflow-hidden">
-                  <div className="flex justify-between items-baseline">
-                    <div className="flex items-center">
-                      <p className="font-medium truncate">{conversation.shop_name}</p>
-                      {conversation.unread_count > 0 && (
-                        <div className="w-2 h-2 bg-red-500 rounded-full ml-2"></div>
+
+          <ScrollArea className="flex-grow overflow-y-auto">
+            <div className="p-3">
+              {filteredConversations.map((conversation) => (
+                <div
+                  key={conversation.conversation_id}
+                  className={`flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer ${
+                    selectedConversation === conversation.conversation_id ? 'bg-muted/50' : ''
+                  }`}
+                  onClick={() => handleConversationSelect(conversation)}
+                >
+                  <Avatar>
+                    <AvatarImage src={conversation.to_avatar} />
+                    <AvatarFallback><User /></AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 overflow-hidden">
+                    <div className="flex justify-between items-baseline">
+                      <div className="flex items-center">
+                        <p className="font-medium truncate">{conversation.shop_name}</p>
+                        {conversation.unread_count > 0 && (
+                          <div className="w-2 h-2 bg-red-500 rounded-full ml-2"></div>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(conversation.last_message_timestamp / 1000000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm font-bold">{conversation.to_name}</p>
+                      {conversation.to_id != conversation.shop_id && (
+                        <CheckCircle2 className="h-3 w-3 text-primary" />
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(conversation.last_message_timestamp / 1000000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    <p className="text-sm text-muted-foreground truncate">{conversation.latest_message_content?.text}</p>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm font-bold">{conversation.to_name}</p>
-                    {conversation.to_id != conversation.shop_id && (
-                      <CheckCircle2 className="h-3 w-3 text-primary" />
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground truncate">{conversation.latest_message_content?.text}</p>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </ScrollArea>
         </div>
       )}
 
       {/* Area Chat */}
       {(!isMobileView || (isMobileView && !showConversationList)) && (
-        <div className="flex-1 flex flex-col min-w-0 h-full">
-          {/* Header Chat - Selalu terlihat */}
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+          {/* Header Chat */}
           <div className="p-4 border-b flex items-center sticky top-0 bg-background z-10">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowConversationList(true)}
-              className="mr-2"
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
+            {isMobileView && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowConversationList(true)}
+                className="mr-2 md:hidden"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </Button>
+            )}
             {selectedConversation && selectedConversationData ? (
               <>
                 <div className="flex items-center gap-3 overflow-hidden flex-grow">
@@ -220,7 +295,7 @@ const WebChatPage: React.FC = () => {
             )}
           </div>
 
-          {/* Area Pesan - Dapat di-scroll */}
+          {/* Area Pesan */}
           <ScrollArea className="flex-grow p-4">
             {isLoading ? (
               <div>Memuat pesan...</div>
@@ -246,7 +321,7 @@ const WebChatPage: React.FC = () => {
             )}
           </ScrollArea>
 
-          {/* Area Input - Selalu terlihat di bawah */}
+          {/* Area Input */}
           <div className="p-4 border-t">
             <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex gap-2">
               <Input

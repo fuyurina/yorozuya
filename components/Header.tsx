@@ -19,7 +19,7 @@ export function Header() {
             <span className="sr-only">Toggle navigation menu</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="flex flex-col">
+        <SheetContent side="left" className="w-[350px] max-w-[350px] flex flex-col">
           <MobileSidebar />
         </SheetContent>
       </Sheet>

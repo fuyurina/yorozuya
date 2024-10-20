@@ -17,13 +17,13 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" className="h-full">
-      <body className={`h-full ${inter.className}`}>
-        <div className="flex h-full">
+    <html lang="en" className="h-full overflow-hidden">
+      <body className={`h-full ${inter.className} flex flex-col overflow-hidden`}>
+        <div className="flex flex-1 overflow-hidden">
           <Sidebar />
           <div className="flex flex-col flex-1 overflow-hidden md:pl-[56px]">
             <Header />
-            <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
+            <main className="flex-1 overflow-auto">
               {children}
             </main>
             <Footer />
