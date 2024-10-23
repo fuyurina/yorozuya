@@ -45,43 +45,46 @@ export const useConversationList = () => {
     fetchConversations();
   }, [fetchConversations]);
 
-  const updateConversationList = useCallback((newMessage: any) => {
+  const updateConversationList = useCallback((update: any) => {
     setConversations(prevConversations => {
       const updatedConversations = [...prevConversations];
-      const existingConversationIndex = updatedConversations.findIndex(
-        conv => conv.conversation_id === newMessage.conversation_id
-      );
 
-      const updatedConversation: Conversation = {
-        conversation_id: newMessage.conversation_id,
-        to_id: newMessage.sender === newMessage.shop_id ? newMessage.receiver : newMessage.sender,
-        to_name: newMessage.sender === newMessage.shop_id ? newMessage.receiver_name : newMessage.sender_name,
-        to_avatar: "", // Anda mungkin perlu menyimpan atau mengambil avatar dari tempat lain
-        to_shop_id: newMessage.sender === newMessage.shop_id ? newMessage.receiver : newMessage.sender,
-        shop_id: newMessage.shop_id,
-        shop_name: newMessage.sender === newMessage.shop_id ? newMessage.sender_name : newMessage.receiver_name,
-        latest_message_content: {
-          text: newMessage.content
-        },
-        last_message_timestamp: newMessage.timestamp * 1000000, // Konversi ke mikrodetik
-        unread_count: 1 // Tambahkan 1 untuk pesan baru
-        ,
-        pinned: false,
-        last_read_message_id: '',
-        latest_message_id: '',
-        latest_message_type: '',
-        latest_message_from_id: 0,
-        last_message_option: 0,
-        max_general_option_hide_time: '',
-        mute: false
-      };
-
-      if (existingConversationIndex !== -1) {
-        const existingConversation = updatedConversations[existingConversationIndex];
-        updatedConversation.unread_count = existingConversation.unread_count + 1;
-        updatedConversations.splice(existingConversationIndex, 1);
-        updatedConversations.unshift(updatedConversation);
+      if (update.type === 'mark_as_read') {
+        // Kasus untuk "mark as read"
+        const conversationIndex = updatedConversations.findIndex(
+          conv => conv.conversation_id === update.conversation_id
+        );
+        if (conversationIndex !== -1) {
+          updatedConversations[conversationIndex] = {
+            ...updatedConversations[conversationIndex],
+            unread_count: 0
+          };
+        }
       } else {
+        // Kasus untuk pesan baru (kode yang sudah ada)
+        const existingConversationIndex = updatedConversations.findIndex(
+          conv => conv.conversation_id === update.conversation_id
+        );
+
+        const updatedConversation: Conversation = {
+          ...updatedConversations[existingConversationIndex], // Mempertahankan properti yang ada
+          conversation_id: update.conversation_id,
+          to_id: update.sender === update.shop_id ? update.receiver : update.sender,
+          to_name: update.sender === update.shop_id ? update.receiver_name : update.sender_name,
+          to_avatar: updatedConversations[existingConversationIndex]?.to_avatar || "",
+          to_shop_id: update.sender === update.shop_id ? update.receiver : update.sender,
+          shop_id: update.shop_id,
+          shop_name: update.sender === update.shop_id ? update.sender_name : update.receiver_name,
+          latest_message_content: {
+            text: update.content
+          },
+          last_message_timestamp: update.timestamp * 1000000,
+          unread_count: (updatedConversations[existingConversationIndex]?.unread_count || 0) + 1
+        };
+
+        if (existingConversationIndex !== -1) {
+          updatedConversations.splice(existingConversationIndex, 1);
+        }
         updatedConversations.unshift(updatedConversation);
       }
 

@@ -32,7 +32,7 @@ export async function GET(request: Request) {
             {
               direction: 'older',
               type: unread ? 'unread' : 'all',
-              page_size: 10
+              page_size: 50
               
             }
           );

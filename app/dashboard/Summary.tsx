@@ -15,23 +15,23 @@ export function OrdersSummary({ summary }: OrdersSummaryProps) {
   console.log('Summary data received:', summary);
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <Card className="bg-green-500 text-white rounded-lg">
           <CardContent className="p-4">
             <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center">
-                <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 mr-2" />
+              <div className="flex items-start">
+                <ShoppingCart className="h-4 w-4 sm:h-6 sm:w-6 mr-2 mt-[2px] sm:mt-0" />
                 <div>
-                  <div className="text-[12px] sm:text-xs font-medium">TOTAL PESANAN</div>
-                  <div className="text-base sm:text-xl font-bold">{summary.totalOrders}</div>
+                  <div className="text-[10px] sm:text-xs font-medium">TOTAL PESANAN</div>
+                  <div className="text-sm sm:text-xl font-bold">{summary.totalOrders}</div>
                 </div>
               </div>
-              <div className="flex items-center justify-end">
-                <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 mr-2" />
+              <div className="flex items-start justify-end">
+                <DollarSign className="h-4 w-4 sm:h-6 sm:w-6 mr-2 mt-[2px] sm:mt-0" />
                 <div>
-                  <div className="text-[12px] sm:text-xs font-medium">TOTAL OMSET</div>
-                  <div className="text-base sm:text-xl font-bold">Rp {summary.totalOmset.toLocaleString('id-ID')}</div>
+                  <div className="text-[10px] sm:text-xs font-medium">TOTAL OMSET</div>
+                  <div className="text-sm sm:text-xl font-bold">Rp {summary.totalOmset.toLocaleString('id-ID')}</div>
                 </div>
               </div>
             </div>
@@ -39,28 +39,27 @@ export function OrdersSummary({ summary }: OrdersSummaryProps) {
         </Card>
         <Card className="bg-blue-500 text-white rounded-lg">
           <CardContent className="p-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center">
-                <BarChart2 className="h-5 w-5 sm:h-6 sm:w-6 mr-2" />
+            <div className="flex justify-between items-start">
+              <div className="flex items-start">
+                <BarChart2 className="h-4 w-4 sm:h-6 sm:w-6 mr-2 mt-[2px] sm:mt-0" />
                 <div>
-                  <div className="text-[12px] sm:text-xs font-medium">TOTAL IKLAN</div>
-                  <div className="text-base sm:text-xl font-bold">Rp {summary.totalIklan.toLocaleString('id-ID')}</div>
+                  <div className="text-[10px] sm:text-xs font-medium">TOTAL IKLAN</div>
+                  <div className="text-sm sm:text-xl font-bold">Rp {summary.totalIklan.toLocaleString('id-ID')}</div>
                 </div>
               </div>
               <div className="flex flex-col items-end">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-white p-0 h-6 w-6 mb-1"
+                  className="text-white p-0 h-5 w-5 sm:h-6 sm:w-6 mb-1"
                   onClick={() => setIsRingkasanVisible(!isRingkasanVisible)}
                 >
                   {isRingkasanVisible ? (
-                    <ChevronUp className="h-4 w-4" />
+                    <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
                   ) : (
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                   )}
                 </Button>
-                
               </div>
             </div>
           </CardContent>
@@ -68,26 +67,26 @@ export function OrdersSummary({ summary }: OrdersSummaryProps) {
       </div>
 
       {isRingkasanVisible && (
-        <Card className="rounded-lg">
-          <CardContent>
+        <Card className="rounded-lg overflow-x-auto">
+          <CardContent className="p-2 sm:p-6">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Toko</TableHead>
-                  <TableHead className="text-right">Pesanan</TableHead>
-                  <TableHead className="text-right">Omset</TableHead>
-                  <TableHead className="text-right">Iklan</TableHead>
+                  <TableHead className="w-[30%]">Toko</TableHead>
+                  <TableHead className="text-right w-[15%]">Qty</TableHead>
+                  <TableHead className="text-right w-[27.5%]">Omset</TableHead>
+                  <TableHead className="text-right w-[27.5%]">Iklan</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {Object.entries(summary.iklanPerToko).map(([toko, biayaIklan]) => (
                   <TableRow key={toko}>
-                    <TableCell className="font-medium">{toko}</TableCell>
-                    <TableCell className="text-right">{summary.pesananPerToko[toko] || 0}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="font-medium text-xs sm:text-sm truncate max-w-[120px]">{toko}</TableCell>
+                    <TableCell className="text-right text-xs sm:text-sm">{summary.pesananPerToko[toko] || 0}</TableCell>
+                    <TableCell className="text-right text-xs sm:text-sm whitespace-nowrap">
                       Rp {(summary.omsetPerToko[toko] || 0).toLocaleString('id-ID')}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right text-xs sm:text-sm whitespace-nowrap">
                       Rp {biayaIklan.toLocaleString('id-ID')}
                     </TableCell>
                   </TableRow>

@@ -13,7 +13,7 @@ export function Dashboard() {
 
   return (
     <Suspense fallback={<div>Memuat data...</div>}>
-      <div className="m-4">
+      <div className="m-2">
         <OrdersSummary summary={summary} />
         <OrdersDetailTable orders={orders} />
       </div>

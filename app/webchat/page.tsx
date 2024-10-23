@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, Phone, Video, User, CheckCircle2, ChevronLeft, Filter } from "lucide-react"
 import { useSendMessage } from '@/app/hooks/useSendMessage';
+
 import { useSSE } from '@/app/hooks/useSSE';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -141,10 +142,9 @@ const WebChatPage: React.FC = () => {
       setShowConversationList(false);
     }
     
-    // Tandai pesan sebagai dibaca ketika percakapan dipilih
-    if (conversation.unread_count > 0 && messages.length > 0) {
-      const lastMessageId = messages[messages.length - 1].id;
-      handleMarkAsRead(conversation.conversation_id, lastMessageId);
+    // Tandai pesan sebagai dibaca hanya jika unread_count > 0
+    if (conversation.unread_count > 0) {
+      handleMarkAsRead(conversation.conversation_id);
     }
   };
 
@@ -156,7 +156,7 @@ const WebChatPage: React.FC = () => {
       const matchesStatusFilter = 
         statusFilter === 'SEMUA' ? true :
         statusFilter === 'BELUM DIBACA' ? conversation.unread_count > 0 :
-        statusFilter === 'BELUM DIBALAS' ? (conversation.latest_message_content?.text && conversation.to_id !== conversation.shop_id) : true;
+        statusFilter === 'BELUM DIBALAS' ? (conversation.latest_message_content?.text && conversation.to_id == conversation.latest_message_from_id) : true;
 
       return matchesSearch && matchesShopFilter && matchesStatusFilter;
     });
@@ -168,15 +168,18 @@ const WebChatPage: React.FC = () => {
   }, [conversations]);
 
   // Fungsi untuk menandai pesan sebagai dibaca
-  const handleMarkAsRead = async (conversationId: string, lastMessageId: string) => {
+  const handleMarkAsRead = async (conversationId: string) => {
     const conversation = conversations.find(conv => conv.conversation_id === conversationId);
-    if (!conversation) return;
+    if (!conversation || conversation.unread_count === 0) return;
 
     try {
+      const lastMessage = messages[messages.length - 1];
+      if (!lastMessage) return;
+
       await markAsRead({
         shopId: conversation.shop_id,
         conversationId: conversation.conversation_id,
-        lastReadMessageId: lastMessageId,
+        lastReadMessageId: lastMessage.id,
       });
       // Perbarui state lokal untuk menghapus indikator pesan belum dibaca
       updateConversationList({
@@ -190,8 +193,10 @@ const WebChatPage: React.FC = () => {
 
   useEffect(() => {
     if (selectedConversation && messages.length > 0) {
-      const lastMessageId = messages[messages.length - 1].id;
-      handleMarkAsRead(selectedConversation, lastMessageId);
+      const selectedConv = conversations.find(conv => conv.conversation_id === selectedConversation);
+      if (selectedConv && selectedConv.unread_count > 0) {
+        handleMarkAsRead(selectedConversation);
+      }
     }
   }, [selectedConversation, messages]);
 
@@ -278,7 +283,7 @@ const WebChatPage: React.FC = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <p className="text-sm font-bold">{conversation.to_name}</p>
-                      {conversation.to_id != conversation.shop_id && (
+                      {conversation.to_id != conversation.latest_message_from_id && (
                         <CheckCircle2 className="h-3 w-3 text-primary" />
                       )}
                     </div>
