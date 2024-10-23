@@ -11,6 +11,7 @@ import { useSendMessage } from '@/app/hooks/useSendMessage';
 import { useSSE } from '@/app/hooks/useSSE';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useMarkAsRead } from '@/app/hooks/useMarkAsRead';
 
 interface Conversation {
   conversation_id: string;
@@ -65,6 +66,8 @@ const WebChatPage: React.FC = () => {
   const { sendMessage, isLoading: isSendingMessage, error: sendMessageError } = useSendMessage();
 
   const { data: sseData, error: sseError } = useSSE('api/webhook'); // Ganti dengan URL SSE yang sesuai
+
+  const { markAsRead, isLoading: isMarkingAsRead, error: markAsReadError } = useMarkAsRead();
 
   useEffect(() => {
     const handleResize = () => {
@@ -137,6 +140,12 @@ const WebChatPage: React.FC = () => {
     if (isMobileView) {
       setShowConversationList(false);
     }
+    
+    // Tandai pesan sebagai dibaca ketika percakapan dipilih
+    if (conversation.unread_count > 0 && messages.length > 0) {
+      const lastMessageId = messages[messages.length - 1].id;
+      handleMarkAsRead(conversation.conversation_id, lastMessageId);
+    }
   };
 
   const filteredConversations = useMemo(() => {
@@ -157,6 +166,34 @@ const WebChatPage: React.FC = () => {
     const shops = new Set(conversations.map(conv => conv.shop_id));
     return Array.from(shops);
   }, [conversations]);
+
+  // Fungsi untuk menandai pesan sebagai dibaca
+  const handleMarkAsRead = async (conversationId: string, lastMessageId: string) => {
+    const conversation = conversations.find(conv => conv.conversation_id === conversationId);
+    if (!conversation) return;
+
+    try {
+      await markAsRead({
+        shopId: conversation.shop_id,
+        conversationId: conversation.conversation_id,
+        lastReadMessageId: lastMessageId,
+      });
+      // Perbarui state lokal untuk menghapus indikator pesan belum dibaca
+      updateConversationList({
+        type: 'mark_as_read',
+        conversation_id: conversationId,
+      });
+    } catch (error) {
+      console.error('Gagal menandai pesan sebagai dibaca:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedConversation && messages.length > 0) {
+      const lastMessageId = messages[messages.length - 1].id;
+      handleMarkAsRead(selectedConversation, lastMessageId);
+    }
+  }, [selectedConversation, messages]);
 
   return (
     <div className="flex h-full w-full overflow-hidden">

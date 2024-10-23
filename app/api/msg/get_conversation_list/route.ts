@@ -5,8 +5,12 @@ import { shopeeApi } from '@/lib/shopeeConfig';
 
 
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const unread = searchParams.get('unread');
+    console.log(unread);
+
     // Ambil semua token dan nama toko dari tabel shopee_tokens
     const { data: tokens, error } = await supabase
       .from('shopee_tokens')
@@ -27,7 +31,7 @@ export async function GET() {
             token.access_token,
             {
               direction: 'older',
-              type: 'all',
+              type: unread ? 'unread' : 'all',
               page_size: 10
               
             }
