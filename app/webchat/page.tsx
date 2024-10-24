@@ -47,6 +47,7 @@ const WebChatPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedShops, setSelectedShops] = useState<number[]>([]);
   const [statusFilter, setStatusFilter] = useState<'SEMUA' | 'BELUM DIBACA' | 'BELUM DIBALAS'>('SEMUA');
+  const [isFullScreenChat, setIsFullScreenChat] = useState(false);
 
   const { conversations, updateConversationList } = useConversationList();
   const { 
@@ -72,13 +73,15 @@ const WebChatPage: React.FC = () => {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobileView(window.innerWidth < 768);
+      const isMobile = window.innerWidth < 768;
+      setIsMobileView(isMobile);
+      setIsFullScreenChat(isMobile && !showConversationList);
     };
 
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [showConversationList]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -140,6 +143,7 @@ const WebChatPage: React.FC = () => {
     setSelectedConversation(conversation.conversation_id);
     if (isMobileView) {
       setShowConversationList(false);
+      setIsFullScreenChat(true);
     }
     
     // Tandai pesan sebagai dibaca hanya jika unread_count > 0
@@ -201,7 +205,7 @@ const WebChatPage: React.FC = () => {
   }, [selectedConversation, messages]);
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className={`flex h-full w-full overflow-hidden ${isFullScreenChat ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       {/* Daftar Percakapan */}
       {(!isMobileView || (isMobileView && showConversationList)) && (
         <div className={`${isMobileView ? 'w-full' : 'w-1/3 md:w-1/4 lg:w-1/5'} border-r bg-muted/20 flex flex-col h-full`}>
@@ -260,34 +264,34 @@ const WebChatPage: React.FC = () => {
               {filteredConversations.map((conversation) => (
                 <div
                   key={conversation.conversation_id}
-                  className={`flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer ${
+                  className={`flex items-center gap-2 p-2 hover:bg-muted/50 cursor-pointer ${
                     selectedConversation === conversation.conversation_id ? 'bg-muted/50' : ''
-                  }`}
+                  } ${isMobileView ? 'text-sm' : ''}`}
                   onClick={() => handleConversationSelect(conversation)}
                 >
-                  <Avatar>
+                  <Avatar className={isMobileView ? 'h-8 w-8' : ''}>
                     <AvatarImage src={conversation.to_avatar} />
-                    <AvatarFallback><User /></AvatarFallback>
+                    <AvatarFallback><User className={isMobileView ? 'h-4 w-4' : ''} /></AvatarFallback>
                   </Avatar>
                   <div className="flex-1 overflow-hidden">
                     <div className="flex justify-between items-baseline">
                       <div className="flex items-center">
-                        <p className="font-medium truncate">{conversation.shop_name}</p>
+                        <p className={`font-medium truncate ${isMobileView ? 'text-xs' : ''}`}>{conversation.shop_name}</p>
                         {conversation.unread_count > 0 && (
                           <div className="w-2 h-2 bg-red-500 rounded-full ml-2"></div>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">
+                      <p className={`text-muted-foreground ${isMobileView ? 'text-[10px]' : 'text-xs'}`}>
                         {new Date(conversation.last_message_timestamp / 1000000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                     <div className="flex justify-between items-center">
-                      <p className="text-sm font-bold">{conversation.to_name}</p>
-                      {conversation.to_id != conversation.latest_message_from_id && (
-                        <CheckCircle2 className="h-3 w-3 text-primary" />
+                      <p className={`font-bold ${isMobileView ? 'text-xs' : 'text-sm'}`}>{conversation.to_name}</p>
+                      {conversation.to_id != conversation.latest_message_from_id && conversation.unread_count === 0 && (
+                        <CheckCircle2 className={`text-primary ${isMobileView ? 'h-2 w-2' : 'h-3 w-3'}`} />
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">{conversation.latest_message_content?.text}</p>
+                    <p className={`text-muted-foreground truncate ${isMobileView ? 'text-xs' : 'text-sm'}`}>{conversation.latest_message_content?.text}</p>
                   </div>
                 </div>
               ))}
@@ -300,40 +304,43 @@ const WebChatPage: React.FC = () => {
       {(!isMobileView || (isMobileView && !showConversationList)) && (
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
           {/* Header Chat */}
-          <div className="p-4 border-b flex items-center sticky top-0 bg-background z-10">
+          <div className="p-3 border-b flex items-center sticky top-0 bg-background z-10">
             {isMobileView && (
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setShowConversationList(true)}
+                onClick={() => {
+                  setShowConversationList(true);
+                  setIsFullScreenChat(false);
+                }}
                 className="mr-2 md:hidden"
               >
-                <ChevronLeft className="h-6 w-6" />
+                <ChevronLeft className="h-5 w-5" />
               </Button>
             )}
             {selectedConversation && selectedConversationData ? (
               <>
-                <div className="flex items-center gap-3 overflow-hidden flex-grow">
-                  <Avatar>
+                <div className="flex items-center gap-2 overflow-hidden flex-grow">
+                  <Avatar className={isMobileView ? 'h-8 w-8' : ''}>
                     <AvatarImage src={selectedConversationData.to_avatar} />
-                    <AvatarFallback><User /></AvatarFallback>
+                    <AvatarFallback><User className={isMobileView ? 'h-4 w-4' : ''} /></AvatarFallback>
                   </Avatar>
                   <div className="overflow-hidden">
-                    <p className="font-medium truncate">{selectedConversationData.shop_name}</p>
-                    <p className="text-sm font-bold truncate">{selectedConversationData.to_name}</p>
+                    <p className={`font-medium truncate ${isMobileView ? 'text-sm' : ''}`}>{selectedConversationData.shop_name}</p>
+                    <p className={`font-bold truncate ${isMobileView ? 'text-xs' : 'text-sm'}`}>{selectedConversationData.to_name}</p>
                   </div>
                 </div>
                 <div className="flex-shrink-0">
                   <Button variant="ghost" size="icon">
-                    <Phone className="h-4 w-4" />
+                    <Phone className={isMobileView ? 'h-4 w-4' : 'h-5 w-5'} />
                   </Button>
                   <Button variant="ghost" size="icon">
-                    <Video className="h-4 w-4" />
+                    <Video className={isMobileView ? 'h-4 w-4' : 'h-5 w-5'} />
                   </Button>
                 </div>
               </>
             ) : (
-              <p className="text-muted-foreground">Pilih percakapan untuk memulai chat</p>
+              <p className={`text-muted-foreground ${isMobileView ? 'text-sm' : ''}`}>Pilih percakapan untuk memulai chat</p>
             )}
           </div>
 
