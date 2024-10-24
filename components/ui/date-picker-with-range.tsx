@@ -98,7 +98,7 @@ export function DatePickerWithRange({
             selected={tempDate}
             onSelect={setTempDate}
             numberOfMonths={1}
-            className="p-3 text-center flex justify-center"
+            className="text-center flex justify-center"
             locale={id}
           />
           <div className="flex justify-end p-3">

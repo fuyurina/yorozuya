@@ -8,7 +8,8 @@ import {
   Megaphone,
   Store,
   Settings,
-  CodeXml
+  CodeXml,
+  AlertCircle
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -28,6 +29,7 @@ export const navItems = [
   { href: '/ads', icon: Megaphone, label: 'Iklan' },
   { href: '/shops', icon: Store, label: 'Shops' },
   { href: '/pengaturan', icon: Settings, label: 'Pengaturan' },
+  { href: '/keluhan', icon: AlertCircle, label: 'Keluhan' },
 ]
 export function Sidebar() {
   const pathname = usePathname()

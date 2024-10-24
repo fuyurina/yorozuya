@@ -124,7 +124,7 @@ export default function OrderChangesPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {keluhan.map((order) => (
-          <Card key={order.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 bg-white dark:bg-gray-800">
+          <Card key={order.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 bg-white dark:bg-gray-800 flex flex-col">
             <CardHeader className="p-4 bg-gray-50 dark:bg-gray-900">
               <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex justify-between items-center">
                 <span>No. Invoice: {order.nomor_invoice || 'N/A'}</span>
@@ -134,7 +134,7 @@ export default function OrderChangesPage() {
                 />
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4">
+            <CardContent className="p-4 flex-grow">
               <div className="flex justify-between items-center mb-3">
                 <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{order.nama_toko}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">ID: {order.id_pengguna}</p>
