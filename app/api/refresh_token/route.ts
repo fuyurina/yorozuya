@@ -1,18 +1,15 @@
-import { NextApiRequest, NextApiResponse, NextApiHandler } from 'next';
+import { NextRequest, NextResponse } from 'next/server';
 import { refreshAllTokens } from '@/app/services/useTokenRefresh';
 
-const handler: NextApiHandler = async (req, res) => {
-  if (req.method === 'POST') {
-    try {
-      await refreshAllTokens();
-      res.status(200).json({ message: 'Semua token berhasil di-refresh' });
-    } catch (error) {
-      res.status(500).json({ error: 'Gagal me-refresh token' });
-    }
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+export async function POST(req: NextRequest) {
+  try {
+    await refreshAllTokens();
+    return NextResponse.json({ message: 'Semua token berhasil di-refresh' }, { status: 200 });
+  } catch (error) {
+    return NextResponse.json({ error: 'Gagal me-refresh token' }, { status: 500 });
   }
-};
+}
 
-export default handler;
+export async function GET(req: NextRequest) {
+  return NextResponse.json({ error: 'Method GET tidak diizinkan' }, { status: 405 });
+}
