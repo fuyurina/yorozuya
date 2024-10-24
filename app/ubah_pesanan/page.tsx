@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function OrderChangesPage() {
   const { 
@@ -85,7 +86,36 @@ export default function OrderChangesPage() {
     }
   }, [chats])
 
-  if (loading) return <div>Memuat data...</div>
+  if (loading) return (
+    <div className="container mx-auto px-4 py-6">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6">Data Perubahan Pesanan</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(6)].map((_, index) => (
+          <Card key={index} className="overflow-hidden shadow-md">
+            <CardHeader className="p-4 bg-gray-50">
+              <Skeleton className="h-5 w-3/4" />
+            </CardHeader>
+            <CardContent className="p-4">
+              <Skeleton className="h-4 w-1/2 mb-3" />
+              <div className="space-y-2">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+              <div className="flex justify-between items-center mt-3">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-4 w-1/4" />
+              </div>
+            </CardContent>
+            <CardFooter className="p-4 bg-gray-50 flex justify-between items-center">
+              <Skeleton className="h-8 w-1/4" />
+              <Skeleton className="h-6 w-6 rounded-full" />
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
+  
   if (error) return <div>Error: {error}</div>
 
   return (
@@ -154,31 +184,37 @@ export default function OrderChangesPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>{selectedOrder?.nomor_invoice} - {selectedOrder?.nama_toko} - {selectedOrder?.id_pengguna}</DialogTitle>
+        <DialogContent className="sm:max-w-[600px] w-[95vw] max-h-[90vh] flex flex-col">
+          <DialogHeader className="py-2 border-b">
+            <DialogTitle className="text-sm flex justify-between items-center">
+              <span className="font-medium">{selectedOrder?.nomor_invoice}</span>
+              <span className="text-gray-500">
+                {selectedOrder?.nama_toko.split(' ')[0]}
+              </span>
+              <span className="text-xs text-gray-400">ID: {selectedOrder?.id_pengguna}</span>
+            </DialogTitle>
           </DialogHeader>
-          <div ref={chatContainerRef} className="flex-grow overflow-y-auto p-4 space-y-4">
+          <div ref={chatContainerRef} className="flex-grow overflow-y-auto p-2 sm:p-4 space-y-3">
             {chats.map((chat) => (
               <div key={chat.id} className={`flex ${chat.sender === 'seller' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] p-3 rounded-lg ${chat.sender === 'seller' ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                  <p className="text-sm">{chat.message}</p>
-                  <p className="text-xs text-gray-500 mt-2">{new Date(chat.timestamp).toLocaleString()}</p>
+                <div className={`max-w-[80%] p-2 sm:p-3 rounded-lg ${chat.sender === 'seller' ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                  <p className="text-xs sm:text-sm">{chat.message}</p>
+                  <p className="text-[10px] sm:text-xs text-gray-500 mt-1">{new Date(chat.timestamp).toLocaleString()}</p>
                 </div>
               </div>
             ))}
           </div>
-          <form onSubmit={handleSendMessage} className="mt-4 flex items-center space-x-2 p-4 border-t">
+          <form onSubmit={handleSendMessage} className="mt-2 flex items-center space-x-2 p-2 sm:p-4 border-t">
             <Input
               type="text"
               placeholder="Ketik pesan..."
               value={chatMessage}
               onChange={(e) => setChatMessage(e.target.value)}
-              className="flex-grow"
+              className="flex-grow text-sm"
               disabled={isLoadingSend}
             />
-            <Button type="submit" size="icon" disabled={isLoadingSend}>
-              <Send className="h-4 w-4" />
+            <Button type="submit" size="sm" disabled={isLoadingSend}>
+              <Send className="h-3 w-3 sm:h-4 sm:w-4" />
             </Button>
           </form>
         </DialogContent>

@@ -252,9 +252,9 @@ const WebChatPage: React.FC = () => {
             
             <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'SEMUA' | 'BELUM DIBACA' | 'BELUM DIBALAS')}>
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="SEMUA">Semua</TabsTrigger>
-                <TabsTrigger value="BELUM DIBACA">Belum Dibaca</TabsTrigger>
-                <TabsTrigger value="BELUM DIBALAS">Belum Dibalas</TabsTrigger>
+                <TabsTrigger value="SEMUA" className="text-xs">Semua</TabsTrigger>
+                <TabsTrigger value="BELUM DIBACA" className="text-xs">Belum Dibaca</TabsTrigger>
+                <TabsTrigger value="BELUM DIBALAS" className="text-xs">Belum Dibalas</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>

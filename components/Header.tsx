@@ -1,33 +1,29 @@
 'use client'
 
-import { CircleUser, Menu, Search } from "lucide-react"
+import { useState, useEffect } from "react"
+import { CircleUser, Search, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MobileSidebar } from "./mobile-sidebar"
-import { useState } from "react"
 
 export function Header() {
-  const [open, setOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768) // Menggunakan breakpoint 768px untuk mobile
+    }
+
+    checkIsMobile()
+    window.addEventListener('resize', checkIsMobile)
+
+    return () => window.removeEventListener('resize', checkIsMobile)
+  }, [])
 
   return (
     <header className="flex h-[53px] items-center gap-4 border-b bg-muted/40 px-4 lg:px-6">
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger asChild>
-          <Button
-            variant="outline"
-            size="icon"
-            className="shrink-0 md:hidden"
-          >
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle navigation menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="w-[330px] max-w-[330px] flex flex-col">
-          <MobileSidebar onNavigate={() => setOpen(false)} />
-        </SheetContent>
-      </Sheet>
+      {isMobile && <MobileSidebar onNavigate={() => {}} />}
       <div className="w-full flex-1">
         <form>
           <div className="relative">
