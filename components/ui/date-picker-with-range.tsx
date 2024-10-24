@@ -4,6 +4,7 @@ import * as React from "react"
 import { addDays, format, subDays } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { DateRange } from "react-day-picker"
+import { id } from "date-fns/locale"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -98,6 +99,7 @@ export function DatePickerWithRange({
             onSelect={setTempDate}
             numberOfMonths={1}
             className="p-3 text-center flex justify-center"
+            locale={id}
           />
           <div className="flex justify-end p-3">
             <Button onClick={handleConfirm}>Konfirmasi</Button>
