@@ -41,10 +41,11 @@ export async function saveTokens(shopId: number, tokens: any, shopName?: string)
             updated_at: now.toISOString()
         };
 
-        // Hanya tambahkan shop_name ke data jika shopName ada
-        if (shopName !== undefined && shopName !== null) {
-            data.shop_name = shopName;
+        // Gunakan fungsi getShopName untuk mendapatkan nama toko
+        if (!shopName) {
+            shopName = await getShopName(shopId, tokens.access_token);
         }
+        data.shop_name = shopName;
 
         const { error } = await supabase
             .from('shopee_tokens')
@@ -68,12 +69,12 @@ export async function saveTokens(shopId: number, tokens: any, shopName?: string)
     }
 }
 
-export async function refreshToken(shopId: number, refreshToken: string): Promise<any> {
+export async function refreshToken(shopId: number, refreshToken: string, shopName?: string): Promise<any> {
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
             const newTokens = await shopeeApi.refreshAccessToken(refreshToken, shopId);
             
-            await saveTokens(shopId, newTokens);
+            await saveTokens(shopId, newTokens, shopName);
             
             return newTokens;
 
@@ -96,7 +97,7 @@ export async function getValidAccessToken(shopId: number): Promise<string> {
         // Jika tidak ada di Redis, ambil dari database
         const { data, error } = await supabase
             .from('shopee_tokens')
-            .select('access_token')
+            .select('access_token',)
             .eq('shop_id', shopId)
             .single();
         
