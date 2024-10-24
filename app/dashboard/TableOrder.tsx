@@ -237,15 +237,15 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
         <Table className="w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="font-bold uppercase text-xs text-black w-10 text-center whitespace-nowrap">#</TableHead>
-              <TableHead className="font-bold uppercase text-xs text-black whitespace-nowrap min-w-[80px] sm:min-w-[100px]">Toko</TableHead>
-              <TableHead className="font-bold uppercase text-xs text-black whitespace-nowrap min-w-[120px]">Tanggal</TableHead>
-              <TableHead className="font-bold uppercase text-xs text-black whitespace-nowrap min-w-[150px]">No. Pesanan</TableHead>
-              <TableHead className="font-bold uppercase text-xs text-black whitespace-nowrap min-w-[100px]">Username</TableHead>
-              <TableHead className="font-bold uppercase text-xs text-black whitespace-nowrap min-w-[100px]">Harga</TableHead>
-              <TableHead className="font-bold uppercase text-xs text-black whitespace-nowrap min-w-[100px]">SKU (Qty)</TableHead>
-              <TableHead className="font-bold uppercase text-xs text-black whitespace-nowrap min-w-[150px]">Kurir</TableHead>
-              <TableHead className="font-bold uppercase text-xs text-black whitespace-nowrap min-w-[100px]">Status</TableHead>
+              <TableHead className="font-bold uppercase text-xs text-black dark:text-white w-10 text-center whitespace-nowrap">#</TableHead>
+              <TableHead className="font-bold uppercase text-xs text-black dark:text-white whitespace-nowrap min-w-[80px] sm:min-w-[100px]">Toko</TableHead>
+              <TableHead className="font-bold uppercase text-xs text-black dark:text-white whitespace-nowrap min-w-[120px]">Tanggal</TableHead>
+              <TableHead className="font-bold uppercase text-xs text-black dark:text-white whitespace-nowrap min-w-[150px]">No. Pesanan</TableHead>
+              <TableHead className="font-bold uppercase text-xs text-black dark:text-white whitespace-nowrap min-w-[100px]">Username</TableHead>
+              <TableHead className="font-bold uppercase text-xs text-black dark:text-white whitespace-nowrap min-w-[100px]">Harga</TableHead>
+              <TableHead className="font-bold uppercase text-xs text-black dark:text-white whitespace-nowrap min-w-[100px]">SKU (Qty)</TableHead>
+              <TableHead className="font-bold uppercase text-xs text-black dark:text-white whitespace-nowrap min-w-[150px]">Kurir</TableHead>
+              <TableHead className="font-bold uppercase text-xs text-black dark:text-white whitespace-nowrap min-w-[100px]">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -255,23 +255,23 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
                   key={`${order.order_sn}`} 
                   className={
                     order.order_status === "IN_CANCEL" 
-                      ? 'bg-red-100' 
+                      ? 'bg-red-100 dark:bg-red-900' // Tambahkan dark:bg-red-900
                       : order.order_status === "CANCELLED"
-                        ? 'bg-gray-300'
+                        ? 'bg-gray-300 dark:bg-gray-700' // Tambahkan dark:bg-gray-700
                         : index % 2 === 0 
                           ? 'bg-muted' 
                           : 'bg-gray-100/20'
                   }
                 >
-                  <TableCell className="text-xs text-gray-600 text-center whitespace-nowrap">{index + 1}</TableCell>
-                  <TableCell className="text-xs text-gray-600 whitespace-nowrap max-w-[80px] sm:max-w-none overflow-hidden text-ellipsis">{order.shop_name}</TableCell>
-                  <TableCell className="text-xs text-gray-600 whitespace-nowrap">{formatDate(order.pay_time)}</TableCell>
-                  <TableCell className="text-xs text-gray-600 whitespace-nowrap">{order.order_sn}</TableCell>
-                  <TableCell className="text-xs text-gray-600 whitespace-nowrap">{order.buyer_username || '-'}</TableCell>
-                  <TableCell className="text-xs text-gray-600 whitespace-nowrap">Rp {order.total_amount.toLocaleString('id-ID')}</TableCell>
-                  <TableCell className="text-xs text-gray-600 whitespace-nowrap">{order.sku_qty || '-'}</TableCell>
-                  <TableCell className="text-xs text-gray-600 whitespace-nowrap">{order.shipping_carrier || '-'} ({order.tracking_number || '-'})</TableCell>
-                  <TableCell className="text-xs text-gray-600 whitespace-nowrap">
+                  <TableCell className="text-xs text-gray-600 dark:text-white text-center whitespace-nowrap">{index + 1}</TableCell>
+                  <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap max-w-[80px] sm:max-w-none overflow-hidden text-ellipsis">{order.shop_name}</TableCell>
+                  <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">{formatDate(order.pay_time)}</TableCell>
+                  <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.order_sn}</TableCell>
+                  <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.buyer_username || '-'}</TableCell>
+                  <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">Rp {order.total_amount.toLocaleString('id-ID')}</TableCell>
+                  <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.sku_qty || '-'}</TableCell>
+                  <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.shipping_carrier || '-'} ({order.tracking_number || '-'})</TableCell>
+                  <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.order_status as OrderStatus)}`}>
                       {getStatusIcon(order.order_status as OrderStatus)}
                       {order.order_status}

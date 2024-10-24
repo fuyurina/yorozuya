@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { useUbahPesanan, PerubahanPesanan } from '@/app/hooks/useUbahPesanan'
+import { useKeluhan, Keluhan } from '@/app/hooks/useKeluhan'
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Trash2, FileText, MessageSquare, Send } from "lucide-react"
@@ -18,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export default function OrderChangesPage() {
   const { 
-    perubahanPesanan, 
+    keluhan, 
     loading, 
     error, 
     updateStatusPesanan, 
@@ -27,15 +27,15 @@ export default function OrderChangesPage() {
     sendMessage,
     fetchChats,
     isLoadingSend
-  } = useUbahPesanan()
+  } = useKeluhan()
   const { toast } = useToast()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedOrder, setSelectedOrder] = useState<PerubahanPesanan | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<Keluhan | null>(null)
   const [chatMessage, setChatMessage] = useState('')
   const chatContainerRef = useRef<HTMLDivElement>(null)
 
-  const handleStatusClick = async (order: PerubahanPesanan) => {
-    const newStatus = order.status === "BARU" ? "DICATAT" : "BARU"
+  const handleStatusClick = async (order: Keluhan) => {
+    const newStatus = order.status_keluhan === "BELUM DITANGANI" ? "SUDAH DITANGANI" : "BELUM DITANGANI"
     await updateStatusPesanan(order.id, newStatus)
   }
 
@@ -49,7 +49,7 @@ export default function OrderChangesPage() {
     }
   }
 
-  const handleChatClick = async (order: PerubahanPesanan) => {
+  const handleChatClick = async (order: Keluhan) => {
     setSelectedOrder(order)
     setIsDialogOpen(true)
     if (order.msg_id && order.store_id) {
@@ -120,11 +120,11 @@ export default function OrderChangesPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-6">Data Perubahan Pesanan</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-900 dark:text-gray-100">Data Perubahan Pesanan</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {perubahanPesanan.map((order) => (
-          <Card key={order.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 dark:bg-gray-800 dark:text-white">
+        {keluhan.map((order) => (
+          <Card key={order.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 bg-white dark:bg-gray-800">
             <CardHeader className="p-4 bg-gray-50 dark:bg-gray-900">
               <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex justify-between items-center">
                 <span>No. Invoice: {order.nomor_invoice || 'N/A'}</span>
@@ -134,7 +134,7 @@ export default function OrderChangesPage() {
                 />
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 dark:bg-gray-800">
+            <CardContent className="p-4">
               <div className="flex justify-between items-center mb-3">
                 <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{order.nama_toko}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">ID: {order.id_pengguna}</p>
@@ -142,37 +142,28 @@ export default function OrderChangesPage() {
               
               <div className="flex space-x-3 mb-3">
                 <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md flex-1">
-                  <h3 className="font-semibold text-xs mb-2 text-gray-700 dark:text-gray-300">Perubahan:</h3>
-                  {order.perubahan && Object.keys(order.perubahan).length > 0 ? (
-                    Object.entries(order.perubahan).map(([key, value]) => (
-                      <p key={key} className="text-xs mb-1">
-                        <span className="font-medium text-gray-600 dark:text-gray-400">{key}:</span>{' '}
-                        <span className="text-blue-600 dark:text-blue-400">{JSON.stringify(value)}</span>
-                      </p>
-                    ))
-                  ) : (
-                    <span className="text-gray-400 dark:text-gray-500 italic text-xs">Tidak ada perubahan</span>
-                  )}
+                  <h3 className="font-semibold text-xs mb-2 text-gray-700 dark:text-gray-300">Jenis Keluhan:</h3>
+                  <p className="text-xs mb-1 text-gray-800 dark:text-gray-200">{order.jenis_keluhan}</p>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md flex-1">
-                  <h3 className="font-semibold text-xs mb-2 text-gray-700 dark:text-gray-300">Detail:</h3>
-                  <p className="text-xs dark:text-gray-200">{order.detail_perubahan || 'Tidak ada detail'}</p>
+                  <h3 className="font-semibold text-xs mb-2 text-gray-700 dark:text-gray-300">Deskripsi Keluhan:</h3>
+                  <p className="text-xs text-gray-800 dark:text-gray-200">{order.deskripsi_keluhan || 'Tidak ada deskripsi'}</p>
                 </div>
               </div>
               <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-                <p>Dibuat: {new Date(order.created_at).toLocaleString()}</p>
+                <p>Dibuat: {new Date(order.create_at ?? '').toLocaleString()}</p>
                 <Badge variant="outline" className="font-semibold">{order.status_pesanan}</Badge>
               </div>
             </CardContent>
             <CardFooter className="p-4 bg-gray-50 dark:bg-gray-900 flex justify-between items-center">
               <Button 
-                variant={order.status === "DICATAT" ? "default" : "destructive"}
+                variant={order.status_keluhan === "SUDAH DITANGANI" ? "default" : "destructive"}
                 size="sm"
                 className="flex items-center text-xs py-1 px-3 h-auto min-h-0 transition-colors duration-200"
                 onClick={() => handleStatusClick(order)}
               >
                 <FileText className="h-3 w-3 mr-2" />
-                {order.status}
+                {order.status_keluhan}
               </Button>
               <Trash2 
                 className="h-5 w-5 text-red-500 hover:text-red-600 cursor-pointer transition-colors duration-200" 
@@ -184,33 +175,33 @@ export default function OrderChangesPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] w-[95vw] max-h-[90vh] flex flex-col">
-          <DialogHeader className="py-2 border-b">
-            <DialogTitle className="text-sm flex justify-between items-center">
+        <DialogContent className="sm:max-w-[600px] w-[95vw] max-h-[90vh] flex flex-col bg-white dark:bg-gray-800">
+          <DialogHeader className="py-2 border-b border-gray-200 dark:border-gray-700">
+            <DialogTitle className="text-sm flex justify-between items-center text-gray-900 dark:text-gray-100">
               <span className="font-medium">{selectedOrder?.nomor_invoice}</span>
-              <span className="text-gray-500">
+              <span className="text-gray-500 dark:text-gray-400">
                 {selectedOrder?.nama_toko.split(' ')[0]}
               </span>
-              <span className="text-xs text-gray-400">ID: {selectedOrder?.id_pengguna}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">ID: {selectedOrder?.id_pengguna}</span>
             </DialogTitle>
           </DialogHeader>
           <div ref={chatContainerRef} className="flex-grow overflow-y-auto p-2 sm:p-4 space-y-3">
             {chats.map((chat) => (
               <div key={chat.id} className={`flex ${chat.sender === 'seller' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] p-2 sm:p-3 rounded-lg ${chat.sender === 'seller' ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                  <p className="text-xs sm:text-sm">{chat.message}</p>
-                  <p className="text-[10px] sm:text-xs text-gray-500 mt-1">{new Date(chat.timestamp).toLocaleString()}</p>
+                <div className={`max-w-[80%] p-2 sm:p-3 rounded-lg ${chat.sender === 'seller' ? 'bg-blue-100 dark:bg-blue-900' : 'bg-gray-100 dark:bg-gray-700'}`}>
+                  <p className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">{chat.message}</p>
+                  <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">{new Date(chat.timestamp).toLocaleString()}</p>
                 </div>
               </div>
             ))}
           </div>
-          <form onSubmit={handleSendMessage} className="mt-2 flex items-center space-x-2 p-2 sm:p-4 border-t">
+          <form onSubmit={handleSendMessage} className="mt-2 flex items-center space-x-2 p-2 sm:p-4 border-t border-gray-200 dark:border-gray-700">
             <Input
               type="text"
               placeholder="Ketik pesan..."
               value={chatMessage}
               onChange={(e) => setChatMessage(e.target.value)}
-              className="flex-grow text-sm"
+              className="flex-grow text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
               disabled={isLoadingSend}
             />
             <Button type="submit" size="sm" disabled={isLoadingSend}>

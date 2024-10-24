@@ -46,18 +46,18 @@ export function DatePickerWithRange({
     }},
     { label: '7 hari', getDates: () => ({ from: new Date(), to: addDays(new Date(), 6) }) },
     { label: '30 hari', getDates: () => ({ from: new Date(), to: addDays(new Date(), 29) }) },
-    { label: '90 hari', getDates: () => ({ from: new Date(), to: addDays(new Date(), 89) }) },
+    
   ]
 
   return (
-    <div className={cn("grid gap-2", className)}>
+    <div className={cn("grid gap-2", className, "sm:grid-cols-1 md:grid-cols-2")}>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
             id="date"
             variant={"outline"}
             className={cn(
-              "w-[300px] justify-start text-left font-normal",
+              "w-full md:w-[300px] justify-center text-left font-normal",
               !date && "text-muted-foreground",
               "hover:bg-primary hover:text-primary-foreground transition-colors duration-200"
             )}
@@ -77,7 +77,7 @@ export function DatePickerWithRange({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-full md:w-auto p-0" align="start">
           <div className="flex flex-wrap p-2 bg-muted/50">
             {presetRanges.map((range) => (
               <Button
@@ -96,8 +96,8 @@ export function DatePickerWithRange({
             defaultMonth={tempDate?.from}
             selected={tempDate}
             onSelect={setTempDate}
-            numberOfMonths={2}
-            className="p-3"
+            numberOfMonths={1}
+            className="p-3 text-center flex justify-center"
           />
           <div className="flex justify-end p-3">
             <Button onClick={handleConfirm}>Konfirmasi</Button>
