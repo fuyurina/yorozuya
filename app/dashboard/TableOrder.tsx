@@ -12,7 +12,9 @@ import {
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 // Impor ikon-ikon yang diperlukan
-import { Package, Clock, Truck, XCircle, AlertCircle, RefreshCcw, Search } from 'lucide-react'
+import { Package, Clock, Truck, XCircle, AlertCircle, RefreshCcw, Search, Filter } from 'lucide-react'
+import { Checkbox } from "@/components/ui/checkbox"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleString('id-ID', {
@@ -41,6 +43,9 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
   const [filteredOrders, setFilteredOrders] = useState(orders)
   const [activeCategory, setActiveCategory] = useState("Semua")
   const [searchTerm, setSearchTerm] = useState("")
+  const [shops, setShops] = useState<string[]>([])
+  const [selectedShops, setSelectedShops] = useState<string[]>([])
+  const [isShopFilterOpen, setIsShopFilterOpen] = useState(false)
 
   useEffect(() => {
     const updatedCategories = categories.map(category => ({
@@ -52,6 +57,10 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
     setCategories(updatedCategories)
     handleCategoryChange(activeCategory)
     handleSearch(searchTerm)
+    
+    // Mendapatkan daftar unik toko dari pesanan
+    const uniqueShops = Array.from(new Set(orders.map(order => order.shop_name)))
+    setShops(uniqueShops)
   }, [orders, searchTerm])
 
   const handleCategoryChange = (categoryName: string) => {
@@ -73,6 +82,43 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
     )
     setFilteredOrders(filtered)
   }
+
+  const handleShopFilter = (shopName: string) => {
+    setSelectedShops(prev =>
+      prev.includes(shopName)
+        ? prev.filter(shop => shop !== shopName)
+        : [...prev, shopName]
+    )
+  }
+
+  const filterOrders = () => {
+    let filtered = orders
+
+    if (activeCategory !== "Semua") {
+      const selectedCategory = categories.find(cat => cat.name === activeCategory)
+      if (selectedCategory) {
+        filtered = filtered.filter(order => order.order_status === selectedCategory.status)
+      }
+    }
+
+    if (searchTerm) {
+      filtered = filtered.filter(order =>
+        order.buyer_username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.shipping_carrier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.order_sn.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    if (selectedShops.length > 0) {
+      filtered = filtered.filter(order => selectedShops.includes(order.shop_name))
+    }
+
+    return filtered
+  }
+
+  useEffect(() => {
+    setFilteredOrders(filterOrders())
+  }, [orders, activeCategory, searchTerm, selectedShops])
 
   // Tambahkan tipe untuk status
   type OrderStatus = "READY_TO_SHIP" | "PROCESSED" | "SHIPPED" | "CANCELLED" | "IN_CANCEL" | "TO_RETURN";
@@ -151,7 +197,7 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
               </button>
             ))}
           </div>
-          <div className="relative w-full sm:w-auto">
+          <div className="relative w-full sm:w-auto flex items-center">
             <input
               type="text"
               placeholder="Cari username, kurir, atau no. pesanan"
@@ -160,6 +206,28 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
               className="px-2 py-1 pl-8 border rounded-md w-full sm:w-auto text-xs"
             />
             <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Popover open={isShopFilterOpen} onOpenChange={setIsShopFilterOpen}>
+              <PopoverTrigger asChild>
+                <button className="ml-2 p-1 rounded-md hover:bg-gray-100">
+                  <Filter size={20} className="text-gray-500" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56" align="end" side="bottom" sideOffset={5}>
+                <div className="space-y-2">
+                  <h3 className="font-semibold">Filter Toko</h3>
+                  {shops.map(shop => (
+                    <div key={shop} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={shop}
+                        checked={selectedShops.includes(shop)}
+                        onCheckedChange={() => handleShopFilter(shop)}
+                      />
+                      <label htmlFor={shop} className="text-sm">{shop}</label>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </Card>

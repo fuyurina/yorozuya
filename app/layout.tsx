@@ -3,13 +3,19 @@ import { Inter } from 'next/font/google'
 import { Header } from "@/components/Header"
 import {Sidebar} from "@/components/Sidebar"
 import { Footer } from "@/components/Footer"
+import type { Viewport } from 'next'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
   title: 'Dashboard',
   description: 'Aplikasi dashboard modular',
-  viewport: 'width=device-width, initial-scale=1, user-scalable=no',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  userScalable: false,
 }
 
 interface RootLayoutProps {
