@@ -9,6 +9,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata = {
   title: 'Dashboard',
   description: 'Aplikasi dashboard modular',
+  viewport: 'width=device-width, initial-scale=1, user-scalable=no',
 }
 
 interface RootLayoutProps {
@@ -18,6 +19,7 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" className="h-full overflow-hidden">
+    
       <body className={`h-full ${inter.className} flex flex-col overflow-hidden`}>
         <div className="flex flex-1 overflow-hidden">
           <Sidebar />
