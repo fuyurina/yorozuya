@@ -131,46 +131,48 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
   
       console.log(`Menerima pembaruan pelacakan: OrderSN: ${orderSn}, Nomor Pelacakan: ${trackingNo}`);
       
-      try {
-        const orderList = [{
-          order_sn: orderSn,
-          package_number: packageNumber,
-          tracking_number: trackingNo
-        }];
-        const documentResult = await createShippingDocument(shopId, orderList);
-        
-        // Periksa apakah pembuatan dokumen berhasil
-        if (documentResult.error === "") {
-          // Update document_status menjadi READY
-            const { error: updateError } = await supabase
-              .from('logistic')
-              .update({ document_status: 'READY' })
-              .eq('order_sn', orderSn);
-
-            if (updateError) {
-              console.error('Gagal mengupdate document_status:', updateError);
-            } else {
-              console.log(`Document status berhasil diupdate menjadi READY untuk OrderSN: ${orderSn}, Package Number: ${packageNumber}`);
-            }
-          }
-        else {
-          console.error('ELSE Gagal membuat dokumen pengiriman:', documentResult);
-        }
-      } catch (error) {
-        console.error('Gagal membuat dokumen pengiriman:', error);
-      }
-
+      
       // Cek apakah nomor pesanan (order_sn) tersedia di tabel 'orders'
       try {
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
-          .select('order_sn')
+          .select('order_sn,order_status')
           .eq('order_sn', orderSn)
           .single();
   
         if (orderError) throw orderError;
   
         if (orderData) {
+          if (orderData.order_status === 'PROCESSED') {
+            try {
+              const orderList = [{
+                order_sn: orderSn,
+                package_number: packageNumber,
+                tracking_number: trackingNo
+              }];
+              const documentResult = await createShippingDocument(shopId, orderList);
+              
+              // Periksa apakah pembuatan dokumen berhasil
+              if (documentResult.error === "") {
+                // Update document_status menjadi READY
+                  const { error: updateError } = await supabase
+                    .from('logistic')
+                    .update({ document_status: 'READY' })
+                    .eq('order_sn', orderSn);
+      
+                  if (updateError) {
+                    console.error('Gagal mengupdate document_status:', updateError);
+                  } else {
+                    console.log(`Document status berhasil diupdate menjadi READY untuk OrderSN: ${orderSn}, Package Number: ${packageNumber}`);
+                  }
+                }
+              else {
+                console.error('ELSE Gagal membuat dokumen pengiriman:', documentResult);
+              }
+            } catch (error) {
+              console.error('Gagal membuat dokumen pengiriman:', error);
+            }
+          }
           console.log(`OrderSN ${orderSn} ditemukan di tabel orders`);
           try {
             const { data: logisticData, error: logisticError } = await supabase
