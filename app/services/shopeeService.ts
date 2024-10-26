@@ -167,12 +167,12 @@ export async function getOrderDetail(shopId: number, orderSn: string): Promise<a
     const accessToken = await getValidAccessToken(shopId);
     const result = await shopeeApi.getOrderDetail(shopId, orderSn, accessToken);
     
-    if (result.error) {
+    if (result.error && result.error !== "") {
       console.error(`Error saat mengambil detail pesanan: ${JSON.stringify(result)}`);
       return result;
     }
     
-    console.info(`Detail pesanan berhasil diambil untuk pesanan ${orderSn}: ${JSON.stringify(result)}`);
+    console.info(`Detail pesanan berhasil diambil untuk pesanan ${orderSn}`);
     return result.response;
   } catch (error) {
     console.error(`Terjadi kesalahan saat mengambil detail pesanan: ${error}`);
