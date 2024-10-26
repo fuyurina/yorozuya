@@ -2,7 +2,7 @@ import '@/app/globals.css'
 import { Inter } from 'next/font/google'
 import { Header } from "@/components/Header"
 import {Sidebar} from "@/components/Sidebar"
-import { ThemeProvider } from "@/components/theme-provider"
+import dynamic from 'next/dynamic'
 
 import type { Viewport } from 'next'
 
@@ -23,13 +23,17 @@ interface RootLayoutProps {
   children: React.ReactNode
 }
 
+const ThemeProvider = dynamic(() => import('@/components/theme-provider').then(mod => mod.ThemeProvider), {
+  ssr: false
+})
+
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" className="h-full overflow-hidden">
       <body className={`h-full ${inter.className} flex flex-col overflow-hidden`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
+          defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
