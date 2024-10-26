@@ -191,9 +191,6 @@ export const useDashboard = () => {
       }, async (payload) => {
         const newOrder = payload.new as OrderItem;
         
-        // Tambahkan log di sini
-        console.log('Data orders realtime diterima:', newOrder);
-        
         if (newOrder.order_status === 'READY_TO_SHIP') {
           setDashboardData(prevData => {
             const newSummary = { ...prevData.summary };
@@ -222,6 +219,10 @@ export const useDashboard = () => {
                 newSummary.totalOrders = 0;
                 newSummary.totalOmset = 0;
                 updatedOrders.forEach(order => processOrder(order, newSummary));
+
+                // Tambahkan log di sini
+                console.log('Order baru:', newOrder);
+                console.log('Orders yang diperbarui:', updatedOrders);
 
                 return {
                   summary: newSummary,

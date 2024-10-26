@@ -41,7 +41,7 @@ export function Header() {
             alt="Logo Perusahaan"
             width={120}
             height={40}
-            className="mx-auto md:mx-0"
+            className="mx-auto md:mx-0 w-auto h-auto" // Tambahkan w-auto dan h-auto
           />
         </Link>
       </div>

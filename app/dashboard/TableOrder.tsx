@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { OrderItem } from '@/app/hooks/useDashboard'
 import {
   Table,
@@ -29,8 +29,55 @@ type OrdersDetailTableProps = {
   orders: OrderItem[]
 }
 
+type OrderStatus = "READY_TO_SHIP" | "PROCESSED" | "SHIPPED" | "CANCELLED" | "IN_CANCEL" | "TO_RETURN";
+
+const getStatusColor = (status: OrderStatus): string => {
+  switch (status) {
+    case "READY_TO_SHIP":
+      return "bg-green-600 text-white";
+    case "PROCESSED":
+      return "bg-blue-600 text-white";
+    case "SHIPPED":
+      return "bg-indigo-600 text-white";
+    case "CANCELLED":
+      return "bg-red-600 text-white";
+    case "IN_CANCEL":
+      return "bg-yellow-600 text-white";
+    case "TO_RETURN":
+      return "bg-purple-600 text-white";
+    default:
+      return "bg-gray-600 text-white";
+  }
+};
+
+const getStatusIcon = (status: OrderStatus) => {
+  switch (status) {
+    case "READY_TO_SHIP":
+      return <Package size={14} className="inline-block mr-1" />;
+    case "PROCESSED":
+      return <Clock size={14} className="inline-block mr-1" />;
+    case "SHIPPED":
+      return <Truck size={14} className="inline-block mr-1" />;
+    case "CANCELLED":
+      return <XCircle size={14} className="inline-block mr-1" />;
+    case "IN_CANCEL":
+      return <AlertCircle size={14} className="inline-block mr-1" />;
+    case "TO_RETURN":
+      return <RefreshCcw size={14} className="inline-block mr-1" />;
+    default:
+      return null;
+  }
+};
+
+const StatusBadge = React.memo(({ status }: { status: OrderStatus }) => (
+  <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}`}>
+    {getStatusIcon(status)}
+    {status}
+  </span>
+));
+
 export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
-  const [categories, setCategories] = useState([
+  const categories = useMemo(() => [
     { name: "Semua", count: 0, status: "" },
     { name: "Siap Kirim", count: 0, status: "READY_TO_SHIP" },
     { name: "Diproses", count: 0, status: "PROCESSED" },
@@ -38,7 +85,7 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
     { name: "Dibatalkan", count: 0, status: "CANCELLED" },
     { name: "Permintaan Batal", count: 0, status: "IN_CANCEL" },
     { name: "Pengembalian", count: 0, status: "TO_RETURN" },
-  ])
+  ], [])
 
   const [filteredOrders, setFilteredOrders] = useState(orders)
   const [activeCategory, setActiveCategory] = useState("Semua")
@@ -47,120 +94,50 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
   const [selectedShops, setSelectedShops] = useState<string[]>([])
   const [isShopFilterOpen, setIsShopFilterOpen] = useState(false)
 
-  useEffect(() => {
-    const updatedCategories = categories.map(category => ({
+  const updatedCategories = useMemo(() => {
+    return categories.map(category => ({
       ...category,
       count: category.status
         ? orders.filter(order => order.order_status === category.status).length
         : orders.length
     }))
-    setCategories(updatedCategories)
-    handleCategoryChange(activeCategory)
-    handleSearch(searchTerm)
-    
-    // Mendapatkan daftar unik toko dari pesanan
-    const uniqueShops = Array.from(new Set(orders.map(order => order.shop_name)))
-    setShops(uniqueShops)
-  }, [orders, searchTerm])
+  }, [categories, orders])
 
-  const handleCategoryChange = (categoryName: string) => {
+  const handleCategoryChange = useCallback((categoryName: string) => {
     setActiveCategory(categoryName)
-    const selectedCategory = categories.find(cat => cat.name === categoryName)
-    if (selectedCategory) {
-      setFilteredOrders(selectedCategory.status
-        ? orders.filter(order => order.order_status === selectedCategory.status)
-        : orders
-      )
-    }
-  }
+  }, [])
 
-  const handleSearch = (term: string) => {
-    const filtered = orders.filter(order =>
-      order.buyer_username?.toLowerCase().includes(term.toLowerCase()) ||
-      order.shipping_carrier?.toLowerCase().includes(term.toLowerCase()) ||
-      order.order_sn.toLowerCase().includes(term.toLowerCase())
-    )
-    setFilteredOrders(filtered)
-  }
+  const handleSearch = useCallback((term: string) => {
+    setSearchTerm(term)
+  }, [])
 
-  const handleShopFilter = (shopName: string) => {
+  const handleShopFilter = useCallback((shopName: string) => {
     setSelectedShops(prev =>
       prev.includes(shopName)
         ? prev.filter(shop => shop !== shopName)
         : [...prev, shopName]
     )
-  }
+  }, [])
 
-  const filterOrders = () => {
-    let filtered = orders
-
-    if (activeCategory !== "Semua") {
-      const selectedCategory = categories.find(cat => cat.name === activeCategory)
-      if (selectedCategory) {
-        filtered = filtered.filter(order => order.order_status === selectedCategory.status)
-      }
-    }
-
-    if (searchTerm) {
-      filtered = filtered.filter(order =>
+  const filterOrders = useMemo(() => {
+    return orders.filter(order => {
+      const categoryMatch = activeCategory === "Semua" || order.order_status === categories.find(cat => cat.name === activeCategory)?.status;
+      const searchMatch = !searchTerm || 
         order.buyer_username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.shipping_carrier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.order_sn.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    if (selectedShops.length > 0) {
-      filtered = filtered.filter(order => selectedShops.includes(order.shop_name))
-    }
-
-    return filtered
-  }
+        order.order_sn.toLowerCase().includes(searchTerm.toLowerCase());
+      const shopMatch = selectedShops.length === 0 || selectedShops.includes(order.shop_name);
+      
+      return categoryMatch && searchMatch && shopMatch;
+    });
+  }, [orders, activeCategory, searchTerm, selectedShops, categories]);
 
   useEffect(() => {
-    setFilteredOrders(filterOrders())
-  }, [orders, activeCategory, searchTerm, selectedShops])
-
-  // Tambahkan tipe untuk status
-  type OrderStatus = "READY_TO_SHIP" | "PROCESSED" | "SHIPPED" | "CANCELLED" | "IN_CANCEL" | "TO_RETURN";
-
-  // Perbaiki tipe fungsi getStatusColor dan getStatusIcon
-  const getStatusColor = (status: OrderStatus): string => {
-    switch (status) {
-      case "READY_TO_SHIP":
-        return "bg-green-600 text-white";
-      case "PROCESSED":
-        return "bg-blue-600 text-white";
-      case "SHIPPED":
-        return "bg-indigo-600 text-white";
-      case "CANCELLED":
-        return "bg-red-600 text-white";
-      case "IN_CANCEL":
-        return "bg-yellow-600 text-white";
-      case "TO_RETURN":
-        return "bg-purple-600 text-white";
-      default:
-        return "bg-gray-600 text-white";
-    }
-  };
-
-  const getStatusIcon = (status: OrderStatus) => {
-    switch (status) {
-      case "READY_TO_SHIP":
-        return <Package size={14} className="inline-block mr-1" />;
-      case "PROCESSED":
-        return <Clock size={14} className="inline-block mr-1" />;
-      case "SHIPPED":
-        return <Truck size={14} className="inline-block mr-1" />;
-      case "CANCELLED":
-        return <XCircle size={14} className="inline-block mr-1" />;
-      case "IN_CANCEL":
-        return <AlertCircle size={14} className="inline-block mr-1" />;
-      case "TO_RETURN":
-        return <RefreshCcw size={14} className="inline-block mr-1" />;
-      default:
-        return null;
-    }
-  };
+    setFilteredOrders(filterOrders)
+    
+    const uniqueShops = Array.from(new Set(orders.map(order => order.shop_name)))
+    setShops(uniqueShops)
+  }, [filterOrders, orders])
 
   return (
     <div className="w-full">
@@ -173,7 +150,7 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
                 <SelectValue placeholder="Pilih kategori" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map(category => (
+                {updatedCategories.map(category => (
                   <SelectItem key={category.name} value={category.name}>
                     {category.name} ({category.count})
                   </SelectItem>
@@ -183,7 +160,7 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
           </div>
           {/* Tombol-tombol untuk desktop */}
           <div className="hidden sm:flex space-x-2 overflow-x-auto">
-            {categories.map(category => (
+            {updatedCategories.map(category => (
               <button
                 key={category.name}
                 onClick={() => handleCategoryChange(category.name)}
@@ -232,7 +209,7 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
         </div>
       </Card>
       
-      {/* Tabel */}
+      
       <div className="rounded-md border overflow-x-auto mt-2">
         <Table className="w-full">
           <TableHeader>
@@ -272,10 +249,7 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
                   <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.sku_qty || '-'}</TableCell>
                   <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.shipping_carrier || '-'} ({order.tracking_number || '-'})</TableCell>
                   <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.order_status as OrderStatus)}`}>
-                      {getStatusIcon(order.order_status as OrderStatus)}
-                      {order.order_status}
-                    </span>
+                    <StatusBadge status={order.order_status as OrderStatus} />
                   </TableCell>
                 </TableRow>
               ))
@@ -289,6 +263,7 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
           </TableBody>
         </Table>
       </div>
+      
     </div>
   )
 }
