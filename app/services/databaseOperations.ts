@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { createShippingDocument } from '@/app/services/shopeeService';
 
 
 export async function upsertOrderData(orderData: any, shopId: number): Promise<void> {
@@ -122,12 +123,24 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
 
   export async function trackingUpdate(data: any): Promise<void> {
     try {
+      const shopId = data.shop_id;
       const orderSn = data.data.ordersn;
       const trackingNo = data.data.tracking_no;
       const packageNumber = data.data.package_number;
+      
   
       console.log(`Menerima pembaruan pelacakan: OrderSN: ${orderSn}, Nomor Pelacakan: ${trackingNo}`);
-  
+      try {
+        const orderList = [{
+          order_sn: orderSn,
+          package_number: packageNumber,
+          tracking_number: trackingNo
+        }];
+        const documentResult = await createShippingDocument(shopId, orderList);
+      } catch (error) {
+        console.error('Gagal membuat dokumen pengiriman:', error);
+      }
+
       // Cek apakah nomor pesanan (order_sn) tersedia di tabel 'orders'
       try {
         const { data: orderData, error: orderError } = await supabase
@@ -166,4 +179,6 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
     } catch (error) {
       console.error('Terjadi kesalahan saat menangani callback pesanan:', error);
     }
+
+    
   }
