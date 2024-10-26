@@ -130,6 +130,7 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
       
   
       console.log(`Menerima pembaruan pelacakan: OrderSN: ${orderSn}, Nomor Pelacakan: ${trackingNo}`);
+      
       try {
         const orderList = [{
           order_sn: orderSn,
@@ -137,6 +138,22 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
           tracking_number: trackingNo
         }];
         const documentResult = await createShippingDocument(shopId, orderList);
+        
+        // Periksa apakah pembuatan dokumen berhasil
+        if (documentResult.error === "") {
+          // Update document_status menjadi READY
+            const { error: updateError } = await supabase
+              .from('logistic')
+              .update({ document_status: 'READY' })
+              .eq('order_sn', orderSn);
+
+            if (updateError) {
+              console.error('Gagal mengupdate document_status:', updateError);
+            } else {
+              console.log(`Document status berhasil diupdate menjadi READY untuk OrderSN: ${orderSn}, Package Number: ${packageNumber}`);
+            }
+          }
+        
       } catch (error) {
         console.error('Gagal membuat dokumen pengiriman:', error);
       }

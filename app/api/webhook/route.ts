@@ -52,7 +52,7 @@ function sendEventToAll(data: any) {
 }
 
 async function processWebhookData(webhookData: any) {
-  console.log('Processing webhook data:', webhookData);
+  console.log('Webhoook diterima : ', webhookData);
   try {
     const code = webhookData.code;
     
@@ -71,7 +71,6 @@ async function processWebhookData(webhookData: any) {
 
 async function handleChat(data: any) {
   const messageType = data.content?.message_type;
-  console.log('Received message :', data);
   if (messageType === 'text') {
     const chatData = {
       type: 'new_message',
@@ -88,7 +87,7 @@ async function handleChat(data: any) {
     console.log('Received text chat from Shopee', chatData);
     sendEventToAll(chatData);
   } else {
-    console.log(`Received non-text message (type: ${messageType}), skipping`, data);
+    console.log('Received non-text message');
   }
 }
 
