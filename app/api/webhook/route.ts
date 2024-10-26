@@ -52,6 +52,7 @@ function sendEventToAll(data: any) {
 }
 
 async function processWebhookData(webhookData: any) {
+  console.log('Processing webhook data:', webhookData);
   try {
     const code = webhookData.code;
     
