@@ -235,7 +235,7 @@ export class ShopeeAPI {
     } else if (dropoff) {
       body.dropoff = dropoff;
     } else {
-      throw new Error('Must provide pickup or dropoff information');
+      throw new Error('Harus menyediakan informasi pickup atau dropoff');
     }
 
     const fullUrl = `${url}?${params.toString()}`;
@@ -243,22 +243,21 @@ export class ShopeeAPI {
       'Content-Type': 'application/json'
     };
 
-    console.info(`Sending request to Shopee API to ship order: URL=${fullUrl}, Headers=${JSON.stringify(headers)}, Body=${JSON.stringify(body)}`);
+    console.info(`Mengirim permintaan ke Shopee API untuk mengirim pesanan: URL=${fullUrl}, Headers=${JSON.stringify(headers)}, Body=${JSON.stringify(body)}`);
 
     try {
       const response = await axios.post(fullUrl, body, { headers });
-      console.info(`Response status code: ${response.status}, Response content: ${JSON.stringify(response.data)}`);
+      console.info(`Kode status respons: ${response.status}, Konten respons: ${JSON.stringify(response.data)}`);
       
-      // Tambahkan properti success berdasarkan keberadaan error
       return {
         success: !response.data.error,
         ...response.data
       };
     } catch (error) {
-      console.error('Error shipping order:', error);
+      console.error('Kesalahan saat mengirim pesanan:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui',
         message: (error as any)?.response?.data?.message || '',
         request_id: (error as any)?.response?.data?.request_id || ''
       };

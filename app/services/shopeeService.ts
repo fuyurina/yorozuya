@@ -51,64 +51,64 @@ export async function getReadyToShipOrders(shopId: number, accessToken: string, 
 }
 
 export async function processReadyToShipOrders(shopId: number, orderSn: string, shippingMethod: string = 'dropoff'): Promise<any> {
-    try {
-        const accessToken = await getValidAccessToken(shopId);
-        
-        const shippingParams = await shopeeApi.getShippingParameter(shopId, orderSn, accessToken);
-        
-        if (shippingParams.error) {
-            console.error(`Error saat mendapatkan parameter pengiriman: ${JSON.stringify(shippingParams)}`);
-            return shippingParams;
-        }
-        
-        let shipResult;
-        if (shippingMethod === 'pickup') {
-            if (shippingParams.response.pickup) {
-                shipResult = await shopeeApi.shipOrder(shopId, orderSn, accessToken, { pickup: shippingParams.response.pickup });
-            } else {
-                return {
-                    success: false,
-                    error: "pickup_not_available",
-                    message: `Metode pickup tidak tersedia untuk pesanan ${orderSn}`,
-                    request_id: shippingParams.request_id || ''
-                };
-            }
-        } else if (shippingMethod === 'dropoff') {
-            if (shippingParams.response.dropoff) {
-                shipResult = await shopeeApi.shipOrder(shopId, orderSn, accessToken, { dropoff: shippingParams.response.dropoff });
-            } else {
-                return {
-                    success: false,
-                    error: "dropoff_not_available",
-                    message: `Metode dropoff tidak tersedia untuk pesanan ${orderSn}`,
-                    request_id: shippingParams.request_id || ''
-                };
-            }
-        } else {
-            return {
-                success: false,
-                error: "invalid_shipping_method",
-                message: `Metode pengiriman ${shippingMethod} tidak valid untuk pesanan ${orderSn}`,
-                request_id: ''
-            };
-        }
-        
-        if (shipResult.success) {
-            console.info(`Pesanan ${orderSn} berhasil dikirim : ${JSON.stringify(shipResult)}`);
-        } else {
-            console.error(`Terjadi kesalahan saat mengirim pesanan ${orderSn}: ${JSON.stringify(shipResult)}`);
-        }
-        
-        return shipResult;
-    } catch (error) {
-        console.error(`Terjadi kesalahan internal saat memproses pesanan: ${error}`);
-        return {
-            success: false,
-            error: "internal_server_error",
-            message: `Terjadi kesalahan internal: ${error}`,
-            request_id: ''
-        };
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    
+    const shippingParams = await shopeeApi.getShippingParameter(shopId, orderSn, accessToken);
+    
+    if (shippingParams.error) {
+      console.error(`Error saat mendapatkan parameter pengiriman: ${JSON.stringify(shippingParams)}`);
+      return shippingParams;
     }
+    
+    let shipResult;
+    if (shippingMethod === 'pickup') {
+      if (shippingParams.response.pickup) {
+        shipResult = await shopeeApi.shipOrder(shopId, orderSn, accessToken, shippingParams.response.pickup);
+      } else {
+        return {
+          success: false,
+          error: "pickup_not_available",
+          message: `Metode pickup tidak tersedia untuk pesanan ${orderSn}`,
+          request_id: shippingParams.request_id || ''
+        };
+      }
+    } else if (shippingMethod === 'dropoff') {
+      if (shippingParams.response.dropoff) {
+        shipResult = await shopeeApi.shipOrder(shopId, orderSn, accessToken, null, shippingParams.response.dropoff);
+      } else {
+        return {
+          success: false,
+          error: "dropoff_not_available",
+          message: `Metode dropoff tidak tersedia untuk pesanan ${orderSn}`,
+          request_id: shippingParams.request_id || ''
+        };
+      }
+    } else {
+      return {
+        success: false,
+        error: "invalid_shipping_method",
+        message: `Metode pengiriman ${shippingMethod} tidak valid untuk pesanan ${orderSn}`,
+        request_id: ''
+      };
+    }
+    
+    if (shipResult.success) {
+      console.info(`Pesanan ${orderSn} berhasil dikirim : ${JSON.stringify(shipResult)}`);
+    } else {
+      console.error(`Terjadi kesalahan saat mengirim pesanan ${orderSn}: ${JSON.stringify(shipResult)}`);
+    }
+    
+    return shipResult;
+  } catch (error) {
+    console.error(`Terjadi kesalahan internal saat memproses pesanan: ${error}`);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: `Terjadi kesalahan internal: ${error}`,
+      request_id: ''
+    };
+  }
 }
 
 export async function getAdsDailyPerformance(shopId: number, startDate: string, endDate: string): Promise<any> {
