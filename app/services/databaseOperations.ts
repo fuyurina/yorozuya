@@ -153,7 +153,9 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
               console.log(`Document status berhasil diupdate menjadi READY untuk OrderSN: ${orderSn}, Package Number: ${packageNumber}`);
             }
           }
-        
+        else {
+          console.error('ELSE Gagal membuat dokumen pengiriman:', documentResult);
+        }
       } catch (error) {
         console.error('Gagal membuat dokumen pengiriman:', error);
       }

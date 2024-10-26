@@ -76,6 +76,9 @@ const StatusBadge = React.memo(({ status }: { status: OrderStatus }) => (
   </span>
 ));
 
+// Tambahkan baris berikut setelah definisi komponen StatusBadge
+StatusBadge.displayName = 'StatusBadge';
+
 export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
   const categories = useMemo(() => [
     { name: "Semua", count: 0, status: "" },
