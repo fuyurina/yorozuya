@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { SHOPEE_PARTNER_ID,SHOPEE_PARTNER_KEY, shopeeApi } from '@/lib/shopeeConfig';
 import { getValidAccessToken } from './tokenManager';
@@ -52,65 +51,65 @@ export async function getReadyToShipOrders(shopId: number, accessToken: string, 
 }
 
 export async function processReadyToShipOrders(shopId: number, orderSn: string, shippingMethod: string = 'dropoff'): Promise<any> {
-        try {
-            
-            const accessToken = await getValidAccessToken(shopId);
-            
-            const shippingParams = await shopeeApi.getShippingParameter(shopId, orderSn, accessToken);
-            
-            if (shippingParams.error) {
-                console.error(`Error saat mendapatkan parameter pengiriman: ${JSON.stringify(shippingParams)}`);
-                return shippingParams;
-            }
-            
-            let shipResult;
-            if (shippingMethod === 'pickup') {
-                if (shippingParams.response.pickup) {
-                    shipResult = await shopeeApi.shipOrder(shopId, orderSn, accessToken, { pickup: shippingParams.response.pickup });
-                } else {
-                    console.info(`Metode pickup tidak tersedia untuk pesanan ${orderSn}`);
-                    return {
-                        error: "pickup_not_available",
-                        message: `Metode pickup tidak tersedia untuk pesanan ${orderSn}`,
-                        request_id: shippingParams.request_id || ''
-                    };
-                }
-            } else if (shippingMethod === 'dropoff') {
-                if (shippingParams.response.dropoff) {
-                    shipResult = await shopeeApi.shipOrder(shopId, orderSn, accessToken, { dropoff: shippingParams.response.dropoff });
-                } else {
-                    console.info(`Metode dropoff tidak tersedia untuk pesanan ${orderSn}`);
-                    return {
-                        error: "dropoff_not_available",
-                        message: `Metode dropoff tidak tersedia untuk pesanan ${orderSn}`,
-                        request_id: shippingParams.request_id || ''
-                    };
-                }
+    try {
+        const accessToken = await getValidAccessToken(shopId);
+        
+        const shippingParams = await shopeeApi.getShippingParameter(shopId, orderSn, accessToken);
+        
+        if (shippingParams.error) {
+            console.error(`Error saat mendapatkan parameter pengiriman: ${JSON.stringify(shippingParams)}`);
+            return shippingParams;
+        }
+        
+        let shipResult;
+        if (shippingMethod === 'pickup') {
+            if (shippingParams.response.pickup) {
+                shipResult = await shopeeApi.shipOrder(shopId, orderSn, accessToken, { pickup: shippingParams.response.pickup });
             } else {
-                console.info(`Metode pengiriman tidak valid untuk pesanan ${orderSn}`);
                 return {
-                    error: "invalid_shipping_method",
-                    message: `Metode pengiriman ${shippingMethod} tidak valid untuk pesanan ${orderSn}`,
-                    request_id: ''
+                    success: false,
+                    error: "pickup_not_available",
+                    message: `Metode pickup tidak tersedia untuk pesanan ${orderSn}`,
+                    request_id: shippingParams.request_id || ''
                 };
             }
-            
-            if (!shipResult.error) {
-                console.info(`Pesanan ${orderSn} berhasil dikirim : ${JSON.stringify(shipResult)}`);
+        } else if (shippingMethod === 'dropoff') {
+            if (shippingParams.response.dropoff) {
+                shipResult = await shopeeApi.shipOrder(shopId, orderSn, accessToken, { dropoff: shippingParams.response.dropoff });
             } else {
-                console.error(`Terjadi kesalahan saat mengirim pesanan ${orderSn}: ${JSON.stringify(shipResult)}`);
+                return {
+                    success: false,
+                    error: "dropoff_not_available",
+                    message: `Metode dropoff tidak tersedia untuk pesanan ${orderSn}`,
+                    request_id: shippingParams.request_id || ''
+                };
             }
-            
-            return shipResult;
-        } catch (error) {
-            console.error(`Terjadi kesalahan internal saat memproses pesanan: ${error}`);
+        } else {
             return {
-                error: "internal_server_error",
-                message: `Terjadi kesalahan internal: ${error}`,
+                success: false,
+                error: "invalid_shipping_method",
+                message: `Metode pengiriman ${shippingMethod} tidak valid untuk pesanan ${orderSn}`,
                 request_id: ''
             };
         }
+        
+        if (shipResult.success) {
+            console.info(`Pesanan ${orderSn} berhasil dikirim : ${JSON.stringify(shipResult)}`);
+        } else {
+            console.error(`Terjadi kesalahan saat mengirim pesanan ${orderSn}: ${JSON.stringify(shipResult)}`);
+        }
+        
+        return shipResult;
+    } catch (error) {
+        console.error(`Terjadi kesalahan internal saat memproses pesanan: ${error}`);
+        return {
+            success: false,
+            error: "internal_server_error",
+            message: `Terjadi kesalahan internal: ${error}`,
+            request_id: ''
+        };
     }
+}
 
 export async function getAdsDailyPerformance(shopId: number, startDate: string, endDate: string): Promise<any> {
     try {
@@ -131,4 +130,56 @@ export async function getAdsDailyPerformance(shopId: number, startDate: string, 
                 request_id: ''
             };
         }
+}
+
+export async function createShippingDocument(
+  shopId: number,
+  orderSn: string,
+  options: {
+    packageNumber?: string,
+    trackingNumber?: string,
+    documentType?: string
+  } = {}
+): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    const result = await shopeeApi.createShippingDocument(shopId, accessToken, orderSn, options);
+    
+    if (result.error) {
+      console.error(`Error saat membuat dokumen pengiriman: ${JSON.stringify(result)}`);
+      return result;
+    }
+    
+    console.info(`Dokumen pengiriman berhasil dibuat untuk pesanan ${orderSn}: ${JSON.stringify(result)}`);
+    return result.response;
+  } catch (error) {
+    console.error(`Terjadi kesalahan saat membuat dokumen pengiriman: ${error}`);
+    return {
+      error: "internal_server_error",
+      message: `Terjadi kesalahan internal: ${error}`,
+      request_id: ''
+    };
+  }
+}
+
+export async function getOrderDetail(shopId: number, orderSn: string): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    const result = await shopeeApi.getOrderDetail(shopId, orderSn, accessToken);
+    
+    if (result.error) {
+      console.error(`Error saat mengambil detail pesanan: ${JSON.stringify(result)}`);
+      return result;
+    }
+    
+    console.info(`Detail pesanan berhasil diambil untuk pesanan ${orderSn}: ${JSON.stringify(result)}`);
+    return result.response;
+  } catch (error) {
+    console.error(`Terjadi kesalahan saat mengambil detail pesanan: ${error}`);
+    return {
+      error: "internal_server_error",
+      message: `Terjadi kesalahan internal: ${error}`,
+      request_id: ''
+    };
+  }
 }

@@ -247,10 +247,20 @@ export class ShopeeAPI {
     try {
       const response = await axios.post(fullUrl, body, { headers });
       console.info(`Response status code: ${response.status}, Response content: ${JSON.stringify(response.data)}`);
-      return response.data;
+      
+      // Tambahkan properti success berdasarkan keberadaan error
+      return {
+        success: !response.data.error,
+        ...response.data
+      };
     } catch (error) {
       console.error('Error shipping order:', error);
-      throw error;
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        message: (error as any)?.response?.data?.message || '',
+        request_id: (error as any)?.response?.data?.request_id || ''
+      };
     }
   }
 
@@ -626,6 +636,58 @@ export class ShopeeAPI {
       return response.data;
     } catch (error) {
       console.error('Error uploading image:', error);
+      throw error;
+    }
+  }
+
+  async createShippingDocument(
+    shopId: number, 
+    accessToken: string, 
+    orderSn: string, 
+    options: {
+      packageNumber?: string,
+      trackingNumber?: string,
+      documentType?: string
+    } = {}
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/logistics/create_shipping_document';
+    const path = '/api/v2/logistics/create_shipping_document';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    const body: any = {
+      order_sn: orderSn,
+      shipping_document_type: options.documentType || 'THERMAL_AIR_WAYBILL'
+    };
+
+    if (options.packageNumber) {
+      body.package_number = options.packageNumber;
+    }
+
+    if (options.trackingNumber) {
+      body.tracking_number = options.trackingNumber;
+    }
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    console.info(`Mengirim permintaan ke Shopee API untuk membuat dokumen pengiriman: URL=${fullUrl}, Headers=${JSON.stringify(headers)}, Body=${JSON.stringify(body)}`);
+
+    try {
+      const response = await axios.post(fullUrl, body, { headers });
+      console.info(`Kode status respons: ${response.status}, Konten respons: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat membuat dokumen pengiriman:', error);
       throw error;
     }
   }

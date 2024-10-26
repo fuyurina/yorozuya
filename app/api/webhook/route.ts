@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { shopeeApi } from '@/lib/shopeeConfig';
-import { supabase } from '@/lib/supabase';
 import { upsertOrderData, upsertOrderItems, upsertLogisticData, trackingUpdate } from '@/app/services/databaseOperations';
+import { prosesOrder } from '@/app/services/prosesOrder';
+import { getOrderDetail } from '@/app/services/shopeeService';
 
 // Simpan semua koneksi SSE aktif
 const clients = new Set<ReadableStreamDefaultController>();
@@ -95,6 +95,16 @@ async function handleOrder(data: any) {
   console.log('Handling order', data);
   const orderData = data.data;
   await updateOrderStatus(data.shop_id, orderData.ordersn, orderData.status, orderData.update_time);
+  
+  // Tambahkan logika untuk memproses pesanan jika statusnya READY_TO_SHIP
+  if (orderData.status === 'READY_TO_SHIP') {
+    try {
+      await prosesOrder(data.shop_id, orderData.ordersn);
+      console.log(`Pesanan ${orderData.ordersn} berhasil diproses`);
+    } catch (error) {
+      console.error(`Gagal memproses pesanan ${orderData.ordersn}:`, error);
+    }
+  }
 }
 
 async function handleTrackingUpdate(data: any): Promise<void> {
@@ -104,27 +114,13 @@ async function handleTrackingUpdate(data: any): Promise<void> {
 // Fungsi-fungsi helper (perlu diimplementasikan)
 async function updateOrderStatus(shop_id: number, ordersn: string, status: string, updateTime: number) {
   try {
-    // Ambil akses token dari Supabase berdasarkan shop_id
-    const { data: tokenData, error } = await supabase
-      .from('shopee_tokens')
-      .select('access_token')
-      .eq('shop_id', shop_id)
-      .single();
 
-    if (error) {
-      throw new Error(`Gagal mengambil token: ${error.message}`);
-    }
 
-    if (!tokenData || !tokenData.access_token) {
-      throw new Error(`Token tidak ditemukan untuk shop_id: ${shop_id}`);
-    }
-
-    const accessToken = tokenData.access_token;
-
-    const orderDetail = await shopeeApi.getOrderDetail(shop_id, ordersn, accessToken);
+    // Ganti pemanggilan shopeeApi.getOrderDetail dengan getOrderDetail dari shopeeService
+    const orderDetail = await getOrderDetail(shop_id, ordersn);
     
-    if (orderDetail && 'response' in orderDetail && 'order_list' in orderDetail.response) {
-      const orderData = orderDetail.response.order_list[0];
+    if (orderDetail && 'order_list' in orderDetail) {
+      const orderData = orderDetail.order_list[0];
       
       // Panggil fungsi upsertOrderData
       await upsertOrderData(orderData, shop_id);

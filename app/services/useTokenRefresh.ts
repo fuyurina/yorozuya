@@ -29,7 +29,7 @@ export async function refreshAllTokens() {
         const data = await refreshToken(shop.shop_id, shop.refresh_token, shop.shop_name);
         await redis.hset(`shopee:token:${shop.shop_id}`, 'access_token', JSON.stringify(data.access_token));
         await redis.expire(`shopee:token:${shop.shop_id}`, 24 * 60 * 60); // Expire setelah 1 hari
-        console.log(`Berhasil me-refresh token untuk shop_id: ${shop.shop_id}`);
+        console.log(`Berhasil me-refresh token untuk shop_id: ${shop.shop_id}, token baru: ${data.access_token}`);
         successCount++;
       } catch (refreshError) {
         console.error(`Gagal me-refresh token untuk shop_id ${shop.shop_id}:`, refreshError);
