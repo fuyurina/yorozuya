@@ -116,8 +116,8 @@ export class ShopeeAPI {
 
     try {
       const response = await axios.get(fullUrl, { headers });
-      console.info(`Response status code: ${response.status}`);
-      console.debug(`Response content: ${JSON.stringify(response.data)}`);
+
+      console.info(`Response content: ${JSON.stringify(response.data)}`);
       return response.data;
     } catch (error) {
       console.error('Error mendapatkan detail pesanan:', error);

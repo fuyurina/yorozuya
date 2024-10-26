@@ -70,7 +70,7 @@ async function processWebhookData(webhookData: any) {
 
 async function handleChat(data: any) {
   const messageType = data.content?.message_type;
-  console.log('Received message type:', messageType);
+  console.log('Received message :', data);
   if (messageType === 'text') {
     const chatData = {
       type: 'new_message',
