@@ -642,12 +642,12 @@ export class ShopeeAPI {
   async createShippingDocument(
     shopId: number, 
     accessToken: string, 
-    orderSn: string, 
-    options: {
-      packageNumber?: string,
-      trackingNumber?: string,
-      documentType?: string
-    } = {}
+    orderList: Array<{
+      order_sn: string,
+      package_number?: string,
+      tracking_number?: string
+    }>,
+    documentType: string = 'THERMAL_AIR_WAYBILL'
   ): Promise<any> {
     const url = 'https://partner.shopeemobile.com/api/v2/logistics/create_shipping_document';
     const path = '/api/v2/logistics/create_shipping_document';
@@ -661,18 +661,10 @@ export class ShopeeAPI {
       access_token: accessToken
     });
 
-    const body: any = {
-      order_sn: orderSn,
-      shipping_document_type: options.documentType || 'THERMAL_AIR_WAYBILL'
+    const body = {
+      order_list: orderList,
+      shipping_document_type: documentType
     };
-
-    if (options.packageNumber) {
-      body.package_number = options.packageNumber;
-    }
-
-    if (options.trackingNumber) {
-      body.tracking_number = options.trackingNumber;
-    }
 
     const fullUrl = `${url}?${params.toString()}`;
     const headers = {

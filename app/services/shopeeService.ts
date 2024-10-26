@@ -134,23 +134,23 @@ export async function getAdsDailyPerformance(shopId: number, startDate: string, 
 
 export async function createShippingDocument(
   shopId: number,
-  orderSn: string,
-  options: {
-    packageNumber?: string,
-    trackingNumber?: string,
-    documentType?: string
-  } = {}
+  orderList: Array<{
+    order_sn: string,
+    package_number?: string,
+    tracking_number?: string
+  }>,
+  documentType: string = 'THERMAL_AIR_WAYBILL'
 ): Promise<any> {
   try {
     const accessToken = await getValidAccessToken(shopId);
-    const result = await shopeeApi.createShippingDocument(shopId, accessToken, orderSn, options);
+    const result = await shopeeApi.createShippingDocument(shopId, accessToken, orderList, documentType);
     
     if (result.error) {
       console.error(`Error saat membuat dokumen pengiriman: ${JSON.stringify(result)}`);
       return result;
     }
     
-    console.info(`Dokumen pengiriman berhasil dibuat untuk pesanan ${orderSn}: ${JSON.stringify(result)}`);
+    console.info(`Dokumen pengiriman berhasil dibuat untuk pesanan: ${JSON.stringify(orderList)}`);
     return result.response;
   } catch (error) {
     console.error(`Terjadi kesalahan saat membuat dokumen pengiriman: ${error}`);

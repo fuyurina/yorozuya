@@ -8,7 +8,10 @@ export async function prosesOrder(shopId: number, orderSn: string, shippingMetho
     
     if (shipResult.success) {
         // Jika pengiriman berhasil, buat dokumen pengiriman
-        const documentResult = await createShippingDocument(shopId, orderSn);
+        const orderList = [{
+            order_sn: orderSn
+        }];
+        const documentResult = await createShippingDocument(shopId, orderList);
         return { shipResult, documentResult };
     }
     
