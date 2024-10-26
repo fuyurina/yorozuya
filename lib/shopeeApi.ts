@@ -112,14 +112,15 @@ export class ShopeeAPI {
       'Content-Type': 'application/json'
     };
 
-    console.info(`Sending request to Shopee API for order detail: URL=${fullUrl}, Headers=${JSON.stringify(headers)}`);
+    console.info(`Mengirim permintaan ke Shopee API untuk detail pesanan: URL=${fullUrl}, Headers=${JSON.stringify(headers)}`);
 
     try {
       const response = await axios.get(fullUrl, { headers });
-      console.info(`Response status code: ${response.status}, Response content: ${JSON.stringify(response.data)}`);
+      console.info(`Response status code: ${response.status}`);
+      console.debug(`Response content: ${JSON.stringify(response.data)}`);
       return response.data;
     } catch (error) {
-      console.error('Error getting order detail:', error);
+      console.error('Error mendapatkan detail pesanan:', error);
       throw error;
     }
   }
