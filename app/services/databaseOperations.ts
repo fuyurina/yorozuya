@@ -32,7 +32,7 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
   
     try {
       const { error } = await supabase
-        .from('orders2')
+        .from('orders')
         .upsert(orderInsertData);
   
       if (error) {
@@ -73,7 +73,7 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
   
       try {
         const { error } = await supabase
-          .from('order_items2')
+          .from('order_items')
           .upsert(itemData, { onConflict: 'order_sn,order_item_id,model_id' });
   
         if (error) {
@@ -107,7 +107,7 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
   
       try {
         const { error } = await supabase
-          .from('logistic2')
+          .from('logistic')
           .upsert(logisticData);
   
         if (error) {
