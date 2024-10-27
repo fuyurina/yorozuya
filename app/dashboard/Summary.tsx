@@ -12,59 +12,44 @@ type OrdersSummaryProps = {
 export function OrdersSummary({ summary }: OrdersSummaryProps) {
   const [isRingkasanVisible, setIsRingkasanVisible] = useState(false);
 
+  const toggleRingkasan = () => {
+    setIsRingkasanVisible(!isRingkasanVisible);
+  };
+
   console.log('Summary data received:', summary);
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <Card className="bg-green-500 text-white rounded-lg">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-start">
-                <ShoppingCart className="h-4 w-4 sm:h-6 sm:w-6 mr-2 mt-[2px] sm:mt-0" />
-                <div>
-                  <div className="text-[10px] sm:text-xs font-medium">TOTAL PESANAN</div>
-                  <div className="text-sm sm:text-xl font-bold">{summary.totalOrders}</div>
-                </div>
-              </div>
-              <div className="flex items-start justify-end">
-                <DollarSign className="h-4 w-4 sm:h-6 sm:w-6 mr-2 mt-[2px] sm:mt-0" />
-                <div>
-                  <div className="text-[10px] sm:text-xs font-medium">TOTAL OMSET</div>
-                  <div className="text-sm sm:text-xl font-bold">Rp {summary.totalOmset.toLocaleString('id-ID')}</div>
-                </div>
+      <Card 
+        className="bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg cursor-pointer"
+        onClick={toggleRingkasan}
+      >
+        <CardContent className="p-4">
+          <div className="grid grid-cols-12 gap-2">
+            <div className="col-span-2 sm:col-span-4 flex items-start">
+              <ShoppingCart className="h-4 w-4 sm:h-6 sm:w-6 mr-2 mt-[2px] sm:mt-0" />
+              <div>
+                <div className="hidden sm:block text-xs font-medium">TOTAL PESANAN</div>
+                <div className="text-sm sm:text-xl font-bold">{summary.totalOrders}</div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-blue-500 text-white rounded-lg">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start">
-              <div className="flex items-start">
-                <BarChart2 className="h-4 w-4 sm:h-6 sm:w-6 mr-2 mt-[2px] sm:mt-0" />
-                <div>
-                  <div className="text-[10px] sm:text-xs font-medium">TOTAL IKLAN</div>
-                  <div className="text-sm sm:text-xl font-bold">Rp {summary.totalIklan.toLocaleString('id-ID')}</div>
-                </div>
-              </div>
-              <div className="flex flex-col items-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-white p-0 h-5 w-5 sm:h-6 sm:w-6 mb-1"
-                  onClick={() => setIsRingkasanVisible(!isRingkasanVisible)}
-                >
-                  {isRingkasanVisible ? (
-                    <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
-                  ) : (
-                    <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
-                  )}
-                </Button>
+            <div className="col-span-5 sm:col-span-4 flex items-start justify-center">
+              <DollarSign className="h-4 w-4 sm:h-6 sm:w-6 mr-2 mt-[2px] sm:mt-0" />
+              <div>
+                <div className="hidden sm:block text-xs font-medium">TOTAL OMSET</div>
+                <div className="text-sm sm:text-xl font-bold">Rp {summary.totalOmset.toLocaleString('id-ID')}</div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            <div className="col-span-5 sm:col-span-4 flex items-start justify-end">
+              <BarChart2 className="h-4 w-4 sm:h-6 sm:w-6 mr-2 mt-[2px] sm:mt-0" />
+              <div>
+                <div className="hidden sm:block text-xs font-medium text-left">TOTAL IKLAN</div>
+                <div className="text-sm sm:text-xl font-bold">Rp {summary.totalIklan.toLocaleString('id-ID')}</div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {isRingkasanVisible && (
         <Card className="rounded-lg overflow-x-auto">

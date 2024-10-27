@@ -191,70 +191,47 @@ export const useDashboard = () => {
       }, async (payload) => {
         const newOrder = payload.new as OrderItem;
         
-        if (newOrder.order_status === 'READY_TO_SHIP') {
-          setDashboardData(prevData => {
-            const newSummary = { ...prevData.summary };
-            processOrder(newOrder, newSummary);
-
-            return {
-              summary: newSummary,
-              orders: [newOrder, ...prevData.orders]
+        setDashboardData(prevData => {
+          const existingOrderIndex = prevData.orders.findIndex(order => order.order_sn === newOrder.order_sn);
+          
+          if (existingOrderIndex !== -1) {
+            const updatedOrders = [...prevData.orders];
+            updatedOrders[existingOrderIndex] = {
+              ...updatedOrders[existingOrderIndex],
+              order_status: newOrder.order_status,
+              shipping_carrier: newOrder.shipping_carrier
             };
-          });
-
-          try {
-            const orderDetails = await getOrderDetails(newOrder.order_sn, newOrder.shop_id);
             
-            if (orderDetails) {
-              setDashboardData(prevData => {
-                const updatedOrders = prevData.orders.map(order => 
-                  order.order_sn === newOrder.order_sn 
-                    ? { ...order, ...orderDetails, total_amount: orderDetails.total_price ?? order.total_amount }
-                    : order
-                );
+            // Hitung summary baru
+            const newSummary = {
+              pesananPerToko: {},
+              omsetPerToko: {},
+              totalOrders: 0,
+              totalOmset: 0,
+              totalIklan: prevData.summary.totalIklan,
+              iklanPerToko: prevData.summary.iklanPerToko
+            };
+            updatedOrders.forEach(order => processOrder(order, newSummary));
 
-                const newSummary = { ...prevData.summary };
-                newSummary.pesananPerToko = {};
-                newSummary.omsetPerToko = {};
-                newSummary.totalOrders = 0;
-                newSummary.totalOmset = 0;
-                updatedOrders.forEach(order => processOrder(order, newSummary));
-
-                // Tambahkan log di sini
-                console.log('Order baru:', newOrder);
-                console.log('Orders yang diperbarui:', updatedOrders);
-
-                return {
-                  summary: newSummary,
-                  orders: updatedOrders
-                };
-              });
-            }
-          } catch (error) {
-            // Error handling bisa ditambahkan di sini jika diperlukan
-          }
-        } else {
-          setDashboardData(prevData => {
-            const existingOrderIndex = prevData.orders.findIndex(order => order.order_sn === newOrder.order_sn);
-            
-            if (existingOrderIndex !== -1) {
-              const updatedOrders = [...prevData.orders];
-              updatedOrders[existingOrderIndex] = {
-                ...updatedOrders[existingOrderIndex],
-                order_status: newOrder.order_status,
-                
-                shipping_carrier: newOrder.shipping_carrier
-              };
-              
+            // Periksa apakah total order atau total omset berubah
+            if (newSummary.totalOrders !== prevData.summary.totalOrders ||
+                newSummary.totalOmset !== prevData.summary.totalOmset) {
+              // Jika berubah, perbarui keduanya
               return {
-                summary: prevData.summary,
+                summary: newSummary,
                 orders: updatedOrders
               };
             } else {
-              return prevData;
+              // Jika tidak berubah, hanya perbarui orders
+              return {
+                ...prevData,
+                orders: updatedOrders
+              };
             }
-          });
-        }
+          } else {
+            return prevData;
+          }
+        });
       })
       .subscribe();
 

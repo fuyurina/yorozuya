@@ -1,125 +1,33 @@
-'use client'
-
-import { useState, useEffect } from 'react';
-import { useSettings } from '@/app/hooks/useSettings';
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Slider } from "@/components/ui/slider"
+
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { SettingsForm } from './SettingsForm'
+import { TemperatureSlider } from "./TemperatureSlider"
+import { Textarea } from "@/components/ui/textarea"
 
-export default function PengaturanPage() {
-  const { settingsData, autoShipData, isLoading, error, saveSettings } = useSettings();
-  const [isClient, setIsClient] = useState(false);
-  const [formData, setFormData] = useState({
-    openai_api: '',
-    openai_model: '',
-    openai_temperature: 0,
-    openai_prompt: '',
-    auto_ship: false,
-    auto_ship_interval: 5,
-    status_chat: false,
-    status_ship: false,
+import { PromptDialog } from './PromptDialog'
+
+async function getSettings() {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, {
+    cache: 'no-store'
   });
+  if (!res.ok) throw new Error('Gagal mengambil data pengaturan');
+  return res.json();
+}
 
-  const [autoShipStatus, setAutoShipStatus] = useState<Array<{
-    shop_id: number;
-    shop_name: string;
-    status_chat: boolean;
-    status_ship: boolean;
-  }>>([]);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  useEffect(() => {
-    if (settingsData && autoShipData) {
-      setFormData({
-        openai_api: settingsData[0]?.openai_api || '',
-        openai_model: settingsData[0]?.openai_model || '',
-        openai_temperature: settingsData[0]?.openai_temperature || 0,
-        openai_prompt: settingsData[0]?.openai_prompt || '',
-        auto_ship: settingsData[0]?.auto_ship || false,
-        auto_ship_interval: settingsData[0]?.auto_ship_interval || 5,
-        status_chat: autoShipData[0]?.status_chat || false,
-        status_ship: autoShipData[0]?.status_ship || false,
-      });
-    }
-    if (autoShipData) {
-      setAutoShipStatus(autoShipData.map(item => ({
-        shop_id: item.shop_id,
-        shop_name: item.shop_name,
-        status_chat: item.status_chat,
-        status_ship: item.status_ship,
-      })));
-    }
-  }, [settingsData, autoShipData]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prevData => ({ ...prevData, [name]: value }));
-  };
-
-  const handleSwitchChange = (name: string) => (checked: boolean) => {
-    setFormData(prevData => ({ ...prevData, [name]: checked }));
-  };
-
-  const handleSliderChange = (value: number[]) => {
-    setFormData(prevData => ({ ...prevData, openai_temperature: value[0] }));
-  };
-
-  const handleStatusChange = (shopId: number, field: 'status_chat' | 'status_ship') => (checked: boolean) => {
-    setAutoShipStatus(prevStatus => 
-      prevStatus.map(item => 
-        item.shop_id === shopId ? { ...item, [field]: checked } : item
-      )
-    );
-  };
-
-  const handleIntervalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value);
-    setFormData(prevData => ({ ...prevData, auto_ship_interval: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    const updatedSettings = {
-      openai_api: formData.openai_api,
-      openai_model: formData.openai_model,
-      openai_temperature: formData.openai_temperature,
-      openai_prompt: formData.openai_prompt,
-      auto_ship: formData.auto_ship,
-      auto_ship_interval: formData.auto_ship_interval,
-    };
-
-    const result = await saveSettings(updatedSettings, autoShipStatus);
-
-    if (result.success) {
-      // Tampilkan pesan sukses
-      alert('Pengaturan berhasil disimpan');
-    } else {
-      // Tampilkan pesan error
-      alert(`Gagal menyimpan pengaturan: ${result.error}`);
-    }
-  };
-
-  const handleSelectChange = (value: string) => {
-    setFormData(prevData => ({ ...prevData, openai_model: value }));
-  };
-
-  if (!isClient) return null; // Render nothing on the server side
-  if (isLoading) return <div>Memuat...</div>;
-  if (error) return <div>Error: {error}</div>;
+export default async function PengaturanPage() {
+  const { pengaturan, autoShip } = await getSettings();
+  const settings = Array.isArray(pengaturan) ? pengaturan[0] : pengaturan;
 
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Pengaturan</h1>
-      <form onSubmit={handleSubmit}>
+      <SettingsForm>
         <Card className="mb-4">
           <CardHeader>
             <CardTitle>Pengaturan OpenAI</CardTitle>
@@ -129,37 +37,42 @@ export default function PengaturanPage() {
             <div className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="openai_api">API Key OpenAI</Label>
-                <Input id="openai_api" name="openai_api" value={formData.openai_api} onChange={handleInputChange} />
+                <Input 
+                  id="openai_api" 
+                  name="openai_api"
+                  defaultValue={settings?.openai_api || ''}
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="openai_model">Model OpenAI</Label>
-                <Select onValueChange={handleSelectChange} value={formData.openai_model}>
+                <Select defaultValue={settings?.openai_model} name="openai_model">
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih model OpenAI" />
+                    <SelectValue placeholder="Pilih model" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
                     <SelectItem value="gpt-4">GPT-4</SelectItem>
                     <SelectItem value="gpt-4-32k">GPT-4 32k</SelectItem>
                     <SelectItem value="gpt-4o-mini">GPT-4O Mini</SelectItem>
-                    {/* Tambahkan model lain sesuai kebutuhan */}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="openai_temperature">Temperature</Label>
-                <Slider
-                  id="openai_temperature"
-                  min={0}
-                  max={1}
-                  step={0.1}
-                  value={[formData.openai_temperature]}
-                  onValueChange={handleSliderChange}
-                />
+                
+                <TemperatureSlider defaultValue={settings?.openai_temperature || 0.4} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="openai_prompt">Prompt</Label>
-                <Input id="openai_prompt" name="openai_prompt" value={formData.openai_prompt} onChange={handleInputChange} />
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="openai_prompt">Prompt</Label>
+                  <PromptDialog defaultValue={settings?.openai_prompt || ''} />
+                </div>
+                <Textarea 
+                  id="openai_prompt" 
+                  name="openai_prompt"
+                  defaultValue={settings?.openai_prompt || ''}
+                  rows={5}
+                  className="resize-none"
+                />
               </div>
             </div>
           </CardContent>
@@ -173,10 +86,10 @@ export default function PengaturanPage() {
           <CardContent>
             <div className="grid gap-4">
               <div className="flex items-center space-x-2">
-                <Switch
-                  id="auto_ship"
-                  checked={formData.auto_ship}
-                  onCheckedChange={handleSwitchChange('auto_ship')}
+                <Switch 
+                  id="auto_ship" 
+                  name="auto_ship"
+                  defaultChecked={settings?.auto_ship}
                 />
                 <Label htmlFor="auto_ship">Aktifkan Auto Ship</Label>
               </div>
@@ -184,9 +97,9 @@ export default function PengaturanPage() {
                 <Label htmlFor="auto_ship_interval">Interval Auto Ship (menit)</Label>
                 <Input
                   id="auto_ship_interval"
+                  name="auto_ship_interval"
                   type="number"
-                  value={formData.auto_ship_interval}
-                  onChange={handleIntervalChange}
+                  defaultValue={settings?.auto_ship_interval || 5}
                   min={1}
                 />
               </div>
@@ -208,19 +121,19 @@ export default function PengaturanPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {autoShipStatus.map((item) => (
-                  <TableRow key={item.shop_id}>
-                    <TableCell>{item.shop_name}</TableCell>
+                {autoShip?.map((shop: any) => (
+                  <TableRow key={shop.shop_id} data-shop-id={shop.shop_id}>
+                    <TableCell data-shop-name>{shop.shop_name}</TableCell>
                     <TableCell>
-                      <Switch
-                        checked={item.status_chat}
-                        onCheckedChange={handleStatusChange(item.shop_id, 'status_chat')}
+                      <Switch 
+                        name="status_chat"
+                        defaultChecked={shop.status_chat} 
                       />
                     </TableCell>
                     <TableCell>
-                      <Switch
-                        checked={item.status_ship}
-                        onCheckedChange={handleStatusChange(item.shop_id, 'status_ship')}
+                      <Switch 
+                        name="status_ship"
+                        defaultChecked={shop.status_ship} 
                       />
                     </TableCell>
                   </TableRow>
@@ -233,7 +146,7 @@ export default function PengaturanPage() {
         <CardFooter>
           <Button type="submit">Simpan Pengaturan</Button>
         </CardFooter>
-      </form>
+      </SettingsForm>
     </div>
   );
 }

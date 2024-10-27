@@ -1,17 +1,12 @@
 import { NextResponse } from 'next/server';
-import { ShopeeAPI } from '@/lib/shopeeApi';
+import { generateAuthUrl } from '@/app/services/shopeeService';
 
 export async function GET() {
-  const partnerId = process.env.SHOPEE_PARTNER_ID;
-  const partnerKey = process.env.SHOPEE_PARTNER_KEY;
-
-  if (!partnerId || !partnerKey) {
-    return NextResponse.json({ error: 'Konfigurasi Shopee tidak lengkap' }, { status: 500 });
+  try {
+    const authUrl = await generateAuthUrl();
+    return NextResponse.json({ authUrl });
+  } catch (error) {
+    console.error('Gagal menghasilkan URL otentikasi:', error);
+    return NextResponse.json({ error: 'Gagal menghasilkan URL otentikasi' }, { status: 500 });
   }
-
-  const shopeeApi = new ShopeeAPI(Number(partnerId), partnerKey);
-  const redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/callback`;
-  const authUrl = shopeeApi.generateAuthUrl(redirectUrl);
-
-  return NextResponse.json({ authUrl });
 }

@@ -35,7 +35,9 @@ export default function OrderChangesPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null)
 
   const handleStatusClick = async (order: Keluhan) => {
-    const newStatus = order.status_keluhan === "BELUM DITANGANI" ? "SUDAH DITANGANI" : "BELUM DITANGANI"
+    // Pastikan status_keluhan memiliki nilai default jika null
+    const currentStatus = order.status_keluhan || "BELUM DITANGANI"
+    const newStatus = currentStatus === "BELUM DITANGANI" ? "SUDAH DITANGANI" : "BELUM DITANGANI"
     await updateStatusPesanan(order.id, newStatus)
   }
 
@@ -163,7 +165,7 @@ export default function OrderChangesPage() {
                 onClick={() => handleStatusClick(order)}
               >
                 <FileText className="h-3 w-3 mr-2" />
-                {order.status_keluhan}
+                {order.status_keluhan || "BELUM DITANGANI"} {/* Tambahkan nilai default */}
               </Button>
               <Trash2 
                 className="h-5 w-5 text-red-500 hover:text-red-600 cursor-pointer transition-colors duration-200" 

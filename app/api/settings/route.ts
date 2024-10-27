@@ -10,17 +10,23 @@ export async function GET() {
     const cachedAutoShip = await redis.get('auto_ship');
 
     if (cachedSettings && cachedAutoShip) {
+      console.log('Cached settings:', cachedAutoShip); // tambahkan log ini
+      const parsedSettings = JSON.parse(cachedSettings);
+      const parsedAutoShip = JSON.parse(cachedAutoShip);
+      
+      // Pastikan data settings selalu dalam bentuk array
+      const settingsArray = Array.isArray(parsedSettings) ? parsedSettings : [parsedSettings];
+      
       return NextResponse.json({
-        settings: JSON.parse(cachedSettings),
-        autoShip: JSON.parse(cachedAutoShip)
+        pengaturan: settingsArray,
+        autoShip: parsedAutoShip
       });
     }
 
-    // Jika tidak ada di Redis, ambil dari database
-    ;
     
+    // Jika tidak ada di Redis, ambil dari database
     const [{ data: settings, error: settingsError }, { data: autoShip, error: autoShipError }] = await Promise.all([
-      supabase.from('settings').select('*'),
+      supabase.from('pengaturan').select('*'),
       supabase.from('auto_ship_chat').select(`*, shopee_tokens!inner(shop_name)`)
     ]);
 
@@ -33,12 +39,14 @@ export async function GET() {
       shopee_tokens: undefined
     })) || [];
 
-    // Simpan ke Redis
-    await redis.set('pengaturan', JSON.stringify(settings));
+    // Tambah log saat menyimpan ke Redis
+    
+    await redis.set('pengaturan', JSON.stringify(Array.isArray(settings) ? settings : [settings]));
     await redis.set('auto_ship', JSON.stringify(transformedAutoShip));
 
-    return NextResponse.json({ settings, autoShip: transformedAutoShip });
+    return NextResponse.json({ pengaturan: settings, autoShip: transformedAutoShip });
   } catch (error) {
+    console.error('❌ Error saat mengambil data:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -47,13 +55,19 @@ export async function POST(request: Request) {
   try {
     const { updatedSettings, updatedAutoShip } = await request.json();
     
+    // Validasi tipe data
+    if (!Array.isArray(updatedAutoShip)) {
+      return NextResponse.json({ error: 'Format data auto ship tidak valid' }, { status: 400 });
+    }
+
     // Periksa apakah updatedSettings dan updatedAutoShip ada
     if (!updatedSettings || !updatedAutoShip) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
     // Sanitasi dan validasi updatedSettings
-    const sanitizedSettings = {
+    const sanitizedSettings = {  // Hapus array wrapper
+      id: 1,
       openai_api: updatedSettings.openai_api || null,
       openai_model: updatedSettings.openai_model || null,
       openai_temperature: typeof updatedSettings.openai_temperature === 'number' ? updatedSettings.openai_temperature : null,
@@ -62,14 +76,14 @@ export async function POST(request: Request) {
       auto_ship_interval: typeof updatedSettings.auto_ship_interval === 'number' ? updatedSettings.auto_ship_interval : 5
     };
 
-    // Update settings
+    // Update settings dengan upsert
     const { error: settingsError } = await supabase
-      .from('settings')
-      .update(sanitizedSettings)
-      .eq('id', 1); // Asumsikan ID settings selalu 1
+      .from('pengaturan')
+      .upsert(sanitizedSettings)
+      .eq('id', 1);
 
     if (settingsError) {
-      console.error('Kesalahan saat memperbarui settings:', settingsError);
+      console.error('Error saving settings:', settingsError);
       throw settingsError;
     }
 
@@ -89,17 +103,36 @@ export async function POST(request: Request) {
       }
     }
 
-    // Simpan ke Redis
-    await redis.set('pengaturan', JSON.stringify(sanitizedSettings));
-    await redis.set('auto_ship', JSON.stringify(updatedAutoShip));
+    // Simpan ke Redis dengan JSON.stringify yang benar
+    try {
+      await redis.set('pengaturan', JSON.stringify([sanitizedSettings])); // Simpan sebagai array untuk konsistensi
+      await redis.set('auto_ship', JSON.stringify(updatedAutoShip));
+    } catch (redisError) {
+      console.error('Error saving to Redis:', redisError);
+      // Lanjutkan eksekusi karena data sudah tersimpan di database
+    }
 
-    return NextResponse.json({ success: true, message: 'Pengaturan berhasil disimpan' });
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Pengaturan berhasil disimpan',
+      data: {
+        settings: sanitizedSettings,
+        autoShip: updatedAutoShip
+      }
+    });
+
   } catch (error) {
     console.error('Kesalahan internal server:', error);
     if (error instanceof Error) {
-      return NextResponse.json({ error: 'Kesalahan Internal Server', details: error.message }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'Kesalahan Internal Server', 
+        details: error.message 
+      }, { status: 500 });
     } else {
-      return NextResponse.json({ error: 'Kesalahan Internal Server', details: 'Terjadi kesalahan yang tidak diketahui' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'Kesalahan Internal Server', 
+        details: 'Terjadi kesalahan yang tidak diketahui' 
+      }, { status: 500 });
     }
   }
 }

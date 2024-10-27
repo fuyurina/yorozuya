@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
-import { SHOPEE_PARTNER_ID,SHOPEE_PARTNER_KEY, shopeeApi } from '@/lib/shopeeConfig';
+import { SHOPEE_PARTNER_ID, SHOPEE_PARTNER_KEY, shopeeApi } from '@/lib/shopeeConfig';
 import { getValidAccessToken } from './tokenManager';
+
+
 
 
 export async function getShopInfo(shopId: number): Promise<any> {
@@ -180,5 +182,17 @@ export async function getOrderDetail(shopId: number, orderSn: string): Promise<a
       message: `Terjadi kesalahan internal: ${error}`,
       request_id: ''
     };
+  }
+}
+
+export function generateAuthUrl(): string {
+  try {
+    const redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/callback`;
+    const authUrl = shopeeApi.generateAuthUrl(redirectUrl);
+    console.info(`URL otentikasi berhasil dibuat: ${authUrl}`);
+    return authUrl;
+  } catch (error) {
+    console.error('Terjadi kesalahan saat membuat URL otentikasi:', error);
+    throw new Error('Gagal membuat URL otentikasi');
   }
 }

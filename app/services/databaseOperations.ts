@@ -143,6 +143,8 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
         if (orderError) throw orderError;
   
         if (orderData) {
+          let document_status = 'PENDING'; // Deklarasikan variabel dengan nilai default
+
           if (orderData.order_status === 'PROCESSED') {
             try {
               const orderList = [{
@@ -154,23 +156,14 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
               
               // Periksa apakah pembuatan dokumen berhasil
               if (documentResult.error === "") {
-                // Update document_status menjadi READY
-                  const { error: updateError } = await supabase
-                    .from('logistic')
-                    .update({ document_status: 'READY' })
-                    .eq('order_sn', orderSn);
-      
-                  if (updateError) {
-                    console.error('Gagal mengupdate document_status:', updateError);
-                  } else {
-                    console.log(`Document status berhasil diupdate menjadi READY untuk OrderSN: ${orderSn}, Package Number: ${packageNumber}`);
-                  }
-                }
-              else {
-                console.error('ELSE Gagal membuat dokumen pengiriman:', documentResult);
+                document_status = 'READY';
+              } else {
+                document_status = 'FAILED';
               }
+
             } catch (error) {
               console.error('Gagal membuat dokumen pengiriman:', error);
+              document_status = 'FAILED';
             }
           }
           console.log(`OrderSN ${orderSn} ditemukan di tabel orders`);
@@ -180,7 +173,8 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
               .upsert({
                 order_sn: orderSn,
                 tracking_number: trackingNo,
-                package_number: packageNumber
+                package_number: packageNumber,
+                document_status: document_status
               });
   
             if (logisticError) throw logisticError;
