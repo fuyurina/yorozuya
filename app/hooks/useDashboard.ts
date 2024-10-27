@@ -241,7 +241,9 @@ export const useDashboard = () => {
               const updatedOrders = [...prevData.orders];
               updatedOrders[existingOrderIndex] = {
                 ...updatedOrders[existingOrderIndex],
-                order_status: newOrder.order_status
+                order_status: newOrder.order_status,
+                
+                shipping_carrier: newOrder.shipping_carrier
               };
               
               return {

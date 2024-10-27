@@ -150,7 +150,8 @@ export async function createShippingDocument(
       return result;
     }
     
-    console.info(`Dokumen pengiriman berhasil dibuat untuk pesanan: ${JSON.stringify(orderList)}`);
+    console.info(`Dokumen pengiriman berhasil dibuat untuk pesanan: ${JSON.stringify(result.response)}`);
+    console.info(`Response dokumen: ${result}`);
     return result.response;
   } catch (error) {
     console.error(`Terjadi kesalahan saat membuat dokumen pengiriman: ${error}`);
