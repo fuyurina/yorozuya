@@ -35,19 +35,21 @@ export function Header() {
     <header className="flex h-[53px] items-center justify-between gap-4 border-b bg-muted/40 px-4 lg:px-6">
       {isMobile && <MobileSidebar onNavigate={() => {}} />}
       <div className="flex-1 flex justify-center md:justify-start">
-        <Link href="/"> {/* Bungkus elemen Image dengan Link */}
+        <Link href="/">
           <Image
             src={theme === 'dark' ? logoGelap : logoTerang}
             alt="Logo Perusahaan"
             width={120}
             height={40}
-            className="mx-auto md:mx-0 w-auto h-auto" // Tambahkan w-auto dan h-auto
+            className="mx-auto md:mx-0 w-auto h-auto"
           />
         </Link>
       </div>
-      <Button onClick={toggleTheme} variant="secondary" size="icon" className="rounded-full">
-        {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-      </Button>
+      {!isMobile && (
+        <Button onClick={toggleTheme} variant="secondary" size="icon" className="rounded-full">
+          {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        </Button>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="secondary" size="icon" className="rounded-full">
@@ -56,12 +58,19 @@ export function Header() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuLabel className="flex items-center">
+            My Account
+            {isMobile && (
+              <Button onClick={toggleTheme} variant="ghost" size="icon" className="ml-auto">
+                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+            )}
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Settings</DropdownMenuItem>
-          <DropdownMenuItem>Support</DropdownMenuItem>
+          <DropdownMenuItem>Pengaturan</DropdownMenuItem>
+          <DropdownMenuItem>Dukungan</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Logout</DropdownMenuItem>
+          <DropdownMenuItem>Keluar</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
