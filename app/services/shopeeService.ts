@@ -151,7 +151,7 @@ export async function createShippingDocument(
     }
     
     console.info(`Dokumen pengiriman berhasil dibuat untuk pesanan: ${JSON.stringify(result.response)}`);
-    console.info(`Response dokumen: ${result}`);
+    console.info(`Response dokumen: ${JSON.stringify(result, null, 2)}`);
     return result.response;
   } catch (error) {
     console.error(`Terjadi kesalahan saat membuat dokumen pengiriman: ${error}`);
