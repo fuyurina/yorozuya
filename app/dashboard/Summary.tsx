@@ -25,25 +25,25 @@ export function OrdersSummary({ summary }: OrdersSummaryProps) {
         onClick={toggleRingkasan}
       >
         <CardContent className="p-4">
-          <div className="grid grid-cols-12 gap-2">
-            <div className="col-span-2 sm:col-span-4 flex items-start">
-              <ShoppingCart className="h-4 w-4 sm:h-6 sm:w-6 mr-2 mt-[2px] sm:mt-0" />
+          <div className="grid grid-cols-2 sm:grid-cols-12 gap-2">
+            <div className="col-span-1 sm:col-span-4 flex items-start">
+              <ShoppingCart className="h-4 w-4 sm:h-6 sm:w-6 mr-2" />
               <div>
                 <div className="hidden sm:block text-xs font-medium">TOTAL PESANAN</div>
                 <div className="text-sm sm:text-xl font-bold">{summary.totalOrders}</div>
               </div>
             </div>
-            <div className="col-span-5 sm:col-span-4 flex items-start justify-center">
-              <DollarSign className="h-4 w-4 sm:h-6 sm:w-6 mr-2 mt-[2px] sm:mt-0" />
+            <div className="col-span-1 sm:col-span-4 flex items-start justify-end sm:justify-center">
+              <DollarSign className="h-4 w-4 sm:h-6 sm:w-6 mr-2" />
               <div>
                 <div className="hidden sm:block text-xs font-medium">TOTAL OMSET</div>
                 <div className="text-sm sm:text-xl font-bold">Rp {summary.totalOmset.toLocaleString('id-ID')}</div>
               </div>
             </div>
-            <div className="col-span-5 sm:col-span-4 flex items-start justify-end">
-              <BarChart2 className="h-4 w-4 sm:h-6 sm:w-6 mr-2 mt-[2px] sm:mt-0" />
+            <div className="col-span-2 sm:col-span-4 flex items-start sm:justify-end">
+              <BarChart2 className="h-4 w-4 sm:h-6 sm:w-6 mr-2" />
               <div>
-                <div className="hidden sm:block text-xs font-medium text-left">TOTAL IKLAN</div>
+                <div className="hidden sm:block text-xs font-medium">TOTAL IKLAN</div>
                 <div className="text-sm sm:text-xl font-bold">Rp {summary.totalIklan.toLocaleString('id-ID')}</div>
               </div>
             </div>

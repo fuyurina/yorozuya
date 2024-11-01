@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@next/swc-darwin-arm64": "^15.0.2",
     "@radix-ui/react-avatar": "^1.1.1",
     "@radix-ui/react-checkbox": "^1.1.2",
     "@radix-ui/react-collapsible": "^1.1.1",
@@ -32,6 +33,7 @@
     "crypto": "^1.0.1",
     "date-fns": "^3.6.0",
     "date-fns-tz": "^3.2.0",
+    "framer-motion": "^11.11.11",
     "immer": "^10.1.1",
     "ioredis": "^5.4.1",
     "json-stable-stringify": "^1.1.1",
@@ -39,6 +41,7 @@
     "luxon": "^3.5.0",
     "next": "14.2.15",
     "next-themes": "^0.3.0",
+    "nstbrowser-sdk-node": "^0.0.8",
     "react": "^18",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18",
