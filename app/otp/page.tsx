@@ -53,7 +53,7 @@ export default function OtpPage() {
                 className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl"
               >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {loading ? 'Memproses...' : 'Pesan Nomor OTP'}
+                {loading ? 'Memproses...' : 'Pesan Nomor Baru'}
               </Button>
             </div>
 
@@ -106,7 +106,7 @@ export default function OtpPage() {
                                 order.status.toLowerCase() === 'ready' ? 'warning' :
                                 'warning'
                               }>
-                                {order.status}
+                                {order.status.toLowerCase() === 'otp diterima' ? 'Success' : order.status}
                               </Badge>
                             </motion.div>
                           </div>
@@ -125,7 +125,7 @@ export default function OtpPage() {
                               order.status.toLowerCase() === 'ready' ? 'warning' :
                               'warning'
                             }>
-                              {order.status}
+                              {order.status.toLowerCase() === 'otp diterima' ? 'Success' : order.status}
                             </Badge>
                           </motion.div>
                         </TableCell>

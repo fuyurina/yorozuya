@@ -33,7 +33,7 @@
     "crypto": "^1.0.1",
     "date-fns": "^3.6.0",
     "date-fns-tz": "^3.2.0",
-    "framer-motion": "^11.11.11",
+    "framer-motion": "latest",
     "immer": "^10.1.1",
     "ioredis": "^5.4.1",
     "json-stable-stringify": "^1.1.1",
@@ -49,7 +49,8 @@
     "swr": "^2.2.5",
     "tailwind-merge": "^2.5.3",
     "tailwindcss-animate": "^1.0.7",
-    "zustand": "^5.0.0"
+    "zustand": "^5.0.0",
+    "sharp": "latest"
   },
   "devDependencies": {
     "@shadcn/ui": "^0.0.4",
@@ -64,5 +65,14 @@
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
     "typescript": "^5"
+  },
+  "optionalDependencies": {
+    "@next/swc-darwin-arm64": "15.0.2",
+    "@next/swc-darwin-x64": "15.0.2",
+    "@next/swc-linux-arm64-gnu": "15.0.2", 
+    "@next/swc-linux-x64-gnu": "15.0.2",
+    "@next/swc-win32-arm64-msvc": "15.0.2",
+    "@next/swc-win32-ia32-msvc": "15.0.2",
+    "@next/swc-win32-x64-msvc": "15.0.2"
   }
 }
