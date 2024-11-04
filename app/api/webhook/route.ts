@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { upsertOrderData, upsertOrderItems, upsertLogisticData, trackingUpdate } from '@/app/services/databaseOperations';
+import { upsertOrderData, upsertOrderItems, upsertLogisticData, trackingUpdate, updateDocumentStatus } from '@/app/services/databaseOperations';
 import { prosesOrder } from '@/app/services/prosesOrder';
 import { getOrderDetail } from '@/app/services/shopeeService';
 
@@ -59,7 +59,8 @@ async function processWebhookData(webhookData: any) {
     const handlers: { [key: number]: (data: any) => Promise<void> } = {
       10: handleChat,
       3: handleOrder,
-      4: handleTrackingUpdate
+      4: handleTrackingUpdate,
+      15: handleDocumentUpdate,
     };
 
     const handler = handlers[code] || handleOther;
@@ -144,4 +145,9 @@ async function updateOrderStatus(shop_id: number, ordersn: string, status: strin
 async function handleOther(data: any) {
   console.log('Handling other type of data', data);
   // Implementasi logika penanganan lainnya di sini
+}
+
+async function handleDocumentUpdate(data: any) {
+  console.log('Menangani pembaruan dokumen', data);
+  await updateDocumentStatus(data.data.ordersn, data.data.package_number);
 }

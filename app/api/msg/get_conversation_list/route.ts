@@ -9,8 +9,11 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const unread = searchParams.get('unread');
-    console.log(unread);
-
+    const limit = searchParams.get('limit');
+    
+    // Tentukan page_size berdasarkan parameter limit atau default 50
+    const pageSize = limit ? parseInt(limit) : 50;
+    
     // Ambil semua token dan nama toko dari tabel shopee_tokens
     const { data: tokens, error } = await supabase
       .from('shopee_tokens')
@@ -31,9 +34,8 @@ export async function GET(request: Request) {
             token.access_token,
             {
               direction: 'older',
-              type: unread ? 'unread' : 'all',
-              page_size: 50
-              
+              type: 'all',
+              page_size: pageSize
             }
           );
           
@@ -52,8 +54,14 @@ export async function GET(request: Request) {
     // Gabungkan semua percakapan menjadi satu array
     const flattenedConversations = allConversations.flat();
 
+    // Filter percakapan unread jika parameter unread=true
+    let filteredConversations = flattenedConversations;
+    if (unread === 'true') {
+      filteredConversations = flattenedConversations.filter(conv => conv.unread_count > 0);
+    }
+
     // Urutkan percakapan berdasarkan last_message_timestamp secara menurun
-    const sortedConversations = flattenedConversations.sort((a, b) => 
+    const sortedConversations = filteredConversations.sort((a, b) => 
       b.last_message_timestamp - a.last_message_timestamp
     );
 

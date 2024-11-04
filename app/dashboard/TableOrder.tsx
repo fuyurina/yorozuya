@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Package, Clock, Truck, XCircle, AlertCircle, RefreshCcw, Search, Filter } from 'lucide-react'
 import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { OrderDetails } from '@/app/dashboard/OrderDetails'
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleString('id-ID', {
@@ -96,6 +97,8 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
   const [shops, setShops] = useState<string[]>([])
   const [selectedShops, setSelectedShops] = useState<string[]>([])
   const [isShopFilterOpen, setIsShopFilterOpen] = useState(false)
+  const [selectedOrderSn, setSelectedOrderSn] = useState<string>("")
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
 
   const updatedCategories = useMemo(() => {
     return categories.map(category => ({
@@ -246,7 +249,15 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
                   <TableCell className="text-xs text-gray-600 dark:text-white text-center whitespace-nowrap">{index + 1}</TableCell>
                   <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap max-w-[80px] sm:max-w-none overflow-hidden text-ellipsis">{order.shop_name}</TableCell>
                   <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">{formatDate(order.pay_time)}</TableCell>
-                  <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.order_sn}</TableCell>
+                  <TableCell 
+                    className="text-xs text-gray-600 dark:text-white whitespace-nowrap cursor-pointer hover:text-primary"
+                    onClick={() => {
+                      setSelectedOrderSn(order.order_sn)
+                      setIsDetailOpen(true)
+                    }}
+                  >
+                    {order.order_sn}
+                  </TableCell>
                   <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.buyer_username || '-'}</TableCell>
                   <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">Rp {order.total_amount.toLocaleString('id-ID')}</TableCell>
                   <TableCell className="text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.sku_qty || '-'}</TableCell>
@@ -267,6 +278,11 @@ export function OrdersDetailTable({ orders }: OrdersDetailTableProps) {
         </Table>
       </div>
       
+      <OrderDetails 
+        orderSn={selectedOrderSn}
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+      />
     </div>
   )
 }

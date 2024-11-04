@@ -2,6 +2,8 @@ import { supabase } from '@/lib/supabase';
 import { createShippingDocument } from '@/app/services/shopeeService';
 
 
+
+
 export async function upsertOrderData(orderData: any, shopId: number): Promise<void> {
     const orderInsertData = {
       shop_id: shopId,
@@ -196,4 +198,27 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
     }
 
     
+  }
+
+  export async function updateDocumentStatus(orderSn: string, packageNumber: string): Promise<void> {
+    try {
+      console.log(`Memperbarui status dokumen: OrderSN: ${orderSn}`);
+
+      const { error } = await supabase
+        .from('logistic')
+        .update({ document_status: 'READY' })
+        .match({ 
+          order_sn: orderSn,
+          package_number: packageNumber 
+        });
+
+      if (error) {
+        throw new Error(`Gagal memperbarui status dokumen: ${error.message}`);
+      }
+
+      console.log(`Status dokumen berhasil diperbarui untuk OrderSN: ${orderSn}`);
+    } catch (error) {
+      console.error('Error dalam updateDocumentStatus:', error);
+      throw error;
+    }
   }
