@@ -149,6 +149,95 @@ export const useDashboard = () => {
         throw new Error('Gagal mengambil data dari dashboard_view');
       }
 
+      const processOrders = async () => {
+        for (const order of orders) {
+          if (
+            order.order_status === 'PROCESSED' && 
+            order.document_status !== 'READY' ||
+            order.status === 'PROCESSED' &&
+            order.tracking_number === null
+          ) {
+            console.log('Mencoba membuat shipping document untuk:', {
+              order_sn: order.order_sn,
+              shop_id: order.shop_id,
+              status: order.order_status,
+              document: order.document_status
+            });
+            
+            try {
+              // Cek tracking number terlebih dahulu
+              if (!order.tracking_number) {
+                const trackingResponse = await fetch(`/api/shipping-document/create_document?get_tracking=true`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    shopId: order.shop_id,
+                    order_sn: order.order_sn
+                  })
+                });
+
+                if (!trackingResponse.ok) {
+                  throw new Error(`HTTP error! status: ${trackingResponse.status}`);
+                }
+
+                const trackingData = await trackingResponse.json();
+                if (trackingData.success) {
+                  order.tracking_number = trackingData.data.tracking_number;
+                  
+                  // Perbarui state dengan tracking number baru
+                  setDashboardData(prevData => ({
+                    ...prevData,
+                    orders: prevData.orders.map(existingOrder => 
+                      existingOrder.order_sn === order.order_sn 
+                        ? { ...existingOrder, tracking_number: trackingData.data.tracking_number }
+                        : existingOrder
+                    )
+                  }));
+                }
+              }
+
+              // Buat shipping document dengan tracking number yang sudah ada
+              const response = await fetch('/api/shipping-document/create_document', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  shopId: order.shop_id,
+                  order_sn: order.order_sn,
+                  tracking_number: order.tracking_number
+                })
+              });
+              
+              if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Gagal membuat shipping document:', errorData);
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+              }
+
+              // Tambahkan pembaruan state setelah dokumen berhasil dibuat
+              const documentData = await response.json();
+              if (documentData.success) {
+                setDashboardData(prevData => ({
+                  ...prevData,
+                  orders: prevData.orders.map(existingOrder => 
+                    existingOrder.order_sn === order.order_sn 
+                      ? { ...existingOrder, document_status: 'READY' }
+                      : existingOrder
+                  )
+                }));
+              }
+            } catch (error) {
+              console.error('Error untuk order:', order.order_sn, error);
+            }
+          }
+        }
+      };
+
+      await processOrders();
+
       const summary: DashboardSummary = {
         pesananPerToko: {},
         omsetPerToko: {},

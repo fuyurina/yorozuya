@@ -124,7 +124,7 @@ export class ShopeeAPI {
     }
   }
 
-  async getTrackingNumber(shopId: number, orderSn: string, packageNumber: string, accessToken: string): Promise<any> {
+  async getTrackingNumber(shopId: number, orderSn: string, accessToken: string, packageNumber?: string): Promise<any> {
     const url = 'https://partner.shopeemobile.com/api/v2/logistics/get_tracking_number';
     const path = '/api/v2/logistics/get_tracking_number';
     const [timest, sign] = this._generateSign(path, accessToken, shopId);
@@ -136,8 +136,11 @@ export class ShopeeAPI {
       shop_id: shopId.toString(),
       access_token: accessToken,
       order_sn: orderSn,
-      package_number: packageNumber
     });
+
+    if (packageNumber) {
+      params.append('package_number', packageNumber);
+    }
 
     const fullUrl = `${url}?${params.toString()}`;
     const headers = {
@@ -769,7 +772,7 @@ export class ShopeeAPI {
       time_to: number,
       page_size?: number,
       cursor?: string,
-      order_status?: 'UNPAID' | 'READY_TO_SHIP' | 'PROCESSED' | 'SHIPPED' | 'COMPLETED' | 'IN_CANCEL' | 'CANCELLED' | 'ALL',
+      order_status?: string,
       response_optional_fields?: string[]
     }
   ): Promise<any> {
@@ -793,7 +796,7 @@ export class ShopeeAPI {
       params.append('cursor', options.cursor);
     }
 
-    if (options.order_status) {
+    if (options.order_status && options.order_status !== 'ALL') {
       params.append('order_status', options.order_status);
     }
 
@@ -812,6 +815,46 @@ export class ShopeeAPI {
       return response.data;
     } catch (error) {
       console.error('Error mendapatkan daftar pesanan:', error);
+      throw error;
+    }
+  }
+
+  async handleBuyerCancellation(
+    shopId: number,
+    accessToken: string,
+    orderSn: string,
+    operation: 'ACCEPT' | 'REJECT'
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/order/handle_buyer_cancellation';
+    const path = '/api/v2/order/handle_buyer_cancellation';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    const body = {
+      order_sn: orderSn,
+      operation
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    console.info(`Mengirim permintaan untuk menangani pembatalan pembeli: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+    try {
+      const response = await axios.post(fullUrl, body, { headers });
+      console.info(`Kode status respons: ${response.status}, Konten respons: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat menangani pembatalan pembeli:', error);
       throw error;
     }
   }

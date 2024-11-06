@@ -12,13 +12,16 @@ import {
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 // Impor ikon-ikon yang diperlukan
-import { Package, Clock, Truck, XCircle, AlertCircle, RefreshCcw, Search, Filter, Printer, PrinterCheck } from 'lucide-react'
+import { Package, Clock, Truck, XCircle, AlertCircle, RefreshCcw, Search, Filter, Printer, PrinterCheck, CheckSquare, CheckCircle } from 'lucide-react'
 import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { OrderDetails } from '@/app/dashboard/OrderDetails'
 import { useShippingDocument } from '@/app/hooks/useShippingDocument';
 import { Button } from "@/components/ui/button";
 import { mergePDFs } from '@/app/utils/pdfUtils';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { Check, X } from 'lucide-react'; // Tambahkan import icon
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleString('id-ID', {
@@ -114,6 +117,9 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const { downloadDocument, isLoadingForOrder } = useShippingDocument();
 
+  // Tambahkan state untuk toggle checkbox
+  const [showCheckbox, setShowCheckbox] = useState(false);
+
   const updatedCategories = useMemo(() => {
     return categories.map(category => ({
       ...category,
@@ -203,11 +209,17 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     }
   };
 
+  // Tambahkan helper function untuk mengecek apakah order bisa dicentang
+  const isOrderCheckable = (order: OrderItem) => {
+    return order.document_status === 'READY' && 
+      (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL');
+  };
+
   // Handler untuk checkbox utama
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       const printableOrders = filteredOrders
-        .filter(order => order.document_status === 'READY')
+        .filter(order => isOrderCheckable(order))
         .map(order => order.order_sn);
       setSelectedOrders(printableOrders);
     } else {
@@ -240,8 +252,8 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     // Jika ada yang dipilih, gunakan selectedOrders, jika tidak gunakan semua order yang dapat dicetak
     const ordersToPrint = selectedOrders.length > 0 
       ? selectedOrders 
-      : filteredOrders
-          .filter(order => order.document_status === 'READY')
+      : orders
+          .filter(order => isOrderCheckable(order))
           .map(order => order.order_sn);
 
     if (ordersToPrint.length === 0) return;
@@ -335,16 +347,97 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
   // Update useEffect untuk menghandle indeterminate state
   useEffect(() => {
-    const readyOrders = filteredOrders.filter(order => order.document_status === 'READY');
-    const selectedReadyOrders = selectedOrders.length;
-    const allReadyOrders = readyOrders.length;
+    const checkableOrders = filteredOrders.filter(order => isOrderCheckable(order));
+    const selectedCheckableOrders = selectedOrders.length;
+    const allCheckableOrders = checkableOrders.length;
     
-    // Set indeterminate menggunakan ref
     if (checkboxRef.current) {
-      const isIndeterminate = selectedReadyOrders > 0 && selectedReadyOrders < allReadyOrders;
+      const isIndeterminate = selectedCheckableOrders > 0 && selectedCheckableOrders < allCheckableOrders;
       (checkboxRef.current as any).indeterminate = isIndeterminate;
     }
   }, [selectedOrders, filteredOrders]);
+
+  // Update fungsi untuk menghitung total dokumen yang dapat dicetak (global)
+  const getTotalPrintableDocuments = () => {
+    return orders.filter(order => isOrderCheckable(order)).length;
+  };
+
+  // Update fungsi untuk menghitung dokumen yang belum dicetak (global)
+  const getUnprintedDocuments = () => {
+    return orders.filter(order => 
+      isOrderCheckable(order) && !order.is_printed
+    ).length;
+  };
+
+  // Update fungsi handlePrintUnprinted untuk menggunakan orders (global)
+  const handlePrintUnprinted = async () => {
+    const unprintedOrders = orders
+      .filter(order => isOrderCheckable(order) && !order.is_printed)
+      .map(order => order.order_sn);
+      
+    // Set selected orders ke dokumen yang belum dicetak
+    setSelectedOrders(unprintedOrders);
+    // Gunakan handleBulkPrint yang sudah ada
+    await handleBulkPrint();
+  };
+
+  // Update fungsi toggle checkbox
+  const handleToggleCheckbox = () => {
+    const newShowCheckbox = !showCheckbox;
+    setShowCheckbox(newShowCheckbox);
+    
+    // Jika checkbox disembunyikan, hapus semua seleksi
+    if (!newShowCheckbox) {
+      setSelectedOrders([]);
+    }
+  };
+
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<{ orderSn: string, action: 'ACCEPT' | 'REJECT' }>({ orderSn: '', action: 'ACCEPT' });
+
+  const handleCancellationAction = async (orderSn: string, action: 'ACCEPT' | 'REJECT') => {
+    setSelectedAction({ orderSn, action });
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmAction = async () => {
+    const { orderSn, action } = selectedAction;
+    const order = orders.find(o => o.order_sn === orderSn);
+    
+    if (!order) return;
+
+    try {
+      const response = await fetch('/api/orders/handle-cancellation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          shopId: order.shop_id,
+          orderSn: orderSn,
+          operation: action
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success(`Berhasil ${action === 'ACCEPT' ? 'menerima' : 'menolak'} pembatalan`);
+        // Update local state jika ada callback
+        if (onOrderUpdate) {
+          onOrderUpdate(orderSn, {
+            order_status: action === 'ACCEPT' ? 'CANCELLED' : 'READY_TO_SHIP'
+          });
+        }
+      } else {
+        toast.error(result.message || 'Gagal memproses pembatalan');
+      }
+    } catch (error) {
+      toast.error('Terjadi kesalahan saat memproses pembatalan');
+    } finally {
+      setIsConfirmOpen(false);
+    }
+  };
 
   return (
     <div className="w-full">
@@ -369,10 +462,11 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         </div>
       )}
 
-      <Card className="px-2 py-2 my-2 shadow-none rounded-lg">
-        <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
-          <div className="w-full sm:flex items-center gap-2">
-            {/* Dropdown untuk mobile */}
+      <div className="flex flex-col md:flex-row gap-2 w-full mt-2">
+        {/* Card Kategori */}
+        <Card className="px-2 py-2 shadow-none rounded-lg md:flex-1">
+          <div className="w-full">
+            {/* Existing dropdown dan tab kategori */}
             <div className="w-full sm:hidden">
               <Select value={activeCategory} onValueChange={handleCategoryChange}>
                 <SelectTrigger className="w-full">
@@ -387,98 +481,126 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                 </SelectContent>
               </Select>
             </div>
+            <div className="hidden sm:flex space-x-2 overflow-x-auto items-center">
+              {/* Tombol checkbox sebelum kategori */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleToggleCheckbox}
+                className="h-6 w-6 p-0"
+              >
+                <CheckSquare 
+                  size={16} 
+                  className={showCheckbox ? "text-primary" : "text-gray-500"}
+                />
+              </Button>
 
-            {/* Tab kategori dan tombol cetak untuk desktop */}
-            <div className="hidden sm:flex items-center gap-2">
-              <div className="flex space-x-2 overflow-x-auto">
-                {updatedCategories.map(category => (
-                  <button
-                    key={category.name}
-                    onClick={() => handleCategoryChange(category.name)}
-                    className={`px-3 py-2 text-xs font-medium rounded-md transition-all
-                      ${activeCategory === category.name
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                  >
-                    {category.name} <span className="ml-1 text-xs font-normal">({category.count})</span>
-                  </button>
-                ))}
+              {/* Kategori buttons */}
+              {updatedCategories.map(category => (
+                <button
+                  key={category.name}
+                  onClick={() => handleCategoryChange(category.name)}
+                  className={`px-3 py-2 text-xs font-medium rounded-md transition-all
+                    ${activeCategory === category.name
+                      ? 'bg-primary text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                  {category.name} <span className="ml-1 text-xs font-normal">({category.count})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </Card>
+
+        {/* Card Pencarian dan Tombol Cetak */}
+        <Card className="px-2 py-2 shadow-none rounded-lg flex-1">
+          <div className="flex flex-col sm:flex-row gap-2 justify-between">
+            {/* Bagian Pencarian dan Filter */}
+            <div className="flex items-center gap-2 w-full sm:w-[400px]">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Cari username, kurir, atau no. pesanan"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="px-2 py-1 pl-8 border rounded-md w-full text-xs h-[32px]"
+                />
+                <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
               </div>
 
-              {/* Tombol cetak dokumen masal */}
+              <Popover open={isShopFilterOpen} onOpenChange={setIsShopFilterOpen}>
+                <PopoverTrigger asChild>
+                  <button className="p-1 rounded-md hover:bg-gray-100 h-[32px] w-[32px] flex items-center justify-center">
+                    <Filter size={20} className="text-gray-500" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56" align="end" side="bottom" sideOffset={5}>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Filter Toko</h3>
+                    {shops.map(shop => (
+                      <div key={shop} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={shop}
+                          checked={selectedShops.includes(shop)}
+                          onCheckedChange={() => handleShopFilter(shop)}
+                        />
+                        <label htmlFor={shop} className="text-sm">{shop}</label>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Bagian Tombol Cetak */}
+            <div className="flex gap-2 shrink-0">
+              <Button
+                onClick={handlePrintUnprinted}
+                className="px-3 py-2 text-xs font-medium bg-green-600 hover:bg-green-700 text-white whitespace-nowrap h-[32px] min-h-0"
+                disabled={getUnprintedDocuments() === 0}
+              >
+                Belum Print ({getUnprintedDocuments()})
+              </Button>
+
               <Button
                 onClick={handleBulkPrint}
-                className="px-3 py-2 text-xs font-medium bg-primary text-white whitespace-nowrap h-[32px] min-h-0"
+                className={`px-3 py-2 text-xs font-medium text-white whitespace-nowrap h-[32px] min-h-0
+                  ${selectedOrders.length > 0 
+                    ? 'bg-orange-500 hover:bg-orange-600' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
               >
                 {selectedOrders.length > 0 
                   ? `Cetak ${selectedOrders.length} Dokumen`
-                  : 'Cetak Semua'
+                  : `Cetak Semua (${getTotalPrintableDocuments()})`
                 }
               </Button>
             </div>
           </div>
+        </Card>
+      </div>
 
-          <div className="relative w-full sm:w-auto flex items-center gap-2">
-            <div className="relative flex-1 sm:flex-initial">
-              <input
-                type="text"
-                placeholder="Cari username, kurir, atau no. pesanan"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-2 py-1 pl-8 border rounded-md w-full sm:w-auto text-xs"
-              />
-              <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            </div>
-
-            <Popover open={isShopFilterOpen} onOpenChange={setIsShopFilterOpen}>
-              <PopoverTrigger asChild>
-                <button className="ml-2 p-1 rounded-md hover:bg-gray-100">
-                  <Filter size={20} className="text-gray-500" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56" align="end" side="bottom" sideOffset={5}>
-                <div className="space-y-2">
-                  <h3 className="font-semibold">Filter Toko</h3>
-                  {shops.map(shop => (
-                    <div key={shop} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={shop}
-                        checked={selectedShops.includes(shop)}
-                        onCheckedChange={() => handleShopFilter(shop)}
-                      />
-                      <label htmlFor={shop} className="text-sm">{shop}</label>
-                    </div>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-      </Card>
-      
-      
       <div className="rounded-md border overflow-x-auto mt-2">
         <Table className="w-full">
           <TableHeader>
             <TableRow>
-              {activeCategory === "Diproses" && (
-                <TableHead className="hidden md:table-cell w-10 p-1 h-[32px] align-middle">
-                  <div className="flex justify-center">
-                    <Checkbox
-                      ref={checkboxRef}
-                      checked={
-                        filteredOrders.length > 0 &&
-                        filteredOrders
-                          .filter(order => order.document_status === 'READY')
-                          .every(order => selectedOrders.includes(order.order_sn))
-                      }
-                      onCheckedChange={handleSelectAll}
-                      className="h-4 w-4"
-                    />
-                  </div>
-                </TableHead>
-              )}
+              {/* Update tampilan checkbox header */}
+              <TableHead className={`w-10 p-1 h-[32px] align-middle ${!showCheckbox && 'hidden'}`}>
+                <div className="flex justify-center">
+                  <Checkbox
+                    ref={checkboxRef}
+                    checked={
+                      filteredOrders.filter(order => isOrderCheckable(order)).length > 0 && 
+                      filteredOrders
+                        .filter(order => isOrderCheckable(order))
+                        .every(order => selectedOrders.includes(order.order_sn))
+                    }
+                    onCheckedChange={handleSelectAll}
+                    className="h-4 w-4"
+                  />
+                </div>
+              </TableHead>
               <TableHead className="font-bold uppercase text-xs text-black dark:text-white w-10 text-center whitespace-nowrap">#</TableHead>
               <TableHead className="font-bold uppercase text-xs text-black dark:text-white whitespace-nowrap min-w-[80px] sm:min-w-[100px]">Toko</TableHead>
               <TableHead className="font-bold uppercase text-xs text-black dark:text-white whitespace-nowrap min-w-[120px]">Tanggal</TableHead>
@@ -506,20 +628,18 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                           : 'bg-gray-100/20'
                   }
                 >
-                  {activeCategory === "Diproses" && (
-                    <TableCell className="p-1 h-[32px] align-middle">
-                      <div className="flex justify-center">
-                        <Checkbox
-                          checked={selectedOrders.includes(order.order_sn)}
-                          disabled={order.document_status !== 'READY'}
-                          onCheckedChange={(checked) => 
-                            handleSelectOrder(order.order_sn, checked as boolean)
-                          }
-                          className="h-4 w-4"
-                        />
-                      </div>
-                    </TableCell>
-                  )}
+                  <TableCell className={`p-1 h-[32px] align-middle ${!showCheckbox && 'hidden'}`}>
+                    <div className="flex justify-center">
+                      <Checkbox
+                        checked={selectedOrders.includes(order.order_sn)}
+                        disabled={!isOrderCheckable(order)}
+                        onCheckedChange={(checked) => 
+                          handleSelectOrder(order.order_sn, checked as boolean)
+                        }
+                        className="h-4 w-4"
+                      />
+                    </div>
+                  </TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white text-center whitespace-nowrap">{index + 1}</TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap max-w-[80px] sm:max-w-none overflow-hidden text-ellipsis">{order.shop_name}</TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{formatDate(order.pay_time)}</TableCell>
@@ -537,7 +657,31 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.sku_qty || '-'}</TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.shipping_carrier || '-'} ({order.tracking_number || '-'})</TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
-                    <StatusBadge status={order.order_status as OrderStatus} />
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={order.order_status as OrderStatus} />
+                      {order.order_status === "IN_CANCEL" && (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 p-0 hover:bg-green-100"
+                            onClick={() => handleCancellationAction(order.order_sn, 'ACCEPT')}
+                            title="Terima Pembatalan"
+                          >
+                            <CheckCircle size={16} className="text-green-600" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 p-0 hover:bg-red-100"
+                            onClick={() => handleCancellationAction(order.order_sn, 'REJECT')}
+                            title="Tolak Pembatalan"
+                          >
+                            <XCircle size={16} className="text-red-600" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-center p-1 h-[32px]">
                     <Button
@@ -560,7 +704,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={activeCategory === "Diproses" ? 11 : 10} className="text-center py-4">
+                <TableCell colSpan={11} className="text-center py-4">
                   Tidak ada data untuk ditampilkan
                 </TableCell>
               </TableRow>
@@ -574,6 +718,26 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
       />
+
+      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Pembatalan</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin {selectedAction.action === 'ACCEPT' ? 'menerima' : 'menolak'} pembatalan untuk pesanan ini?
+              {selectedAction.action === 'ACCEPT' 
+                ? ' Pesanan akan dibatalkan.'
+                : ' Pembeli tidak akan dapat mengajukan pembatalan lagi.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmAction}>
+              {selectedAction.action === 'ACCEPT' ? 'Terima Pembatalan' : 'Tolak Pembatalan'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

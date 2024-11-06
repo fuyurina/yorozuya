@@ -5,26 +5,7 @@ import { redis } from '@/app/services/redis';
 
 export async function GET() {
   try {
-    // Coba ambil data dari Redis
-    const cachedSettings = await redis.get('pengaturan');
-    const cachedAutoShip = await redis.get('auto_ship');
-
-    if (cachedSettings && cachedAutoShip) {
-      console.log('Cached settings:', cachedAutoShip); // tambahkan log ini
-      const parsedSettings = JSON.parse(cachedSettings);
-      const parsedAutoShip = JSON.parse(cachedAutoShip);
-      
-      // Pastikan data settings selalu dalam bentuk array
-      const settingsArray = Array.isArray(parsedSettings) ? parsedSettings : [parsedSettings];
-      
-      return NextResponse.json({
-        pengaturan: settingsArray,
-        autoShip: parsedAutoShip
-      });
-    }
-
-    
-    // Jika tidak ada di Redis, ambil dari database
+    // Langsung ambil dari database
     const [{ data: settings, error: settingsError }, { data: autoShip, error: autoShipError }] = await Promise.all([
       supabase.from('pengaturan').select('*'),
       supabase.from('auto_ship_chat').select(`*, shopee_tokens!inner(shop_name)`)
@@ -39,12 +20,19 @@ export async function GET() {
       shopee_tokens: undefined
     })) || [];
 
-    // Tambah log saat menyimpan ke Redis
-    
-    await redis.set('pengaturan', JSON.stringify(Array.isArray(settings) ? settings : [settings]));
-    await redis.set('auto_ship', JSON.stringify(transformedAutoShip));
+    // Update Redis setelah dapat data baru
+    try {
+      await redis.set('pengaturan', JSON.stringify(Array.isArray(settings) ? settings : [settings]));
+      await redis.set('auto_ship', JSON.stringify(transformedAutoShip));
+    } catch (redisError) {
+      console.error('Error updating Redis cache:', redisError);
+      // Lanjutkan eksekusi karena kita masih punya data dari database
+    }
 
-    return NextResponse.json({ pengaturan: settings, autoShip: transformedAutoShip });
+    return NextResponse.json({ 
+      pengaturan: Array.isArray(settings) ? settings : [settings], 
+      autoShip: transformedAutoShip 
+    });
   } catch (error) {
     console.error('❌ Error saat mengambil data:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

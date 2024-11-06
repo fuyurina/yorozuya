@@ -44,8 +44,14 @@ export async function getRefreshCount(shopId: number): Promise<number> {
         }
     }
 
-export async function getTrackingNumber(shopId: number, orderSn: string, packageNumber: string, accessToken: string): Promise<any> {
-    return shopeeApi.getTrackingNumber(shopId, orderSn, packageNumber, accessToken);
+export async function getTrackingNumber(
+    shopId: number, 
+    orderSn: string, 
+    packageNumber?: string, 
+    
+): Promise<any> {
+  const accessToken = await getValidAccessToken(shopId);
+  return shopeeApi.getTrackingNumber(shopId, orderSn, accessToken);
 }
 
 export async function getReadyToShipOrders(shopId: number, accessToken: string, pageSize: number = 20, cursor: string = ""): Promise<any> {
@@ -332,6 +338,51 @@ export async function getOrderList(shopId: number, options: OrderListOptions = {
       success: false,
       error: "fetch_failed",
       message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
+
+export async function handleBuyerCancellation(
+  shopId: number,
+  orderSn: string,
+  operation: 'ACCEPT' | 'REJECT'
+): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    
+    console.info(`Memproses pembatalan pembeli untuk pesanan ${orderSn} dengan operasi ${operation}`);
+    
+    const result = await shopeeApi.handleBuyerCancellation(
+      shopId,
+      accessToken,
+      orderSn,
+      operation
+    );
+
+    if (result.error) {
+      console.error(`Error saat memproses pembatalan pembeli: ${JSON.stringify(result)}`);
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal memproses pembatalan pembeli',
+        request_id: result.request_id || ''
+      };
+    }
+
+    console.info(`Berhasil memproses pembatalan pembeli untuk pesanan ${orderSn}`);
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+
+  } catch (error) {
+    console.error(`Terjadi kesalahan saat memproses pembatalan pembeli: ${error}`);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui',
+      request_id: ''
     };
   }
 }

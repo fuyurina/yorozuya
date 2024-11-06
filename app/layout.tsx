@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import { Header } from "@/components/Header"
 import {Sidebar} from "@/components/Sidebar"
 import dynamic from 'next/dynamic'
+import { Toaster } from 'sonner';
 
 import type { Viewport } from 'next'
 
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             </div>
           </div>
         </ThemeProvider>
+        <Toaster />
       </body>
     </html>
   )

@@ -87,27 +87,25 @@ export async function refreshToken(shopId: number, refreshToken: string, shopNam
 
 export async function getValidAccessToken(shopId: number): Promise<string> {
     try {
-        // Coba ambil dari Redis terlebih dahulu
-        const shopInfo = await redis.hgetall(`shopee:token:${shopId}`);
+        // Langsung gunakan Redis client
+        const redisData = await redis.hgetall(`shopee:token:${shopId}`);
         
-        if (shopInfo && shopInfo.access_token) {
-            return JSON.parse(shopInfo.access_token);
+        if (redisData && redisData.access_token) {
+            // Parse token karena tersimpan sebagai string JSON
+            const accessToken = JSON.parse(redisData.access_token);
+            return accessToken;
         }
         
         // Jika tidak ada di Redis, ambil dari database
         const { data, error } = await supabase
             .from('shopee_tokens')
-            .select('access_token',)
+            .select('access_token')
             .eq('shop_id', shopId)
             .single();
         
         if (error) throw error;
         
         if (data && data.access_token) {
-            // Simpan kembali ke Redis untuk penggunaan selanjutnya
-            await redis.hset(`shopee:token:${shopId}`, 'access_token', JSON.stringify(data.access_token));
-            await redis.expire(`shopee:token:${shopId}`, 24 * 60 * 60); // Expire setelah 1 hari
-            
             return data.access_token;
         }
         
