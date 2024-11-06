@@ -28,7 +28,7 @@ async function getAllOrders(shopId: string, accessToken: string) {
     return allOrders;
 }
 
-export async function GET() {
+export async function GET(): Promise<Response> {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 1000 * 60 * 5); // 5 menit
@@ -67,20 +67,18 @@ export async function GET() {
         }
 
         const result = await Promise.race([
-            // proses normal
-            NextResponse.json({
+            Promise.resolve(NextResponse.json({
                 success: true,
                 data: results
             }, {
                 headers: {
                     'Cache-Control': 'no-store',
                 }
-            }),
-            // timeout error
+            })),
             new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Request timeout')), 1000 * 60 * 5)
             )
-        ]);
+        ]) as Response;
 
         clearTimeout(timeoutId);
         return result;
