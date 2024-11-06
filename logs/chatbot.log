@@ -1,0 +1,296 @@
+2024-11-06 23:46:52,957 - root - INFO - ==========================================Program dimulai==========================================
+2024-11-06 23:46:54,099 - root - INFO - Total chats ditemukan: 6
+2024-11-06 23:46:54,108 - root - INFO - ==========================================Program selesai==========================================
+2024-11-06 23:46:54,578 - root - INFO - Ada invoice 241107HRMB9EB2
+2024-11-06 23:46:54,662 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241107HRMB9EB2 "HTTP/2 200 OK"
+2024-11-06 23:46:54,676 - root - INFO - Ada invoice 241103A2UDQSP5
+2024-11-06 23:46:54,745 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241107HRMB9EB2 "HTTP/2 200 OK"
+2024-11-06 23:46:54,746 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241103A2UDQSP5 "HTTP/2 200 OK"
+2024-11-06 23:46:54,746 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:46:54,748 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': False}
+2024-11-06 23:46:54,809 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241103A2UDQSP5 "HTTP/2 200 OK"
+2024-11-06 23:46:54,809 - root - INFO - Perubahan result: data=[{'id': 219, 'id_pengguna': 'dewiratnayuniar', 'nama_toko': 'Yorozuya Official Shop', 'nomor_invoice': '241103A2UDQSP5', 'perubahan': {'ukuran': 'M'}, 'created_at': '2024-11-04T07:33:20.544632+07:00', 'updated_at': '2024-11-04T07:33:20.544632+07:00', 'status': 'DICATAT', 'status_pesanan': 'PROCESSED', 'detail_perubahan': 'Ganti ukuran ke M', 'store_id': '18148233', 'msg_id': '53202953914609857', 'user_id': 12387278}] count=None
+2024-11-06 23:46:54,809 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:46:54,809 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:46:54,809 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241103A2UDQSP5, Status pesanan: TO_CONFIRM_RECEIVE
+2024-11-06 23:46:54,819 - root - INFO - Ada invoice 241106GC0QE1NX
+2024-11-06 23:46:54,874 - root - INFO - Ada invoice 2411039QD7W59D
+2024-11-06 23:46:54,875 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241106GC0QE1NX "HTTP/2 200 OK"
+2024-11-06 23:46:54,927 - root - INFO - Ada invoice 241104B05YRMX1
+2024-11-06 23:46:54,942 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.2411039QD7W59D "HTTP/2 200 OK"
+2024-11-06 23:46:54,945 - root - INFO - Ada invoice 2411027A110K33
+2024-11-06 23:46:55,019 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241106GC0QE1NX "HTTP/2 200 OK"
+2024-11-06 23:46:55,020 - root - INFO - Perubahan result: data=[{'id': 230, 'id_pengguna': '666_j3aoaw', 'nama_toko': 'Divine Batik Official', 'nomor_invoice': '241106GC0QE1NX', 'perubahan': {'ukuran': 'XL'}, 'created_at': '2024-11-06T23:10:24.907117+07:00', 'updated_at': '2024-11-06T23:10:24.907117+07:00', 'status': 'BARU', 'status_pesanan': 'SHIPPED', 'detail_perubahan': 'Tukar ukuran dari L ke XL', 'store_id': '1153771852', 'msg_id': '2955117498586500233', 'user_id': 688041909}] count=None
+2024-11-06 23:46:55,021 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.2411027A110K33 "HTTP/2 200 OK"
+2024-11-06 23:46:55,021 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241104B05YRMX1 "HTTP/2 200 OK"
+2024-11-06 23:46:55,021 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.2411039QD7W59D "HTTP/2 200 OK"
+2024-11-06 23:46:55,021 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:46:55,023 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:46:55,023 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241106GC0QE1NX, Status pesanan: SHIPPED
+2024-11-06 23:46:55,029 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:46:55,029 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:46:55,029 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:46:55,029 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411039QD7W59D, Status pesanan: SHIPPED
+2024-11-06 23:46:55,090 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241104B05YRMX1 "HTTP/2 200 OK"
+2024-11-06 23:46:55,091 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.2411027A110K33 "HTTP/2 200 OK"
+2024-11-06 23:46:55,091 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:46:55,091 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:46:55,091 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:46:55,091 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:46:55,091 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:46:55,091 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:46:55,091 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411027A110K33, Status pesanan: COMPLETED
+2024-11-06 23:46:55,091 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241104B05YRMX1, Status pesanan: CANCELLED
+2024-11-06 23:46:55,776 - root - INFO - 👤 Pembeli: This message was deleted
+2024-11-06 23:46:55,776 - root - INFO - 🤖 AI: Ada yang bisa saya bantu, kak? Jika ada pertanyaan atau butuh info lebih lanjut, silakan tanya saja! 😊
+2024-11-06 23:46:56,234 - root - INFO - ✅ Pesan berhasil dikirim ke siroh825
+2024-11-06 23:50:03,287 - root - INFO - ==========================================Program dimulai==========================================
+2024-11-06 23:50:03,569 - root - INFO - Total chats ditemukan: 7
+2024-11-06 23:50:03,579 - root - INFO - ==========================================Program selesai==========================================
+2024-11-06 23:50:04,097 - root - INFO - Ada invoice 241106GC0QE1NX
+2024-11-06 23:50:04,108 - root - INFO - Ada invoice 2411039QD7W59D
+2024-11-06 23:50:04,112 - root - INFO - Ada invoice 241107HRMB9EB2
+2024-11-06 23:50:04,154 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241106GC0QE1NX "HTTP/2 200 OK"
+2024-11-06 23:50:04,159 - root - INFO - Ada invoice 241104B05YRMX1
+2024-11-06 23:50:04,167 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241107HRMB9EB2 "HTTP/2 200 OK"
+2024-11-06 23:50:04,167 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.2411039QD7W59D "HTTP/2 200 OK"
+2024-11-06 23:50:04,211 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241106GC0QE1NX "HTTP/2 200 OK"
+2024-11-06 23:50:04,211 - root - INFO - Perubahan result: data=[{'id': 230, 'id_pengguna': '666_j3aoaw', 'nama_toko': 'Divine Batik Official', 'nomor_invoice': '241106GC0QE1NX', 'perubahan': {'ukuran': 'XL'}, 'created_at': '2024-11-06T23:10:24.907117+07:00', 'updated_at': '2024-11-06T23:10:24.907117+07:00', 'status': 'BARU', 'status_pesanan': 'SHIPPED', 'detail_perubahan': 'Tukar ukuran dari L ke XL', 'store_id': '1153771852', 'msg_id': '2955117498586500233', 'user_id': 688041909}] count=None
+2024-11-06 23:50:04,212 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:50:04,212 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:50:04,212 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241106GC0QE1NX, Status pesanan: SHIPPED
+2024-11-06 23:50:04,217 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.2411039QD7W59D "HTTP/2 200 OK"
+2024-11-06 23:50:04,218 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241104B05YRMX1 "HTTP/2 200 OK"
+2024-11-06 23:50:04,247 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:50:04,247 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:50:04,247 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:50:04,247 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411039QD7W59D, Status pesanan: SHIPPED
+2024-11-06 23:50:04,257 - root - INFO - Ada invoice 2411027A110K33
+2024-11-06 23:50:04,273 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241104B05YRMX1 "HTTP/2 200 OK"
+2024-11-06 23:50:04,273 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241107HRMB9EB2 "HTTP/2 200 OK"
+2024-11-06 23:50:04,273 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:50:04,273 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': False}
+2024-11-06 23:50:04,305 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.2411027A110K33 "HTTP/2 200 OK"
+2024-11-06 23:50:04,305 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:50:04,306 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:50:04,306 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:50:04,306 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241104B05YRMX1, Status pesanan: CANCELLED
+2024-11-06 23:50:04,358 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.2411027A110K33 "HTTP/2 200 OK"
+2024-11-06 23:50:04,358 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:50:04,358 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:50:04,358 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:50:04,358 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411027A110K33, Status pesanan: COMPLETED
+2024-11-06 23:50:04,395 - root - INFO - Ada invoice 241103A2UDQSP5
+2024-11-06 23:50:04,451 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241103A2UDQSP5 "HTTP/2 200 OK"
+2024-11-06 23:50:04,512 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241103A2UDQSP5 "HTTP/2 200 OK"
+2024-11-06 23:50:04,513 - root - INFO - Perubahan result: data=[{'id': 219, 'id_pengguna': 'dewiratnayuniar', 'nama_toko': 'Yorozuya Official Shop', 'nomor_invoice': '241103A2UDQSP5', 'perubahan': {'ukuran': 'M'}, 'created_at': '2024-11-04T07:33:20.544632+07:00', 'updated_at': '2024-11-04T07:33:20.544632+07:00', 'status': 'DICATAT', 'status_pesanan': 'PROCESSED', 'detail_perubahan': 'Ganti ukuran ke M', 'store_id': '18148233', 'msg_id': '53202953914609857', 'user_id': 12387278}] count=None
+2024-11-06 23:50:04,513 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:50:04,513 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:50:04,513 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241103A2UDQSP5, Status pesanan: TO_CONFIRM_RECEIVE
+2024-11-06 23:50:05,040 - root - INFO - 👤 Pembeli: Hallo kak, aq lihat di aplikasi ada tawaran bt kerjasama, boleh kk
+2024-11-06 23:50:05,041 - root - INFO - 🤖 AI: Iya kak, terima kasih atas pengertiannya! Jika ada pertanyaan lain atau butuh info lebih lanjut, jangan ragu untuk tanya ya. 😊
+2024-11-06 23:50:05,412 - root - INFO - ✅ Pesan berhasil dikirim ke starlingshop_
+2024-11-06 23:50:05,462 - root - INFO - 👤 Pembeli: This message was deleted
+2024-11-06 23:50:05,462 - root - INFO - 🤖 AI: Kami akan pastikan pesanan kakak sesuai dengan yang diharapkan! Terima kasih atas kepercayaan kakak, semoga bisa jadi langganan yang setia ya! 😊 Jika ada pertanyaan, silakan tanya saja!
+2024-11-06 23:50:05,868 - root - INFO - ✅ Pesan berhasil dikirim ke siroh825
+2024-11-06 23:51:44,823 - root - INFO - ==========================================Program dimulai==========================================
+2024-11-06 23:51:45,668 - root - INFO - Total chats ditemukan: 6
+2024-11-06 23:51:45,676 - root - INFO - ==========================================Program selesai==========================================
+2024-11-06 23:51:46,368 - root - INFO - Ada invoice 241103A2UDQSP5
+2024-11-06 23:51:46,377 - root - INFO - Ada invoice 241104B05YRMX1
+2024-11-06 23:51:46,379 - root - INFO - Ada invoice 2411039QD7W59D
+2024-11-06 23:51:46,410 - root - INFO - Ada invoice 241106GC0QE1NX
+2024-11-06 23:51:46,450 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241103A2UDQSP5 "HTTP/2 200 OK"
+2024-11-06 23:51:46,450 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241104B05YRMX1 "HTTP/2 200 OK"
+2024-11-06 23:51:46,453 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.2411039QD7W59D "HTTP/2 200 OK"
+2024-11-06 23:51:46,470 - root - INFO - Ada invoice 241107HRMB9EB2
+2024-11-06 23:51:46,478 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241106GC0QE1NX "HTTP/2 200 OK"
+2024-11-06 23:51:46,505 - root - INFO - Ada invoice 2411027A110K33
+2024-11-06 23:51:46,507 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241103A2UDQSP5 "HTTP/2 200 OK"
+2024-11-06 23:51:46,508 - root - INFO - Perubahan result: data=[{'id': 219, 'id_pengguna': 'dewiratnayuniar', 'nama_toko': 'Yorozuya Official Shop', 'nomor_invoice': '241103A2UDQSP5', 'perubahan': {'ukuran': 'M'}, 'created_at': '2024-11-04T07:33:20.544632+07:00', 'updated_at': '2024-11-04T07:33:20.544632+07:00', 'status': 'DICATAT', 'status_pesanan': 'PROCESSED', 'detail_perubahan': 'Ganti ukuran ke M', 'store_id': '18148233', 'msg_id': '53202953914609857', 'user_id': 12387278}] count=None
+2024-11-06 23:51:46,508 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:51:46,508 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:51:46,508 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241103A2UDQSP5, Status pesanan: TO_CONFIRM_RECEIVE
+2024-11-06 23:51:46,535 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241106GC0QE1NX "HTTP/2 200 OK"
+2024-11-06 23:51:46,535 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241104B05YRMX1 "HTTP/2 200 OK"
+2024-11-06 23:51:46,536 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241107HRMB9EB2 "HTTP/2 200 OK"
+2024-11-06 23:51:46,536 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:51:46,537 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:51:46,537 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:51:46,537 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241104B05YRMX1, Status pesanan: CANCELLED
+2024-11-06 23:51:46,634 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.2411027A110K33 "HTTP/2 200 OK"
+2024-11-06 23:51:46,636 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241107HRMB9EB2 "HTTP/2 200 OK"
+2024-11-06 23:51:46,637 - root - INFO - Perubahan result: data=[{'id': 230, 'id_pengguna': '666_j3aoaw', 'nama_toko': 'Divine Batik Official', 'nomor_invoice': '241106GC0QE1NX', 'perubahan': {'ukuran': 'XL'}, 'created_at': '2024-11-06T23:10:24.907117+07:00', 'updated_at': '2024-11-06T23:10:24.907117+07:00', 'status': 'BARU', 'status_pesanan': 'SHIPPED', 'detail_perubahan': 'Tukar ukuran dari L ke XL', 'store_id': '1153771852', 'msg_id': '2955117498586500233', 'user_id': 688041909}] count=None
+2024-11-06 23:51:46,637 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:51:46,637 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:51:46,638 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:51:46,639 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': False}
+2024-11-06 23:51:46,639 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241106GC0QE1NX, Status pesanan: SHIPPED
+2024-11-06 23:51:46,708 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.2411039QD7W59D "HTTP/2 200 OK"
+2024-11-06 23:51:46,708 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.2411027A110K33 "HTTP/2 200 OK"
+2024-11-06 23:51:46,709 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:51:46,709 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:51:46,709 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:51:46,710 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:51:46,710 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:51:46,710 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:51:46,710 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411039QD7W59D, Status pesanan: SHIPPED
+2024-11-06 23:51:46,710 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411027A110K33, Status pesanan: COMPLETED
+2024-11-06 23:51:47,791 - root - INFO - 👤 Pembeli: This message was deleted
+2024-11-06 23:51:47,792 - root - INFO - 🤖 AI: Sama-sama, kak! Senang bisa membantu. Jika ada pertanyaan lain, jangan ragu untuk menghubungi kami ya! 😊
+2024-11-06 23:51:48,133 - root - INFO - ✅ Pesan berhasil dikirim ke siroh825
+2024-11-06 23:54:26,038 - root - INFO - ==========================================Program dimulai==========================================
+2024-11-06 23:54:26,748 - root - INFO - Total chats ditemukan: 5
+2024-11-06 23:54:26,770 - root - INFO - ==========================================Program selesai==========================================
+2024-11-06 23:54:27,335 - root - INFO - Ada invoice 2411039QD7W59D
+2024-11-06 23:54:27,427 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.2411039QD7W59D "HTTP/2 200 OK"
+2024-11-06 23:54:27,493 - root - INFO - Ada invoice 241104B05YRMX1
+2024-11-06 23:54:27,507 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.2411039QD7W59D "HTTP/2 200 OK"
+2024-11-06 23:54:27,508 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:54:27,508 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:54:27,508 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:54:27,508 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411039QD7W59D, Status pesanan: SHIPPED
+2024-11-06 23:54:27,527 - root - INFO - Ada invoice 241106GC0QE1NX
+2024-11-06 23:54:27,542 - root - INFO - Ada invoice 241103A2UDQSP5
+2024-11-06 23:54:27,582 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241104B05YRMX1 "HTTP/2 200 OK"
+2024-11-06 23:54:27,608 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241103A2UDQSP5 "HTTP/2 200 OK"
+2024-11-06 23:54:27,615 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241106GC0QE1NX "HTTP/2 200 OK"
+2024-11-06 23:54:27,654 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241104B05YRMX1 "HTTP/2 200 OK"
+2024-11-06 23:54:27,661 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:54:27,661 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:54:27,661 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:54:27,661 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241104B05YRMX1, Status pesanan: CANCELLED
+2024-11-06 23:54:27,699 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241106GC0QE1NX "HTTP/2 200 OK"
+2024-11-06 23:54:27,699 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241103A2UDQSP5 "HTTP/2 200 OK"
+2024-11-06 23:54:27,699 - root - INFO - Perubahan result: data=[{'id': 219, 'id_pengguna': 'dewiratnayuniar', 'nama_toko': 'Yorozuya Official Shop', 'nomor_invoice': '241103A2UDQSP5', 'perubahan': {'ukuran': 'M'}, 'created_at': '2024-11-04T07:33:20.544632+07:00', 'updated_at': '2024-11-04T07:33:20.544632+07:00', 'status': 'DICATAT', 'status_pesanan': 'PROCESSED', 'detail_perubahan': 'Ganti ukuran ke M', 'store_id': '18148233', 'msg_id': '53202953914609857', 'user_id': 12387278}] count=None
+2024-11-06 23:54:27,700 - root - INFO - Perubahan result: data=[{'id': 230, 'id_pengguna': '666_j3aoaw', 'nama_toko': 'Divine Batik Official', 'nomor_invoice': '241106GC0QE1NX', 'perubahan': {'ukuran': 'XL'}, 'created_at': '2024-11-06T23:10:24.907117+07:00', 'updated_at': '2024-11-06T23:10:24.907117+07:00', 'status': 'BARU', 'status_pesanan': 'SHIPPED', 'detail_perubahan': 'Tukar ukuran dari L ke XL', 'store_id': '1153771852', 'msg_id': '2955117498586500233', 'user_id': 688041909}] count=None
+2024-11-06 23:54:27,700 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:54:27,700 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:54:27,700 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:54:27,700 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:54:27,700 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241103A2UDQSP5, Status pesanan: TO_CONFIRM_RECEIVE
+2024-11-06 23:54:27,700 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241106GC0QE1NX, Status pesanan: SHIPPED
+2024-11-06 23:54:27,763 - root - INFO - Ada invoice 2411027A110K33
+2024-11-06 23:54:27,838 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.2411027A110K33 "HTTP/2 200 OK"
+2024-11-06 23:54:27,915 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.2411027A110K33 "HTTP/2 200 OK"
+2024-11-06 23:54:27,916 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:54:27,916 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:54:27,916 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:54:27,916 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411027A110K33, Status pesanan: COMPLETED
+2024-11-06 23:55:14,785 - root - INFO - ==========================================Program dimulai==========================================
+2024-11-06 23:55:15,733 - root - INFO - Total chats ditemukan: 5
+2024-11-06 23:55:15,739 - root - INFO - ==========================================Program selesai==========================================
+2024-11-06 23:55:16,393 - root - INFO - Ada invoice 241104B05YRMX1
+2024-11-06 23:55:16,399 - root - INFO - Ada invoice 241106GC0QE1NX
+2024-11-06 23:55:16,481 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241104B05YRMX1 "HTTP/2 200 OK"
+2024-11-06 23:55:16,483 - root - INFO - Ada invoice 2411027A110K33
+2024-11-06 23:55:16,507 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241106GC0QE1NX "HTTP/2 200 OK"
+2024-11-06 23:55:16,571 - root - INFO - Ada invoice 2411039QD7W59D
+2024-11-06 23:55:16,584 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241104B05YRMX1 "HTTP/2 200 OK"
+2024-11-06 23:55:16,584 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.2411027A110K33 "HTTP/2 200 OK"
+2024-11-06 23:55:16,585 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:55:16,586 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:55:16,586 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:55:16,587 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241104B05YRMX1, Status pesanan: CANCELLED
+2024-11-06 23:55:16,605 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241106GC0QE1NX "HTTP/2 200 OK"
+2024-11-06 23:55:16,605 - root - INFO - Perubahan result: data=[{'id': 230, 'id_pengguna': '666_j3aoaw', 'nama_toko': 'Divine Batik Official', 'nomor_invoice': '241106GC0QE1NX', 'perubahan': {'ukuran': 'XL'}, 'created_at': '2024-11-06T23:10:24.907117+07:00', 'updated_at': '2024-11-06T23:10:24.907117+07:00', 'status': 'BARU', 'status_pesanan': 'SHIPPED', 'detail_perubahan': 'Tukar ukuran dari L ke XL', 'store_id': '1153771852', 'msg_id': '2955117498586500233', 'user_id': 688041909}] count=None
+2024-11-06 23:55:16,606 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:55:16,606 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:55:16,606 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241106GC0QE1NX, Status pesanan: SHIPPED
+2024-11-06 23:55:16,693 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.2411039QD7W59D "HTTP/2 200 OK"
+2024-11-06 23:55:16,694 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.2411027A110K33 "HTTP/2 200 OK"
+2024-11-06 23:55:16,812 - root - INFO - Ada invoice 241103A2UDQSP5
+2024-11-06 23:55:16,875 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.2411039QD7W59D "HTTP/2 200 OK"
+2024-11-06 23:55:16,876 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:55:16,877 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:55:16,877 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:55:16,877 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:55:16,877 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:55:16,878 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:55:16,878 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411027A110K33, Status pesanan: COMPLETED
+2024-11-06 23:55:16,878 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411039QD7W59D, Status pesanan: SHIPPED
+2024-11-06 23:55:16,907 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241103A2UDQSP5 "HTTP/2 200 OK"
+2024-11-06 23:55:17,048 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241103A2UDQSP5 "HTTP/2 200 OK"
+2024-11-06 23:55:17,050 - root - INFO - Perubahan result: data=[{'id': 219, 'id_pengguna': 'dewiratnayuniar', 'nama_toko': 'Yorozuya Official Shop', 'nomor_invoice': '241103A2UDQSP5', 'perubahan': {'ukuran': 'M'}, 'created_at': '2024-11-04T07:33:20.544632+07:00', 'updated_at': '2024-11-04T07:33:20.544632+07:00', 'status': 'DICATAT', 'status_pesanan': 'PROCESSED', 'detail_perubahan': 'Ganti ukuran ke M', 'store_id': '18148233', 'msg_id': '53202953914609857', 'user_id': 12387278}] count=None
+2024-11-06 23:55:17,050 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:55:17,050 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:55:17,051 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241103A2UDQSP5, Status pesanan: TO_CONFIRM_RECEIVE
+2024-11-06 23:55:27,265 - root - INFO - ==========================================Program dimulai==========================================
+2024-11-06 23:55:27,750 - root - INFO - Total chats ditemukan: 5
+2024-11-06 23:55:27,755 - root - INFO - ==========================================Program selesai==========================================
+2024-11-06 23:55:28,273 - root - INFO - Ada invoice 241106GC0QE1NX
+2024-11-06 23:55:28,298 - root - INFO - Ada invoice 241103A2UDQSP5
+2024-11-06 23:55:28,342 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241106GC0QE1NX "HTTP/2 200 OK"
+2024-11-06 23:55:28,367 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241103A2UDQSP5 "HTTP/2 200 OK"
+2024-11-06 23:55:28,407 - root - INFO - Ada invoice 2411027A110K33
+2024-11-06 23:55:28,415 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241106GC0QE1NX "HTTP/2 200 OK"
+2024-11-06 23:55:28,416 - root - INFO - Perubahan result: data=[{'id': 230, 'id_pengguna': '666_j3aoaw', 'nama_toko': 'Divine Batik Official', 'nomor_invoice': '241106GC0QE1NX', 'perubahan': {'ukuran': 'XL'}, 'created_at': '2024-11-06T23:10:24.907117+07:00', 'updated_at': '2024-11-06T23:10:24.907117+07:00', 'status': 'BARU', 'status_pesanan': 'SHIPPED', 'detail_perubahan': 'Tukar ukuran dari L ke XL', 'store_id': '1153771852', 'msg_id': '2955117498586500233', 'user_id': 688041909}] count=None
+2024-11-06 23:55:28,416 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:55:28,416 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:55:28,416 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241106GC0QE1NX, Status pesanan: SHIPPED
+2024-11-06 23:55:28,429 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241103A2UDQSP5 "HTTP/2 200 OK"
+2024-11-06 23:55:28,429 - root - INFO - Perubahan result: data=[{'id': 219, 'id_pengguna': 'dewiratnayuniar', 'nama_toko': 'Yorozuya Official Shop', 'nomor_invoice': '241103A2UDQSP5', 'perubahan': {'ukuran': 'M'}, 'created_at': '2024-11-04T07:33:20.544632+07:00', 'updated_at': '2024-11-04T07:33:20.544632+07:00', 'status': 'DICATAT', 'status_pesanan': 'PROCESSED', 'detail_perubahan': 'Ganti ukuran ke M', 'store_id': '18148233', 'msg_id': '53202953914609857', 'user_id': 12387278}] count=None
+2024-11-06 23:55:28,429 - root - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:55:28,429 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:55:28,430 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241103A2UDQSP5, Status pesanan: TO_CONFIRM_RECEIVE
+2024-11-06 23:55:28,459 - root - INFO - Ada invoice 241104B05YRMX1
+2024-11-06 23:55:28,481 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.2411027A110K33 "HTTP/2 200 OK"
+2024-11-06 23:55:28,516 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.241104B05YRMX1 "HTTP/2 200 OK"
+2024-11-06 23:55:28,543 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.2411027A110K33 "HTTP/2 200 OK"
+2024-11-06 23:55:28,544 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:55:28,544 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:55:28,544 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:55:28,544 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411027A110K33, Status pesanan: COMPLETED
+2024-11-06 23:55:28,575 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.241104B05YRMX1 "HTTP/2 200 OK"
+2024-11-06 23:55:28,576 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:55:28,576 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:55:28,576 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:55:28,576 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241104B05YRMX1, Status pesanan: CANCELLED
+2024-11-06 23:55:28,640 - root - INFO - Ada invoice 2411039QD7W59D
+2024-11-06 23:55:28,726 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/keluhan?select=%2A&nomor_invoice=eq.2411039QD7W59D "HTTP/2 200 OK"
+2024-11-06 23:55:28,797 - httpx - INFO - HTTP Request: GET https://jsitzrpjtdorcdxencxm.supabase.co/rest/v1/perubahan_pesanan?select=%2A&nomor_invoice=eq.2411039QD7W59D "HTTP/2 200 OK"
+2024-11-06 23:55:28,799 - root - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:55:28,799 - root - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:55:28,799 - root - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:55:28,799 - root - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411039QD7W59D, Status pesanan: SHIPPED
+2024-11-06 23:56:24,490 - INFO - ==========================================Program dimulai==========================================
+2024-11-06 23:56:24,993 - INFO - Total chats ditemukan: 5
+2024-11-06 23:56:24,996 - INFO - ==========================================Program selesai==========================================
+2024-11-06 23:56:25,577 - INFO - Ada invoice 241103A2UDQSP5
+2024-11-06 23:56:25,581 - INFO - Ada invoice 2411039QD7W59D
+2024-11-06 23:56:25,597 - INFO - Ada invoice 241104B05YRMX1
+2024-11-06 23:56:25,667 - INFO - Ada invoice 241106GC0QE1NX
+2024-11-06 23:56:25,734 - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:56:25,734 - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:56:25,734 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:56:25,734 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411039QD7W59D, Status pesanan: SHIPPED
+2024-11-06 23:56:25,738 - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:56:25,738 - INFO - Perubahan result: data=[{'id': 219, 'id_pengguna': 'dewiratnayuniar', 'nama_toko': 'Yorozuya Official Shop', 'nomor_invoice': '241103A2UDQSP5', 'perubahan': {'ukuran': 'M'}, 'created_at': '2024-11-04T07:33:20.544632+07:00', 'updated_at': '2024-11-04T07:33:20.544632+07:00', 'status': 'DICATAT', 'status_pesanan': 'PROCESSED', 'detail_perubahan': 'Ganti ukuran ke M', 'store_id': '18148233', 'msg_id': '53202953914609857', 'user_id': 12387278}] count=None
+2024-11-06 23:56:25,739 - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:56:25,739 - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:56:25,739 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:56:25,739 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:56:25,739 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241104B05YRMX1, Status pesanan: CANCELLED
+2024-11-06 23:56:25,739 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241103A2UDQSP5, Status pesanan: TO_CONFIRM_RECEIVE
+2024-11-06 23:56:25,799 - INFO - Perubahan result: data=[{'id': 230, 'id_pengguna': '666_j3aoaw', 'nama_toko': 'Divine Batik Official', 'nomor_invoice': '241106GC0QE1NX', 'perubahan': {'ukuran': 'XL'}, 'created_at': '2024-11-06T23:10:24.907117+07:00', 'updated_at': '2024-11-06T23:10:24.907117+07:00', 'status': 'BARU', 'status_pesanan': 'SHIPPED', 'detail_perubahan': 'Tukar ukuran dari L ke XL', 'store_id': '1153771852', 'msg_id': '2955117498586500233', 'user_id': 688041909}] count=None
+2024-11-06 23:56:25,799 - INFO - {'ada_keluhan': False, 'ada_perubahan': True}
+2024-11-06 23:56:25,799 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:56:25,799 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241106GC0QE1NX, Status pesanan: SHIPPED
+2024-11-06 23:56:25,849 - INFO - Ada invoice 2411027A110K33
+2024-11-06 23:56:25,975 - INFO - Perubahan result: data=[] count=None
+2024-11-06 23:56:25,975 - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-11-06 23:56:25,975 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-11-06 23:56:25,975 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 2411027A110K33, Status pesanan: COMPLETED
+2024-11-07 02:39:49,047 - INFO - ==========================================Program dimulai==========================================
+2024-11-07 02:39:49,836 - INFO - Total chats ditemukan: 1
+2024-11-07 02:39:49,842 - INFO - ==========================================Program selesai==========================================
+2024-11-07 02:39:50,105 - INFO - Pesan terakhir adalah dari toko, skip balasan untuk menghindari duplikasi
+2024-11-07 02:41:41,349 - INFO - ==========================================Program dimulai==========================================
+2024-11-07 02:41:41,840 - INFO - Total chats ditemukan: 1
+2024-11-07 02:41:41,845 - INFO - ==========================================Program selesai==========================================
+2024-11-07 02:41:44,055 - INFO - 👤 Pembeli: Selamat Sore Min
+2024-11-07 02:41:44,055 - INFO - 🤖 AI: Selendang pada kebaya itu permanen, jadi tidak bisa dilepas pasang ya kak. Jika ada pertanyaan lain, silakan tanya! 😊
+2024-11-07 02:41:44,382 - INFO - ✅ Pesan berhasil dikirim ke aureliashafiyatunisa25012001
+2024-11-07 02:44:28,266 - INFO - ==========================================Program dimulai==========================================
+2024-11-07 02:44:28,648 - INFO - Total chats ditemukan: 0
+2024-11-07 02:44:28,652 - INFO - ==========================================Program selesai==========================================

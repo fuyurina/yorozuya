@@ -16,6 +16,31 @@ import {
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 
+// Perbarui interface OrderDetail
+interface OrderItem {
+  item_id: number;
+  item_name: string;
+  model_name: string;
+  model_quantity_purchased: number;
+  model_discounted_price: number;
+  image_url: string;
+}
+
+interface OrderDetail {
+  order_sn: string;
+  buyer_user_id: number;
+  buyer_username: string;
+  order_status: string;
+  total_amount: number;
+  shipping_carrier: string;
+  payment_method: string;
+  message_to_seller: string;
+  cancel_reason: string;
+  order_items: OrderItem[];
+  total_belanja: number;
+  create_time: number;
+}
+
 export default function OrderChangesPage() {
   const { 
     perubahanPesanan, 
@@ -33,6 +58,8 @@ export default function OrderChangesPage() {
   const [selectedOrder, setSelectedOrder] = useState<PerubahanPesanan | null>(null)
   const [chatMessage, setChatMessage] = useState('')
   const chatContainerRef = useRef<HTMLDivElement>(null)
+  const [orderDetails, setOrderDetails] = useState<OrderDetail[] | null>(null)
+  const [loadingDetails, setLoadingDetails] = useState(false)
 
   const handleStatusClick = async (order: PerubahanPesanan) => {
     const newStatus = order.status === "BARU" ? "DICATAT" : "BARU"
@@ -52,8 +79,9 @@ export default function OrderChangesPage() {
   const handleChatClick = async (order: PerubahanPesanan) => {
     setSelectedOrder(order)
     setIsDialogOpen(true)
-    if (order.msg_id && order.store_id) {
-      await fetchChats(order.msg_id.toString(), order.store_id)
+    if (order.msg_id && order.store_id && order.user_id) {
+      await fetchChats(order.msg_id.toString(), order.store_id.toString())
+      await fetchOrderDetails(order.user_id.toString())
     }
   }
 
@@ -85,6 +113,25 @@ export default function OrderChangesPage() {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
     }
   }, [chats])
+
+  // Tambahkan fungsi untuk mengambil detail pesanan
+  const fetchOrderDetails = async (userId: string) => {
+    setLoadingDetails(true)
+    try {
+      const response = await fetch(`/api/order_details?user_id=${userId}`)
+      const result = await response.json()
+      setOrderDetails(result.data) // Simpan array dari result.data
+    } catch (error) {
+      console.error('Error fetching order details:', error)
+      toast({
+        title: "Gagal mengambil detail pesanan",
+        description: "Terjadi kesalahan saat mengambil data pesanan.",
+        variant: "destructive"
+      })
+    } finally {
+      setLoadingDetails(false)
+    }
+  }
 
   if (loading) return (
     <div className="container mx-auto px-4 py-6">
@@ -184,39 +231,139 @@ export default function OrderChangesPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] w-[95vw] max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] flex flex-col">
           <DialogHeader className="py-2 border-b">
-            <DialogTitle className="text-sm flex justify-between items-center">
-              <span className="font-medium">{selectedOrder?.nomor_invoice}</span>
-              <span className="text-gray-500">
-                {selectedOrder?.nama_toko.split(' ')[0]}
-              </span>
-              <span className="text-xs text-gray-400">ID: {selectedOrder?.id_pengguna}</span>
+            <DialogTitle className="flex justify-between items-center">
+              <span>{selectedOrder?.nomor_invoice}</span>
+              <span className="text-gray-500">{selectedOrder?.nama_toko}</span>
+              <span className="text-sm text-gray-400">ID: {selectedOrder?.id_pengguna}</span>
             </DialogTitle>
           </DialogHeader>
-          <div ref={chatContainerRef} className="flex-grow overflow-y-auto p-2 sm:p-4 space-y-3">
-            {chats.map((chat) => (
-              <div key={chat.id} className={`flex ${chat.sender === 'seller' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] p-2 sm:p-3 rounded-lg ${chat.sender === 'seller' ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                  <p className="text-xs sm:text-sm">{chat.message}</p>
-                  <p className="text-[10px] sm:text-xs text-gray-500 mt-1">{new Date(chat.timestamp).toLocaleString()}</p>
-                </div>
+
+          <div className="flex-grow flex gap-4 h-[calc(90vh-100px)]">
+            {/* Chat Section */}
+            <div className="w-1/2 flex flex-col">
+              <div ref={chatContainerRef} className="flex-grow overflow-y-auto p-4 space-y-4">
+                {chats.map((chat) => (
+                  <div key={chat.id} className={`flex ${chat.sender === 'seller' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] rounded-lg ${
+                      chat.sender === 'seller' 
+                      ? 'bg-blue-100 ml-auto' 
+                      : 'bg-gray-100'
+                    } p-3`}>
+                      <p className="text-sm whitespace-pre-wrap break-words">{chat.message}</p>
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        {new Date(chat.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+              
+              <form onSubmit={handleSendMessage} className="p-4 border-t">
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Ketik pesan..."
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    className="flex-grow"
+                    disabled={isLoadingSend}
+                  />
+                  <Button type="submit" size="sm" disabled={isLoadingSend}>
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </form>
+            </div>
+
+            {/* Order Details Section */}
+            <div className="w-1/2 border-l flex flex-col">
+              <div className="overflow-y-auto p-4">
+                {loadingDetails ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                ) : orderDetails && orderDetails.length > 0 ? (
+                  <div className="space-y-4">
+                    {orderDetails.map((order) => (
+                      <div 
+                        key={order.order_sn} 
+                        className={`bg-white rounded-lg border shadow-sm transition-all duration-300
+                          ${order.order_sn === selectedOrder?.nomor_invoice 
+                            ? 'border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]' 
+                            : 'hover:shadow-md'
+                          }
+                        `}
+                      >
+                        {/* Header Pesanan */}
+                        <div className="p-3 border-b">
+                          <div className="flex justify-between items-center mb-2">
+                            <h3 className="text-xs font-medium">No. Pesanan: {order.order_sn}</h3>
+                            <Badge variant="outline" className="bg-black text-white hover:bg-black text-xs">
+                              {order.order_status}
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-12 text-xs text-gray-500">
+                            <div className="space-y-0.5">
+                              <p>Pembeli: {order.buyer_username}</p>
+                              <p>{order.shipping_carrier}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <p>{new Date(order.create_time * 1000).toLocaleString()}</p>
+                              <p>{order.payment_method}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Detail Produk */}
+                        <div className="p-3">
+                          {order.order_items.map((item) => (
+                            <div key={item.item_id} className="flex gap-3 items-start">
+                              <img 
+                                src={item.image_url} 
+                                alt={item.item_name}
+                                className="w-20 h-20 object-cover rounded-md border"
+                              />
+                              <div className="flex-1">
+                                <h4 className="font-medium text-sm line-clamp-2 mb-1">
+                                  {item.item_name}
+                                </h4>
+                                <p className="text-xs text-gray-600 mb-2">
+                                  Variasi: {item.model_name}
+                                </p>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs text-gray-600">
+                                    {item.model_quantity_purchased}x
+                                  </span>
+                                  <span className="font-medium text-sm">
+                                    Rp {item.model_discounted_price.toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Footer dengan Total */}
+                        <div className="p-3 bg-gray-50 rounded-b-lg border-t">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium text-sm">Total Belanja</span>
+                            <span className="text-base font-bold">
+                              Rp {order.total_belanja.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500">Tidak ada detail pesanan</p>
+                )}
+              </div>
+            </div>
           </div>
-          <form onSubmit={handleSendMessage} className="mt-2 flex items-center space-x-2 p-2 sm:p-4 border-t">
-            <Input
-              type="text"
-              placeholder="Ketik pesan..."
-              value={chatMessage}
-              onChange={(e) => setChatMessage(e.target.value)}
-              className="flex-grow text-sm"
-              disabled={isLoadingSend}
-            />
-            <Button type="submit" size="sm" disabled={isLoadingSend}>
-              <Send className="h-3 w-3 sm:h-4 sm:w-4" />
-            </Button>
-          </form>
         </DialogContent>
       </Dialog>
     </div>

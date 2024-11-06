@@ -184,8 +184,8 @@ def reply_to_chat(chat, reply_text):
         if not isinstance(chat, dict):
             return None
             
-        to_id = chat.get('mp_buyer_id')
-        shop_id = chat.get('mp_store_id')
+        to_id = chat.get('buyer_id')
+        shop_id = chat.get('shop_id')
         username = chat.get('username', 'Unknown')
         
         if not to_id or not shop_id:
@@ -230,6 +230,12 @@ def box_exec(conversation_id, shop_id, to_name, latest_message, shop_name, unrea
             
         messages.reverse()
         
+        # Tambahkan pengecekan pesan terakhir untuk menghindari duplikasi
+        last_message = messages[-1] if messages else None
+        if last_message and last_message.get('message_type') != 'text':
+            logging.info(f"Pesan terakhir adalah dari toko, skip balasan untuk menghindari duplikasi")
+            return
+            
         # Ambil pesan pertama untuk mendapatkan informasi
         first_message = messages[0]
         
@@ -299,11 +305,10 @@ def box_exec(conversation_id, shop_id, to_name, latest_message, shop_name, unrea
             
             chat_data = {
                 'marketplace': 'shopee',
-                'mp_store_id': str(shop_id),
-                'mp_msg_id': conversation_id,
-                'mp_buyer_id': str(to_id),
-                'chat_code': conversation_id,
-                'message': teks_balasan,
+                'shop_id': str(shop_id),
+                'conversation_id': conversation_id,
+                'buyer_id': str(to_id),
+                'balasan': teks_balasan,
                 'type': 'text',
                 'username': to_name
             }
@@ -330,7 +335,7 @@ def box_exec(conversation_id, shop_id, to_name, latest_message, shop_name, unrea
 
 def send_replies():
     try:
-        datachat = requests.get("http://localhost:3000/api/msg/get_conversation_list?unread=true&limit=20")
+        datachat = requests.get("https://yorozuya.onrender.com/api/msg/get_conversation_list?unread=true&limit=20")
         # Log raw response
         
         
@@ -438,7 +443,7 @@ def ubah_detail_pesanan(id_pengguna: str, nama_toko: str, nomor_invoice: str, de
         return False
 
 def ambil_data_pesanan_shopee(user_id: str) -> dict:
-    url = f"http://localhost:3000/api/order_details?user_id={user_id}"
+    url = f"https://yorozuya.onrender.com/api/order_details?user_id={user_id}"
     try:
         response = requests.get(url)
         if response.status_code == 200:
@@ -460,7 +465,7 @@ def setup_logging():
     log_file = os.path.join(log_directory, 'chatbot.log')
 
     # Konfigurasi format logging
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     
     # File handler untuk menyimpan log ke file
     file_handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=5)
@@ -473,8 +478,16 @@ def setup_logging():
     # Konfigurasi logger
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
+    
+    # Menghapus handler yang sudah ada
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+        
     logger.addHandler(file_handler)
     logger.addHandler(stream_handler)
+
+    # Mematikan log dari httpx
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
 def main():
     setup_logging()
