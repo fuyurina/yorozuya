@@ -456,6 +456,22 @@ def ambil_data_pesanan_shopee(user_id: str) -> dict:
     except Exception as e:
         return None
 
+def jalankan_proses_order() -> bool:
+    url = "https://yorozuya.onrender.com/api/proses_order"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            logging.info("✅ Berhasil menjalankan proses order di server")
+            return True
+        else:
+            logging.error(f"❌ Gagal menjalankan proses order. Status code: {response.status_code}")
+            return False
+    except requests.exceptions.ConnectionError as e:
+        logging.error(f"❌ Terjadi kesalahan koneksi saat menjalankan proses order: {str(e)}")
+        return False
+    except Exception as e:
+        logging.error(f"❌ Terjadi kesalahan tidak terduga saat menjalankan proses order: {str(e)}")
+        return False
 
 def setup_logging():
     log_directory = 'logs'
@@ -492,7 +508,10 @@ def setup_logging():
 def main():
     setup_logging()
     logging.info("==========================================Program dimulai==========================================")
-    
+    if jalankan_proses_order():
+        logging.info("✅ Proses order berhasil dijalankan")
+    else:
+        logging.error("❌ Gagal menjalankan proses order")
     send_replies()
     logging.info("==========================================Program selesai==========================================")
 

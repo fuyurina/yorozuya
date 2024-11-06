@@ -84,7 +84,7 @@ export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="sm:max-w-[600px]">
+      <SheetContent className="w-[90%] md:w-[600px]">
         <SheetHeader className="mb-5">
           <SheetTitle className="text-lg font-bold">
             Detail Pesanan
@@ -102,13 +102,15 @@ export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
             <div className="space-y-6">
               {/* Nomor Pesanan */}
               <div className="bg-muted p-4 rounded-lg">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Receipt className="h-4 w-4" />
-                  {orderDetails.order_sn}
-                </h3>
-                <Badge variant="outline" className="mt-2">
-                  {orderDetails.order_status}
-                </Badge>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Receipt className="h-4 w-4" />
+                    {orderDetails.order_sn}
+                  </h3>
+                  <Badge variant="outline" className="ml-auto">
+                    {orderDetails.order_status}
+                  </Badge>
+                </div>
               </div>
 
               {/* Informasi Toko & Pembeli */}
@@ -160,36 +162,36 @@ export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs">Produk</TableHead>
-                        <TableHead className="text-xs">Varian</TableHead>
-                        <TableHead className="text-xs text-right">Harga</TableHead>
-                        <TableHead className="text-xs text-center">Qty</TableHead>
-                        <TableHead className="text-xs text-right">Subtotal</TableHead>
+                        <TableHead className="text-[10px] md:text-xs">Produk</TableHead>
+                        <TableHead className="text-[10px] md:text-xs">Varian</TableHead>
+                        <TableHead className="text-[10px] md:text-xs text-right">Harga</TableHead>
+                        <TableHead className="text-[10px] md:text-xs text-center">Qty</TableHead>
+                        <TableHead className="text-[10px] md:text-xs text-right">Subtotal</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {orderDetails?.order_items && orderDetails.order_items.length > 0 ? (
                         orderDetails.order_items.map((item, index) => (
                           <TableRow key={index}>
-                            <TableCell className="text-xs">
+                            <TableCell className="text-[10px] md:text-xs">
                               <div>
-                                <p>{item.item_name}</p>
+                                <p className="hidden md:block">{item.item_name}</p>
                                 <p className="text-muted-foreground">{item.item_sku}</p>
                               </div>
                             </TableCell>
-                            <TableCell className="text-xs">{item.model_name}</TableCell>
-                            <TableCell className="text-xs text-right">
+                            <TableCell className="text-[10px] md:text-xs">{item.model_name}</TableCell>
+                            <TableCell className="text-[10px] md:text-xs text-right">
                               Rp {item.model_discounted_price.toLocaleString('id-ID')}
                             </TableCell>
-                            <TableCell className="text-xs text-center">{item.model_quantity_purchased}</TableCell>
-                            <TableCell className="text-xs text-right">
+                            <TableCell className="text-[10px] md:text-xs text-center">{item.model_quantity_purchased}</TableCell>
+                            <TableCell className="text-[10px] md:text-xs text-right">
                               Rp {(item.model_discounted_price * item.model_quantity_purchased).toLocaleString('id-ID')}
                             </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-4 text-sm text-gray-500">
+                          <TableCell colSpan={5} className="text-center py-4 text-[10px] md:text-sm text-gray-500">
                             Tidak ada data produk
                           </TableCell>
                         </TableRow>
@@ -202,8 +204,8 @@ export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
               {/* Total */}
               <div className="bg-muted p-4 rounded-lg mt-4">
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold">Total Pembayaran</span>
-                  <span className="font-semibold">
+                  <span className="text-[12px] md:text-base font-semibold">Total Pembayaran</span>
+                  <span className="text-[12px] md:text-base font-semibold">
                     Rp {orderDetails.total_belanja?.toLocaleString('id-ID') || '0'}
                   </span>
                 </div>
