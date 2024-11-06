@@ -682,6 +682,139 @@ export class ShopeeAPI {
       throw error;
     }
   }
+
+  async downloadShippingDocument(
+    shopId: number,
+    accessToken: string,
+    orderList: Array<{
+      order_sn: string,
+      package_number?: string,
+      shipping_document_type?: string
+    }>
+  ): Promise<Buffer | any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/logistics/download_shipping_document';
+    const path = '/api/v2/logistics/download_shipping_document';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    const body = {
+      order_list: orderList
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    
+    try {
+      // Ubah konfigurasi axios untuk menerima response berupa arraybuffer
+      const response = await axios.post(fullUrl, body, { 
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        responseType: 'arraybuffer' // Tambahkan ini
+      });
+
+      // Pastikan response adalah PDF
+      if (response.headers['content-type']?.includes('application/pdf')) {
+        return Buffer.from(response.data);
+      }
+
+      // Jika bukan PDF, mungkin ada pesan error dari API
+      const errorResponse = JSON.parse(response.data.toString());
+      console.error('Error response dari Shopee API:', errorResponse);
+      
+      return {
+        error: errorResponse.error || "unknown_error",
+        message: errorResponse.message || "Terjadi kesalahan dari API Shopee"
+      };
+
+    } catch (error) {
+      console.error('Kesalahan saat mengunduh dokumen pengiriman:', error);
+      
+      // Jika error response berisi data
+      if (axios.isAxiosError(error) && error.response?.data) {
+        try {
+          const errorData = JSON.parse(error.response.data.toString());
+          return {
+            error: errorData.error || "api_error",
+            message: errorData.message || "Terjadi kesalahan dari API Shopee"
+          };
+        } catch (e) {
+          // Jika tidak bisa di-parse sebagai JSON
+          return {
+            error: "parse_error",
+            message: `Terjadi kesalahan saat memproses response: ${error.message}`
+          };
+        }
+      }
+
+      return {
+        error: "request_error",
+        message: `Terjadi kesalahan saat request: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
+  async getOrderList(
+    shopId: number, 
+    accessToken: string, 
+    options: {
+      time_range_field: 'create_time' | 'update_time',
+      time_from: number,
+      time_to: number,
+      page_size?: number,
+      cursor?: string,
+      order_status?: 'UNPAID' | 'READY_TO_SHIP' | 'PROCESSED' | 'SHIPPED' | 'COMPLETED' | 'IN_CANCEL' | 'CANCELLED' | 'ALL',
+      response_optional_fields?: string[]
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/order/get_order_list';
+    const path = '/api/v2/order/get_order_list';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken,
+      time_range_field: options.time_range_field,
+      time_from: options.time_from.toString(),
+      time_to: options.time_to.toString(),
+      page_size: (options.page_size || 20).toString(),
+    });
+
+    if (options.cursor) {
+      params.append('cursor', options.cursor);
+    }
+
+    if (options.order_status) {
+      params.append('order_status', options.order_status);
+    }
+
+    if (options.response_optional_fields && options.response_optional_fields.length > 0) {
+      params.append('response_optional_fields', options.response_optional_fields.join(','));
+    }
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan ke Shopee API untuk daftar pesanan: URL=${fullUrl}`);
+
+    try {
+      const response = await axios.get(fullUrl, { headers });
+      console.info(`Response status: ${response.status}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error mendapatkan daftar pesanan:', error);
+      throw error;
+    }
+  }
 }
 
 export default ShopeeAPI;

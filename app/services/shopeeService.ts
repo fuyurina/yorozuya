@@ -196,3 +196,142 @@ export function generateAuthUrl(): string {
     throw new Error('Gagal membuat URL otentikasi');
   }
 }
+
+async function retryOperation<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  delay: number = 1000
+): Promise<T> {
+  let lastError;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
+export async function downloadShippingDocument(
+  shopId: number,
+  orderList: Array<{
+    order_sn: string,
+    package_number?: string,
+    shipping_document_type: string
+  }>
+): Promise<Buffer | any> {
+  return retryOperation(async () => {
+    const accessToken = await getValidAccessToken(shopId);
+    
+    console.log('Download request:', {
+      shopId,
+      orderList,
+      accessToken: accessToken ? 'exists' : 'missing'
+    });
+
+    if (!shopId || !orderList || orderList.length === 0) {
+      console.error('Invalid parameters');
+      return {
+        error: "invalid_parameters",
+        message: "Parameter shopId dan orderList harus diisi"
+      };
+    }
+
+    const formattedOrderList = orderList.map(order => {
+      const formattedOrder: {
+        order_sn: string,
+        package_number?: string,
+        shipping_document_type: string
+      } = {
+        order_sn: order.order_sn,
+        shipping_document_type: order.shipping_document_type || "THERMAL_AIR_WAYBILL"
+      };
+
+      if (order.package_number && order.package_number.trim() !== '') {
+        formattedOrder.package_number = order.package_number;
+      }
+
+      return formattedOrder;
+    });
+
+    const response = await shopeeApi.downloadShippingDocument(
+      shopId, 
+      accessToken, 
+      formattedOrderList
+    );
+
+    console.log('Shopee API Response:', {
+      isBuffer: response instanceof Buffer,
+      responseType: typeof response,
+      error: response.error,
+      message: response.message
+    });
+    
+    if (response instanceof Buffer) {
+      return response;
+    }
+
+    if (response.error) {
+      console.error('Shopee API Error:', response);
+      return {
+        error: response.error,
+        message: response.message || "Gagal mengunduh dokumen dari Shopee API"
+      };
+    }
+
+    console.error('Unexpected response format:', response);
+    return {
+      error: "invalid_response",
+      message: "Response tidak valid dari Shopee API"
+    };
+  });
+}
+
+interface OrderListOptions {
+  timeRangeField?: 'create_time' | 'update_time';
+  startTime?: number;
+  endTime?: number;
+  orderStatus?: 'UNPAID' | 'READY_TO_SHIP' | 'PROCESSED' | 'SHIPPED' | 'COMPLETED' | 'IN_CANCEL' | 'CANCELLED' | 'ALL';
+  pageSize?: number;
+  cursor?: string;
+}
+
+export async function getOrderList(shopId: number, options: OrderListOptions = {}) {
+  try {
+    console.log(shopId)
+    const accessToken = await getValidAccessToken(shopId);
+    console.log(accessToken)
+    const response = await shopeeApi.getOrderList(shopId, accessToken, {
+      time_range_field: options.timeRangeField || 'update_time',
+      time_from: options.startTime || Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60), // Default to 7 days ago
+      time_to: options.endTime || Math.floor(Date.now() / 1000), // Default to current time
+      page_size: options.pageSize || 50,
+      cursor: options.cursor || '',
+      order_status: options.orderStatus || 'ALL'
+    });
+
+    if (response.error) {
+      throw new Error(response.message || 'Gagal mengambil daftar pesanan');
+    }
+
+    return {
+      success: true,
+      data: response.response,
+      request_id: response.request_id
+    };
+
+  } catch (error: unknown) {
+    console.error('Gagal mengambil daftar pesanan:', error);
+    return {
+      success: false,
+      error: "fetch_failed",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
