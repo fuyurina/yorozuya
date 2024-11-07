@@ -22,6 +22,7 @@ import { mergePDFs } from '@/app/utils/pdfUtils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Check, X } from 'lucide-react'; // Tambahkan import icon
+import { OrderHistory } from '@/app/dashboard/OrderHistory';
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleString('id-ID', {
@@ -448,6 +449,21 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     }
   };
 
+  // Tambahkan state untuk OrderHistory
+  const [isOrderHistoryOpen, setIsOrderHistoryOpen] = useState(false)
+  const [selectedUserId, setSelectedUserId] = useState<string>('')
+
+  // Tambahkan fungsi handler yang diperbarui
+  const handleUsernameClick = (userId: number) => {
+    console.log('Clicked userId:', userId);
+    if (!userId) {
+      console.warn('User ID tidak valid');
+      return;
+    }
+    setSelectedUserId(userId.toString());
+    setIsOrderHistoryOpen(true);
+  }
+
   return (
     <div className="w-full">
       {bulkProgress.total > 0 && (
@@ -661,7 +677,14 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                   >
                     {order.order_sn}
                   </TableCell>
-                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.buyer_username || '-'}</TableCell>
+                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                    <button
+                      onClick={() => handleUsernameClick(order.buyer_user_id)}
+                      className="hover:text-primary"
+                    >
+                      {order.buyer_username}
+                    </button>
+                  </TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">Rp {order.total_amount.toLocaleString('id-ID')}</TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.sku_qty || '-'}</TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.shipping_carrier || '-'} ({order.tracking_number || '-'})</TableCell>
@@ -747,6 +770,12 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <OrderHistory 
+        userId={selectedUserId}
+        isOpen={isOrderHistoryOpen}
+        onClose={() => setIsOrderHistoryOpen(false)}
+      />
     </div>
   )
 }

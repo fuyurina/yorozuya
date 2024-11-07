@@ -47,6 +47,23 @@ interface OrderDetail {
   cancel_reason?: string
 }
 
+// Tambahkan fungsi untuk menentukan variant badge
+const getStatusBadgeVariant = (status: string) => {
+  switch (status) {
+    case 'SHIPPED':
+      return 'bg-blue-100 text-blue-800 hover:bg-blue-100'
+    case 'COMPLETED':
+      return 'bg-green-100 text-green-800 hover:bg-green-100'
+    case 'IN_CANCEL':
+    case 'CANCELLED':
+      return 'bg-red-100 text-red-800 hover:bg-red-100'
+    case 'READY_TO_SHIP':
+      return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+    default:
+      return 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+  }
+}
+
 export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
   const [orderDetails, setOrderDetails] = useState<OrderDetail | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -103,19 +120,23 @@ export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
             <div className="space-y-6">
               {/* Nomor Pesanan */}
               <div className="bg-muted p-4 rounded-lg">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-semibold flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 justify-between">
+                  <h3 className="text-[11px] md:text-base font-semibold flex items-center gap-2">
                     <Receipt className="h-4 w-4" />
                     {orderDetails.order_sn}
                   </h3>
-                  <Badge variant="outline" className="ml-auto">
+                  <Badge 
+                    variant="outline" 
+                    className={`text-[10px] md:text-sm ${getStatusBadgeVariant(orderDetails.order_status)}`}
+                  >
                     {orderDetails.order_status}
                   </Badge>
                 </div>
                 {orderDetails.order_status === 'IN_CANCEL' || orderDetails.order_status === 'CANCELLED' ? (
                   <div className="mt-2">
-                    <p className="text-sm font-medium text-red-600">{orderDetails.cancel_reason || 'Tidak ada alasan yang diberikan'}</p>
-                    
+                    <p className="text-[10px] md:text-sm font-medium text-red-600">
+                      {orderDetails.cancel_reason || 'Tidak ada alasan yang diberikan'}
+                    </p>
                   </div>
                 ) : null}
               </div>

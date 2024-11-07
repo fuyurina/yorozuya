@@ -6,14 +6,31 @@ import { getValidAccessToken } from './tokenManager';
 
 
 export async function getShopInfo(shopId: number): Promise<any> {
-    const { data, error } = await supabase
-        .from('shopee_tokens')
-        .select('*')
-        .eq('shop_id', shopId)
-        .single();
+    try {
+        if (!shopId) {
+            throw new Error('ID Toko diperlukan');
+        }
 
-    if (error) throw error;
-    return data;
+        const { data, error } = await supabase
+            .from('shopee_tokens')
+            .select('*')
+            .eq('shop_id', shopId)
+            .single();
+
+        if (error) {
+            console.error('Gagal mengambil informasi toko:', error);
+            throw error;
+        }
+
+        if (!data) {
+            throw new Error('Toko tidak ditemukan');
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Gagal mendapatkan informasi toko:', error);
+        throw new Error('Gagal mengambil informasi toko dari database');
+    }
 }
 
 export async function getAllShops(): Promise<any[]> {

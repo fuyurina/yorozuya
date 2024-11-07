@@ -12,6 +12,32 @@ import { Textarea } from "@/components/ui/textarea"
 
 import { PromptDialog } from './PromptDialog'
 
+async function checkOpenAIKey(apiKey: string) {
+  try {
+    const response = await fetch('https://api.openai.com/v1/models', {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      }
+    });
+    
+    console.log('OpenAI API Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('OpenAI API Error:', errorData);
+    }
+
+    return response.ok;
+  } catch (error) {
+    console.error('OpenAI API Check Error:', error);
+    return false;
+  }
+}
+
 async function getSettings() {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, {
     cache: 'no-store'
@@ -23,6 +49,11 @@ async function getSettings() {
 export default async function PengaturanPage() {
   const { pengaturan, autoShip } = await getSettings();
   const settings = Array.isArray(pengaturan) ? pengaturan[0] : pengaturan;
+
+  // Cek API key jika tersedia
+  const isValidApiKey = settings?.openai_api ? 
+    await checkOpenAIKey(settings.openai_api) : 
+    false;
 
   return (
     <div className="container mx-auto p-4">
@@ -37,11 +68,21 @@ export default async function PengaturanPage() {
             <div className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="openai_api">API Key OpenAI</Label>
-                <Input 
-                  id="openai_api" 
-                  name="openai_api"
-                  defaultValue={settings?.openai_api || ''}
-                />
+                <div className="flex gap-2 items-center">
+                  <Input 
+                    id="openai_api" 
+                    name="openai_api"
+                    defaultValue={settings?.openai_api || ''}
+                  />
+                  {settings?.openai_api && (
+                    <div 
+                      className={`w-3 h-3 rounded-full ${
+                        isValidApiKey ? "bg-green-500" : "bg-red-500"
+                      }`}
+                      title={isValidApiKey ? "API Key valid" : "API Key tidak valid"}
+                    />
+                  )}
+                </div>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="openai_model">Model OpenAI</Label>

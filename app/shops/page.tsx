@@ -1,7 +1,7 @@
 'use client';
 
 import { useShops } from '@/app/hooks/useShops';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface SyncStatus {
   [shopId: number]: {
@@ -11,9 +11,76 @@ interface SyncStatus {
   };
 }
 
+interface TokenStatus {
+  [shopId: number]: {
+    is_active: boolean;
+    message: string;
+    isChecking: boolean;
+  };
+}
+
 export default function ShopsPage() {
   const { shops, isLoading, error } = useShops();
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({});
+  const [tokenStatus, setTokenStatus] = useState<TokenStatus>({});
+
+  const checkTokens = async (shopsList: any[]) => {
+    if (!shopsList || shopsList.length === 0) return;
+
+    // Set status checking untuk semua toko
+    const initialStatus = shopsList.reduce((acc, shop) => ({
+      ...acc,
+      [shop.shop_id]: { isChecking: true, is_active: false, message: '' }
+    }), {});
+    setTokenStatus(initialStatus);
+
+    try {
+      const response = await fetch('/api/cek-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          shop_ids: shopsList.map(shop => shop.shop_id)
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+
+      const newStatus = result.data.reduce((acc: TokenStatus, status: any) => ({
+        ...acc,
+        [status.shop_id]: {
+          is_active: status.is_active,
+          message: status.message,
+          isChecking: false
+        }
+      }), {});
+
+      setTokenStatus(newStatus);
+    } catch (err) {
+      console.error('Gagal mengecek token:', err);
+      const errorStatus = shopsList.reduce((acc, shop) => ({
+        ...acc,
+        [shop.shop_id]: { 
+          isChecking: false, 
+          is_active: false, 
+          message: 'Gagal mengecek token' 
+        }
+      }), {});
+      setTokenStatus(errorStatus);
+    }
+  };
+
+  // Tambahkan useEffect untuk mengecek token otomatis
+  useEffect(() => {
+    if (shops && !isLoading) {
+      checkTokens(shops);
+    }
+  }, [shops, isLoading]);
 
   const handleSync = async (shopId: number) => {
     try {
@@ -129,8 +196,24 @@ export default function ShopsPage() {
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <p className="text-sm text-gray-600 font-medium">Status Token</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-sm text-gray-700">Aktif</span>
+                    {tokenStatus[shop.shop_id]?.isChecking ? (
+                      <div className="flex items-center gap-2">
+                        <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span className="text-sm text-blue-500">Mengecek...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className={`w-2 h-2 rounded-full ${
+                          tokenStatus[shop.shop_id]?.is_active ? 'bg-green-500' : 'bg-red-500'
+                        }`}></div>
+                        <span className="text-sm text-gray-700">
+                          {tokenStatus[shop.shop_id]?.message || 'Belum dicek'}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
 
