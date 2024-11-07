@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
 const API_URL = 'https://virtusim.com/api/json.php'
-const API_KEY = '3AUdNytY10fF7GQjmcpSk5sRBlP9Ji'
+const API_KEY = 'p24hcsn3YeujU7DHSiIvZlByaGTdPo'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
