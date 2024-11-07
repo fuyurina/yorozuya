@@ -44,6 +44,7 @@ interface OrderDetail {
   order_status: string
   order_items: OrderItem[]
   total_belanja: number
+  cancel_reason?: string
 }
 
 export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
@@ -111,6 +112,12 @@ export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
                     {orderDetails.order_status}
                   </Badge>
                 </div>
+                {orderDetails.order_status === 'IN_CANCEL' || orderDetails.order_status === 'CANCELLED' ? (
+                  <div className="mt-2">
+                    <p className="text-sm font-medium text-red-600">{orderDetails.cancel_reason || 'Tidak ada alasan yang diberikan'}</p>
+                    
+                  </div>
+                ) : null}
               </div>
 
               {/* Informasi Toko & Pembeli */}
@@ -173,18 +180,18 @@ export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
                       {orderDetails?.order_items && orderDetails.order_items.length > 0 ? (
                         orderDetails.order_items.map((item, index) => (
                           <TableRow key={index}>
-                            <TableCell className="text-[10px] md:text-xs">
+                            <TableCell className="text-[10px] md:text-xs w-full overflow-hidden text-ellipsis whitespace-nowrap">
                               <div>
-                                <p className="hidden md:block">{item.item_name}</p>
-                                <p className="text-muted-foreground">{item.item_sku}</p>
+                                
+                                <p className="text-[10px] md:text-xs">{item.item_sku}</p>
                               </div>
                             </TableCell>
-                            <TableCell className="text-[10px] md:text-xs">{item.model_name}</TableCell>
-                            <TableCell className="text-[10px] md:text-xs text-right">
+                            <TableCell className="text-[10px] md:text-xs whitespace-nowrap">{item.model_name}</TableCell>
+                            <TableCell className="text-[10px] md:text-xs text-right whitespace-nowrap">
                               Rp {item.model_discounted_price.toLocaleString('id-ID')}
                             </TableCell>
-                            <TableCell className="text-[10px] md:text-xs text-center">{item.model_quantity_purchased}</TableCell>
-                            <TableCell className="text-[10px] md:text-xs text-right">
+                            <TableCell className="text-[10px] md:text-xs text-center whitespace-nowrap">{item.model_quantity_purchased}</TableCell>
+                            <TableCell className="text-[10px] md:text-xs text-right whitespace-nowrap">
                               Rp {(item.model_discounted_price * item.model_quantity_purchased).toLocaleString('id-ID')}
                             </TableCell>
                           </TableRow>

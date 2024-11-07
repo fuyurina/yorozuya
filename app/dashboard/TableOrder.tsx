@@ -365,16 +365,25 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
   // Update fungsi untuk menghitung dokumen yang belum dicetak (global)
   const getUnprintedDocuments = () => {
     return orders.filter(order => 
-      isOrderCheckable(order) && !order.is_printed
+      isOrderCheckable(order) && 
+      !order.is_printed
     ).length;
   };
 
   // Update fungsi handlePrintUnprinted untuk menggunakan orders (global)
   const handlePrintUnprinted = async () => {
     const unprintedOrders = orders
-      .filter(order => isOrderCheckable(order) && !order.is_printed)
+      .filter(order => 
+        isOrderCheckable(order) && 
+        !order.is_printed
+      )
       .map(order => order.order_sn);
       
+    if (unprintedOrders.length === 0) {
+      toast.info('Tidak ada dokumen yang belum dicetak');
+      return;
+    }
+    
     // Set selected orders ke dokumen yang belum dicetak
     setSelectedOrders(unprintedOrders);
     // Gunakan handleBulkPrint yang sudah ada
