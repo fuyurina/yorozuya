@@ -168,43 +168,39 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
   const handleDownloadDocument = async (order: OrderItem) => {
     try {
-      if (order.document_status !== 'READY') {
-        console.warn('Dokumen belum siap untuk diunduh');
-        return;
-      }
-
-      const orderList: ShippingDocumentParams[] = [{
+      const orderParams: ShippingDocumentParams[] = [{
         order_sn: order.order_sn,
         package_number: order.package_number,
-        shipping_document_type: "THERMAL_AIR_WAYBILL" as const,
+        shipping_document_type: "THERMAL_AIR_WAYBILL",
         shipping_carrier: order.shipping_carrier
       }];
 
-      const blob = await downloadDocument(order.shop_id, orderList);
+      const blob = await downloadDocument(order.shop_id, orderParams);
+      const pdfUrl = URL.createObjectURL(blob);
       
-      // Panggil callback untuk update data di parent
-      if (onOrderUpdate) {
-        onOrderUpdate(order.order_sn, { is_printed: true });
-      }
-      
-      // Perbarui data orders secara lokal
-      const updatedOrders = orders.map(o => {
-        if (o.order_sn === order.order_sn) {
-          return { ...o, is_printed: true };
-        }
-        return o;
-      });
-      
-      // Update filtered orders juga
-      setFilteredOrders(updatedOrders);
-      
-      const url = URL.createObjectURL(blob);
-      const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
+      const newWindow = window.open('', '_blank');
       if (newWindow) {
-        setTimeout(() => {
-          newWindow.document.title = `Dokumen ${order.shop_name}`;
-        }, 100);
+        newWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>${order.shop_name}</title>
+            </head>
+            <body style="margin:0;padding:0;height:100vh;">
+              <embed src="${pdfUrl}" type="application/pdf" width="100%" height="100%">
+            </body>
+          </html>
+        `);
+        newWindow.document.close();
+        
+        // Fokus kembali ke tab saat ini
+        window.focus();
       }
+
+      // Cleanup
+      setTimeout(() => {
+        URL.revokeObjectURL(pdfUrl);
+      }, 1000);
     } catch (err) {
       console.error('Gagal mengunduh dokumen:', err);
     }
@@ -242,15 +238,16 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     processed: number;
     total: number;
     currentCarrier: string;
+    currentShop: string;
   }>({
     processed: 0,
     total: 0,
-    currentCarrier: ''
+    currentCarrier: '',
+    currentShop: ''
   });
 
   // Update fungsi handleBulkPrint
   const handleBulkPrint = async () => {
-    // Jika ada yang dipilih, gunakan selectedOrders, jika tidak gunakan semua order yang dapat dicetak
     const ordersToPrint = selectedOrders.length > 0 
       ? selectedOrders 
       : orders
@@ -262,7 +259,8 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     setBulkProgress({
       processed: 0,
       total: ordersToPrint.length,
-      currentCarrier: ''
+      currentCarrier: '',
+      currentShop: ''
     });
 
     try {
@@ -280,11 +278,16 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
       // Proses setiap toko
       for (const [shopId, shopOrders] of Object.entries(ordersByShop)) {
-        const blobs: Blob[] = [];
-        // Ambil nama toko dari order pertama dalam grup
         const shopName = shopOrders[0].shop_name;
+        const blobs: Blob[] = [];
 
-        // Kelompokkan orders berdasarkan kurir untuk request
+        // Update progress dengan nama toko
+        setBulkProgress(prev => ({
+          ...prev,
+          currentShop: shopName
+        }));
+
+        // Kelompokkan orders berdasarkan kurir
         const ordersByCarrier = shopOrders.reduce((groups: { 
           [key: string]: OrderItem[] 
         }, order) => {
@@ -298,45 +301,70 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
         // Proses setiap kurir
         for (const [carrier, carrierOrders] of Object.entries(ordersByCarrier)) {
+          // Update progress dengan nama toko dan kurir
           setBulkProgress(prev => ({
             ...prev,
-            currentCarrier: carrier
+            currentCarrier: carrier || 'Unknown',
+            currentShop: shopName // Pastikan nama toko tetap ada
           }));
 
           const orderParams: ShippingDocumentParams[] = carrierOrders.map(order => ({
             order_sn: order.order_sn,
             package_number: order.package_number,
-            shipping_document_type: "THERMAL_AIR_WAYBILL" as const,
+            shipping_document_type: "THERMAL_AIR_WAYBILL",
             shipping_carrier: order.shipping_carrier
           }));
 
           const blob = await downloadDocument(parseInt(shopId), orderParams);
           blobs.push(blob);
 
+          // Update jumlah yang telah diproses
           setBulkProgress(prev => ({
             ...prev,
-            processed: prev.processed + carrierOrders.length
+            processed: prev.processed + carrierOrders.length,
+            currentCarrier: carrier || 'Unknown',
+            currentShop: shopName // Pastikan nama toko tetap ada
           }));
 
-          // Delay antar request kurir
+          // Tambahkan delay kecil antara setiap kurir
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        // Gabung semua PDF dari satu toko dan buka dalam satu tab
+        // Proses PDF untuk toko ini
         const mergedPDF = await mergePDFs(blobs);
-        const url = URL.createObjectURL(mergedPDF);
-        const newWindow = window.open(url, '_blank');
+        const pdfUrl = URL.createObjectURL(mergedPDF);
+        
+        const newWindow = window.open('', '_blank');
         if (newWindow) {
-          newWindow.document.title = `Dokumen ${shopName}`;
+          newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>${shopName}</title>
+              </head>
+              <body style="margin:0;padding:0;height:100vh;">
+                <embed src="${pdfUrl}" type="application/pdf" width="100%" height="100%">
+              </body>
+            </html>
+          `);
+          newWindow.document.close();
+          window.focus();
         }
+
+        // Cleanup
+        setTimeout(() => {
+          URL.revokeObjectURL(pdfUrl);
+        }, 1000);
       }
     } catch (error) {
       console.error('Gagal mencetak dokumen:', error);
+      toast.error('Gagal mencetak dokumen');
     } finally {
       setBulkProgress({
         processed: 0,
         total: 0,
-        currentCarrier: ''
+        currentCarrier: '',
+        currentShop: ''
       });
     }
   };
@@ -497,23 +525,55 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
   return (
     <div className="w-full">
       {bulkProgress.total > 0 && (
-        <div className="mb-4 p-2 bg-gray-100 rounded-lg">
-          <div className="flex justify-between mb-2">
-            <span className="text-sm">
-              Mengunduh dokumen {bulkProgress.processed}/{bulkProgress.total}
-            </span>
-            <span className="text-sm text-gray-600">
-              Kurir: {bulkProgress.currentCarrier}
-            </span>
+        <div className="mb-4 p-3 sm:p-4 bg-white dark:bg-gray-800 border rounded-lg shadow-sm">
+          {/* Main Container */}
+          <div className="flex items-center justify-between gap-2 mb-2">
+            {/* Left Section: Progress & Shop */}
+            <div className="flex items-center gap-2 min-w-0">
+              {/* Progress Counter */}
+              <div className="flex items-center gap-2">
+                <Printer size={16} className="text-primary dark:text-white animate-pulse shrink-0" />
+                <span className="text-xs sm:text-sm font-medium dark:text-white whitespace-nowrap">
+                  {bulkProgress.processed}/{bulkProgress.total}
+                </span>
+              </div>
+
+              {/* Shop Info */}
+              {bulkProgress.currentShop && (
+                <span className="flex items-center gap-1 shrink-0">
+                  <Package size={14} className="dark:text-white shrink-0" />
+                  <span className="truncate max-w-[100px] sm:max-w-[200px] text-xs text-gray-600 dark:text-gray-300">
+                    {bulkProgress.currentShop}
+                  </span>
+                </span>
+              )}
+            </div>
+
+            {/* Right Section: Carrier */}
+            {bulkProgress.currentCarrier && (
+              <span className="flex items-center gap-1 shrink-0">
+                <Truck size={14} className="dark:text-white shrink-0" />
+                <span className="text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                  {bulkProgress.currentCarrier}
+                </span>
+              </span>
+            )}
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+
+          {/* Progress Bar */}
+          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
             <div 
-              className="bg-primary h-2 rounded-full transition-all duration-300"
+              className="bg-primary dark:bg-primary-foreground h-1.5 rounded-full transition-all duration-500 ease-in-out"
               style={{ 
                 width: `${(bulkProgress.processed / bulkProgress.total) * 100}%` 
               }}
             />
           </div>
+
+          {/* Progress Message */}
+          <p className="mt-1.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+            Mohon tunggu hingga proses selesai...
+          </p>
         </div>
       )}
 
@@ -537,7 +597,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               </Select>
             </div>
             <div className="hidden sm:flex space-x-2 overflow-x-auto items-center">
-              {/* Tombol checkbox sebelum kategori */}
+              {/* Tombol checkbox hanya untuk desktop */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -557,8 +617,8 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                   onClick={() => handleCategoryChange(category.name)}
                   className={`px-3 py-2 text-xs font-medium rounded-md transition-all
                     ${activeCategory === category.name
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-primary text-white dark:bg-primary-foreground dark:text-primary'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
                     }`}
                 >
                   {category.name} <span className="ml-1 text-xs font-normal">({category.count})</span>
@@ -573,26 +633,41 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           <div className="flex flex-col sm:flex-row gap-2 justify-between">
             {/* Bagian Pencarian dan Filter */}
             <div className="flex items-center gap-2 w-full sm:w-[400px]">
+              {/* Tombol Checkbox */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleToggleCheckbox}
+                className="h-[32px] w-[32px] p-0 shrink-0"
+              >
+                <CheckSquare 
+                  size={16} 
+                  className={showCheckbox ? "text-primary" : "text-gray-500"}
+                />
+              </Button>
+
+              {/* Input Pencarian */}
               <div className="relative flex-1">
                 <input
                   type="text"
                   placeholder="Cari username, kurir, atau no. pesanan"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="px-2 py-1 pl-8 border rounded-md w-full text-xs h-[32px]"
+                  className="px-2 py-1 pl-8 border rounded-md w-full text-xs h-[32px] dark:bg-gray-800 dark:text-white dark:border-gray-700"
                 />
                 <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
               </div>
 
+              {/* Filter Popover */}
               <Popover open={isShopFilterOpen} onOpenChange={setIsShopFilterOpen}>
                 <PopoverTrigger asChild>
-                  <button className="p-1 rounded-md hover:bg-gray-100 h-[32px] w-[32px] flex items-center justify-center">
-                    <Filter size={20} className="text-gray-500" />
+                  <button className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 h-[32px] w-[32px] flex items-center justify-center">
+                    <Filter size={20} className="text-gray-500 dark:text-gray-400" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-56" align="end" side="bottom" sideOffset={5}>
+                <PopoverContent className="w-56 dark:bg-gray-800 dark:border-gray-700" align="end" side="bottom" sideOffset={5}>
                   <div className="space-y-2">
-                    <h3 className="font-semibold">Filter Toko</h3>
+                    <h3 className="font-semibold dark:text-white">Filter Toko</h3>
                     {shops.map(shop => (
                       <div key={shop} className="flex items-center space-x-2">
                         <Checkbox
@@ -600,7 +675,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                           checked={selectedShops.includes(shop)}
                           onCheckedChange={() => handleShopFilter(shop)}
                         />
-                        <label htmlFor={shop} className="text-sm">{shop}</label>
+                        <label htmlFor={shop} className="text-sm dark:text-gray-300">{shop}</label>
                       </div>
                     ))}
                   </div>
@@ -609,12 +684,13 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
             </div>
 
             {/* Bagian Tombol Cetak */}
-            <div className="flex gap-2 shrink-0">
+            <div className="flex gap-2 shrink-0 justify-center sm:justify-end">
               <Button
                 onClick={handlePrintUnprinted}
                 className="px-3 py-2 text-xs font-medium bg-green-600 hover:bg-green-700 text-white whitespace-nowrap h-[32px] min-h-0"
                 disabled={getUnprintedDocuments() === 0}
               >
+                <Printer size={14} className="mr-1" />
                 Belum Print ({getUnprintedDocuments()})
               </Button>
 
@@ -626,6 +702,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                     : 'bg-blue-600 hover:bg-blue-700'
                   }`}
               >
+                <PrinterCheck size={14} className="mr-1" />
                 {selectedOrders.length > 0 
                   ? `Cetak ${selectedOrders.length} Dokumen`
                   : `Cetak Semua (${getTotalPrintableDocuments()})`
@@ -637,9 +714,9 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       </div>
 
       <div className="rounded-md border overflow-x-auto mt-2">
-        <Table className="w-full">
+        <Table className="w-full dark:bg-gray-900">
           <TableHeader>
-            <TableRow>
+            <TableRow className="dark:border-gray-700">
               {/* Update tampilan checkbox header */}
               <TableHead className={`w-10 p-1 h-[32px] align-middle ${!showCheckbox && 'hidden'}`}>
                 <div className="flex justify-center">
@@ -675,12 +752,12 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                   key={`${order.order_sn}`} 
                   className={
                     order.order_status === "IN_CANCEL" 
-                      ? 'bg-red-100 dark:bg-red-900' // Tambahkan dark:bg-red-900
+                      ? 'bg-red-100 dark:bg-red-900/50' 
                       : order.order_status === "CANCELLED"
-                        ? 'bg-gray-300 dark:bg-gray-700' // Tambahkan dark:bg-gray-700
+                        ? 'bg-gray-300 dark:bg-gray-800' 
                         : index % 2 === 0 
-                          ? 'bg-muted' 
-                          : 'bg-gray-100/20'
+                          ? 'bg-muted dark:bg-gray-800/50' 
+                          : 'bg-gray-100/20 dark:bg-gray-900'
                   }
                 >
                   <TableCell className={`p-1 h-[32px] align-middle ${!showCheckbox && 'hidden'}`}>
@@ -766,7 +843,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-4">
+                <TableCell colSpan={11} className="text-center py-4 dark:text-gray-400">
                   Tidak ada data untuk ditampilkan
                 </TableCell>
               </TableRow>
@@ -782,10 +859,10 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       />
 
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="dark:bg-gray-800">
           <AlertDialogHeader>
-            <AlertDialogTitle>Konfirmasi Pembatalan</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="dark:text-white">Konfirmasi Pembatalan</AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-300">
               Apakah Anda yakin ingin {selectedAction.action === 'ACCEPT' ? 'menerima' : 'menolak'} pembatalan untuk pesanan ini?
               {selectedAction.action === 'ACCEPT' 
                 ? ' Pesanan akan dibatalkan.'
@@ -793,8 +870,10 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmAction}>
+            <AlertDialogCancel className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction className="dark:bg-primary dark:text-white dark:hover:bg-primary/90">
               {selectedAction.action === 'ACCEPT' ? 'Terima Pembatalan' : 'Tolak Pembatalan'}
             </AlertDialogAction>
           </AlertDialogFooter>
