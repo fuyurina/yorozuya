@@ -373,10 +373,12 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
   // Update fungsi handlePrintUnprinted untuk menggunakan orders (global)
   const handlePrintUnprinted = async () => {
+    // Filter hanya untuk dokumen yang belum dicetak
     const unprintedOrders = orders
       .filter(order => 
-        isOrderCheckable(order) && 
-        !order.is_printed
+        isOrderCheckable(order) && // Dapat dicetak
+        !order.is_printed &&       // Belum pernah dicetak
+        (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL') // Status yang valid
       )
       .map(order => order.order_sn);
       
@@ -387,8 +389,21 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     
     // Set selected orders ke dokumen yang belum dicetak
     setSelectedOrders(unprintedOrders);
-    // Gunakan handleBulkPrint yang sudah ada
-    await handleBulkPrint();
+    
+    try {
+      // Gunakan handleBulkPrint yang sudah ada
+      await handleBulkPrint();
+      
+      // Update status is_printed jika berhasil
+      if (onOrderUpdate) {
+        unprintedOrders.forEach(orderSn => {
+          onOrderUpdate(orderSn, { is_printed: true });
+        });
+      }
+    } catch (error) {
+      console.error('Gagal mencetak dokumen:', error);
+      toast.error('Gagal mencetak dokumen');
+    }
   };
 
   // Update fungsi toggle checkbox

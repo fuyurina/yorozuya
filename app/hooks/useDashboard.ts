@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 export type OrderItem = {
   [key: string]: any;
@@ -93,8 +94,63 @@ export const useDashboard = () => {
     orders: []
   }); 
 
-  const setupLogisticSubscription = () => {
-    const channel = supabase
+  const createOrderSubscription = () => {
+    return supabase
+      .channel('orders')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'orders',
+        filter: `order_status=in.(${trackedStatuses.join(',')})`
+      }, async (payload) => {
+        const newOrder = payload.new as OrderItem;
+        
+        setDashboardData(prevData => {
+          const existingOrderIndex = prevData.orders.findIndex(order => order.order_sn === newOrder.order_sn);
+          
+          if (existingOrderIndex !== -1) {
+            const updatedOrders = [...prevData.orders];
+            updatedOrders[existingOrderIndex] = {
+              ...updatedOrders[existingOrderIndex],
+              order_status: newOrder.order_status,
+              shipping_carrier: newOrder.shipping_carrier
+            };
+            
+            // Hitung summary baru
+            const newSummary = {
+              pesananPerToko: {},
+              omsetPerToko: {},
+              totalOrders: 0,
+              totalOmset: 0,
+              totalIklan: prevData.summary.totalIklan,
+              iklanPerToko: prevData.summary.iklanPerToko
+            };
+            updatedOrders.forEach(order => processOrder(order, newSummary));
+
+            // Periksa apakah total order atau total omset berubah
+            if (newSummary.totalOrders !== prevData.summary.totalOrders ||
+                newSummary.totalOmset !== prevData.summary.totalOmset) {
+              // Jika berubah, perbarui keduanya
+              return {
+                summary: newSummary,
+                orders: updatedOrders
+              };
+            } else {
+              // Jika tidak berubah, hanya perbarui orders
+              return {
+                ...prevData,
+                orders: updatedOrders
+              };
+            }
+          } else {
+            return prevData;
+          }
+        });
+      });
+  };
+
+  const createLogisticSubscription = () => {
+    return supabase
       .channel('logistic-changes')
       .on(
         'postgres_changes',
@@ -131,11 +187,110 @@ export const useDashboard = () => {
             return prevData;
           });
         }
-      )
-      .subscribe();
+      );
+  };
+
+  const setupReconnection = (initialChannels: { 
+    orderChannel: RealtimeChannel, 
+    logisticChannel: RealtimeChannel 
+  }) => {
+    let currentChannels = initialChannels;
+    let isReconnecting = false;
+
+    const checkConnection = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session && !isReconnecting) {
+        isReconnecting = true;
+        console.log('Koneksi terputus, mencoba menghubungkan kembali...');
+        
+        try {
+          // Unsubscribe dari semua channel
+          await currentChannels.orderChannel.unsubscribe();
+          await currentChannels.logisticChannel.unsubscribe();
+          console.log('Berhasil unsubscribe dari semua channel');
+          
+          // Buat channel baru
+          const newOrderChannel = createOrderSubscription();
+          const newLogisticChannel = createLogisticSubscription();
+          
+          // Subscribe ke channel baru
+          await newOrderChannel.subscribe();
+          await newLogisticChannel.subscribe();
+          
+          // Update referensi channel
+          currentChannels = {
+            orderChannel: newOrderChannel,
+            logisticChannel: newLogisticChannel
+          };
+          
+          console.log('Berhasil subscribe dengan channel baru');
+        } catch (error) {
+          console.error('Gagal melakukan reconnect:', error);
+        } finally {
+          isReconnecting = false;
+        }
+      }
+    };
+
+    const intervalId = setInterval(checkConnection, 30000);
 
     return () => {
-      supabase.removeChannel(channel);
+      clearInterval(intervalId);
+      currentChannels.orderChannel.unsubscribe();
+      currentChannels.logisticChannel.unsubscribe();
+    };
+  };
+
+  const setupVisibilityHandler = (channels: { 
+    orderChannel: RealtimeChannel, 
+    logisticChannel: RealtimeChannel 
+  }) => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab aktif kembali, memeriksa koneksi...');
+        try {
+          // Periksa status koneksi channel terlebih dahulu
+          const orderStatus = channels.orderChannel.state;
+          const logisticStatus = channels.logisticChannel.state;
+          
+          // Hanya reconnect jika status bukan 'joined'
+          if (orderStatus !== 'joined' || logisticStatus !== 'joined') {
+            console.log('Memulai ulang koneksi realtime...');
+            
+            // Unsubscribe dari channel yang ada
+            await channels.orderChannel.unsubscribe();
+            await channels.logisticChannel.unsubscribe();
+            
+            // Buat dan subscribe ke channel baru
+            const newOrderChannel = createOrderSubscription();
+            const newLogisticChannel = createLogisticSubscription();
+            
+            await newOrderChannel.subscribe();
+            await newLogisticChannel.subscribe();
+            
+            // Update referensi channel
+            channels.orderChannel = newOrderChannel;
+            channels.logisticChannel = newLogisticChannel;
+            
+            console.log('Koneksi realtime berhasil dipulihkan');
+          } else {
+            console.log('Koneksi masih aktif, tidak perlu reconnect');
+          }
+        } catch (error) {
+          console.error('Gagal memulihkan koneksi:', error);
+        }
+      } else {
+        console.log('Tab tidak aktif, tetap mempertahankan koneksi');
+      }
+    };
+
+    // Tambahkan event listener untuk visibility change
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup function
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   };
 
@@ -270,65 +425,51 @@ export const useDashboard = () => {
 
     fetchInitialData();
 
-    const subscription = supabase
-      .channel('orders')
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'orders',
-        filter: `order_status=in.(${trackedStatuses.join(',')})`
-      }, async (payload) => {
-        const newOrder = payload.new as OrderItem;
-        
-        setDashboardData(prevData => {
-          const existingOrderIndex = prevData.orders.findIndex(order => order.order_sn === newOrder.order_sn);
-          
-          if (existingOrderIndex !== -1) {
-            const updatedOrders = [...prevData.orders];
-            updatedOrders[existingOrderIndex] = {
-              ...updatedOrders[existingOrderIndex],
-              order_status: newOrder.order_status,
-              shipping_carrier: newOrder.shipping_carrier
-            };
-            
-            // Hitung summary baru
-            const newSummary = {
-              pesananPerToko: {},
-              omsetPerToko: {},
-              totalOrders: 0,
-              totalOmset: 0,
-              totalIklan: prevData.summary.totalIklan,
-              iklanPerToko: prevData.summary.iklanPerToko
-            };
-            updatedOrders.forEach(order => processOrder(order, newSummary));
+    // Buat subscription awal
+    const channels = {
+      orderChannel: createOrderSubscription(),
+      logisticChannel: createLogisticSubscription()
+    };
 
-            // Periksa apakah total order atau total omset berubah
-            if (newSummary.totalOrders !== prevData.summary.totalOrders ||
-                newSummary.totalOmset !== prevData.summary.totalOmset) {
-              // Jika berubah, perbarui keduanya
-              return {
-                summary: newSummary,
-                orders: updatedOrders
-              };
-            } else {
-              // Jika tidak berubah, hanya perbarui orders
-              return {
-                ...prevData,
-                orders: updatedOrders
-              };
-            }
-          } else {
-            return prevData;
-          }
-        });
-      })
-      .subscribe();
+    // Subscribe ke channel
+    channels.orderChannel.subscribe((status) => {
+      console.log(`Status koneksi orders: ${status}`);
+      if (status === 'SUBSCRIBED') {
+        console.log('Berhasil berlangganan ke perubahan orders');
+      }
+    });
 
-    const unsubscribeLogistic = setupLogisticSubscription();
+    channels.logisticChannel.subscribe((status) => {
+      console.log(`Status koneksi logistic: ${status}`);
+      if (status === 'SUBSCRIBED') {
+        console.log('Berhasil berlangganan ke perubahan logistic');
+      }
+    });
+
+    // Setup reconnection dan visibility handler
+    const cleanupReconnection = setupReconnection(channels);
+    const cleanupVisibility = setupVisibilityHandler(channels);
+
+    // Tambahkan ping interval untuk menjaga koneksi tetap aktif
+    const pingInterval = setInterval(() => {
+      channels.orderChannel.send({
+        type: 'broadcast',
+        event: 'ping',
+        payload: {}
+      });
+      channels.logisticChannel.send({
+        type: 'broadcast',
+        event: 'ping',
+        payload: {}
+      });
+    }, 30000);
 
     return () => {
-      subscription.unsubscribe();
-      unsubscribeLogistic();
+      cleanupReconnection();
+      cleanupVisibility();
+      clearInterval(pingInterval);
+      channels.orderChannel.unsubscribe();
+      channels.logisticChannel.unsubscribe();
     };
   }, []);
 

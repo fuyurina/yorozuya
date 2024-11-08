@@ -124,11 +124,17 @@ export function OrderHistory({ userId, isOpen, onClose }: OrderHistoryProps) {
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-[95%] sm:w-[80%] lg:max-w-[500px] p-3 sm:p-6" side="right">
+      <SheetContent 
+        className="w-[95%] sm:w-[80%] lg:max-w-[500px] p-3 sm:p-6" 
+        side="right"
+      >
         <SheetHeader className="mb-1">
           <SheetTitle className="text-lg font-bold">
             Riwayat Pesanan
           </SheetTitle>
+          <SheetDescription className="sr-only">
+            Daftar riwayat pesanan pengguna
+          </SheetDescription>
         </SheetHeader>
 
         <ScrollArea className="h-[calc(100vh-80px)] pr-2 sm:pr-4">
