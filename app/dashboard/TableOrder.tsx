@@ -479,6 +479,21 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     setIsOrderHistoryOpen(true);
   }
 
+  // Tambahkan useEffect untuk mengupdate title
+  useEffect(() => {
+    const readyToShipCount = orders.filter(order => order.order_status === 'READY_TO_SHIP').length;
+    if (readyToShipCount > 0) {
+      document.title = `(${readyToShipCount}) New Orders`;
+    } else {
+      document.title = 'Dashboard Pesanan';
+    }
+
+    // Cleanup function
+    return () => {
+      document.title = 'Dashboard Pesanan';
+    };
+  }, [orders]);
+
   return (
     <div className="w-full">
       {bulkProgress.total > 0 && (
