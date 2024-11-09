@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Phone, Video, User, CheckCircle2, ChevronLeft, Filter } from "lucide-react"
+import { Send, Phone, Video, User, CheckCircle2, ChevronLeft, Filter, ShoppingBag } from "lucide-react"
 import { useSendMessage } from '@/app/hooks/useSendMessage';
 
 import { useSSE } from '@/app/hooks/useSSE';
@@ -360,7 +360,7 @@ const WebChatPage: React.FC = () => {
                 </div>
                 <div className="flex-shrink-0">
                   <Button variant="ghost" size="icon">
-                    <Phone className={isMobileView ? 'h-4 w-4' : 'h-5 w-5'} />
+                    <ShoppingBag className={isMobileView ? 'h-4 w-4' : 'h-5 w-5'} />
                   </Button>
                   <Button variant="ghost" size="icon">
                     <Video className={isMobileView ? 'h-4 w-4' : 'h-5 w-5'} />

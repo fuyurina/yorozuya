@@ -96,6 +96,34 @@ interface ShippingDocumentParams {
   shipping_carrier?: string;
 }
 
+// Tambahkan utility function untuk cek permissions
+const checkPermissions = async () => {
+  const permissions = {
+    notifications: false,
+    popups: false
+  };
+
+  try {
+    // Cek izin notifikasi
+    if ('Notification' in window) {
+      const notificationPermission = await Notification.requestPermission();
+      permissions.notifications = notificationPermission === 'granted';
+    }
+
+    // Cek popup menggunakan window.open
+    const popupTest = window.open('about:blank', '_blank');
+    if (popupTest) {
+      permissions.popups = true;
+      popupTest.close();
+    }
+
+    return permissions;
+  } catch (error) {
+    console.error('Error checking permissions:', error);
+    return permissions;
+  }
+};
+
 export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTableProps) {
   const categories = useMemo(() => [
     { name: "Semua", count: 0, status: "" },
@@ -166,7 +194,65 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     setShops(uniqueShops)
   }, [filterOrders, orders])
 
+  const [permissions, setPermissions] = useState<{
+    notifications: boolean;
+    popups: boolean;
+  }>({
+    notifications: false,
+    popups: false
+  });
+
+  // Fungsi untuk mengecek dan meminta izin
+  const requestPermissions = useCallback(async () => {
+    try {
+      const currentPermissions = await checkPermissions();
+      setPermissions(currentPermissions);
+
+      // Jika popup diblokir, tampilkan panduan
+      if (!currentPermissions.popups) {
+        toast.error(
+          <div className="flex flex-col gap-2">
+            <p className="font-medium">Popup diblokir oleh browser</p>
+            <div className="text-sm space-y-1">
+              <p>Untuk mengaktifkan popup:</p>
+              <ol className="list-decimal ml-4 space-y-1">
+                <li>Lihat ikon di address bar browser</li>
+                <li>Klik ikon blokir popup</li>
+                <li>Pilih "Selalu izinkan popup untuk situs ini"</li>
+                <li>Muat ulang halaman</li>
+              </ol>
+            </div>
+            <button 
+              onClick={requestPermissions}
+              className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 rounded-md mt-1"
+            >
+              Cek Ulang Izin
+            </button>
+          </div>,
+          {
+            duration: 0, // Tidak otomatis hilang
+            position: 'top-center'
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error requesting permissions:', error);
+    }
+  }, []);
+
+  // Cek izin saat komponen dimount
+  useEffect(() => {
+    requestPermissions();
+  }, [requestPermissions]);
+
+  // Update fungsi handleDownloadDocument
   const handleDownloadDocument = async (order: OrderItem) => {
+    if (!permissions.popups) {
+      toast.error('Mohon izinkan popup terlebih dahulu');
+      requestPermissions(); // Minta izin lagi
+      return;
+    }
+
     try {
       const orderParams: ShippingDocumentParams[] = [{
         order_sn: order.order_sn,
@@ -203,13 +289,14 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       }, 1000);
     } catch (err) {
       console.error('Gagal mengunduh dokumen:', err);
+      toast.error('Gagal mengunduh dokumen');
     }
   };
 
-  // Tambahkan helper function untuk mengecek apakah order bisa dicentang
+  // Update fungsi isOrderCheckable untuk lebih spesifik
   const isOrderCheckable = (order: OrderItem) => {
-    return order.document_status === 'READY' && 
-      (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL');
+    return order.document_status === 'READY' &&
+           (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL');
   };
 
   // Handler untuk checkbox utama
@@ -248,11 +335,17 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
   // Update fungsi handleBulkPrint
   const handleBulkPrint = async () => {
+    // Jika ada selectedOrders, gunakan itu
+    // Jika tidak, filter semua order yang bisa dicetak
     const ordersToPrint = selectedOrders.length > 0 
-      ? selectedOrders 
+      ? orders
+          .filter(order => selectedOrders.includes(order.order_sn))
+          .map(order => order.order_sn)
       : orders
           .filter(order => isOrderCheckable(order))
           .map(order => order.order_sn);
+
+    console.log('Orders yang akan dicetak:', ordersToPrint.length, 'dokumen');
 
     if (ordersToPrint.length === 0) return;
 
@@ -275,6 +368,13 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           groups[shopId].push(order);
           return groups;
         }, {});
+
+      // Log pengelompokan per toko
+      console.log('Pengelompokan per toko:', Object.entries(ordersByShop).map(([shopId, orders]) => ({
+        shop_id: shopId,
+        shop_name: orders[0].shop_name,
+        order_count: orders.length
+      })));
 
       // Proses setiap toko
       for (const [shopId, shopOrders] of Object.entries(ordersByShop)) {
@@ -391,40 +491,45 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     return orders.filter(order => isOrderCheckable(order)).length;
   };
 
-  // Update fungsi untuk menghitung dokumen yang belum dicetak (global)
+  // Update fungsi getUnprintedDocuments untuk menggunakan filter yang sama
   const getUnprintedDocuments = () => {
     return orders.filter(order => 
-      isOrderCheckable(order) && 
-      !order.is_printed
+      // Cek dokumen yang:
+      !order.is_printed && // belum dicetak
+      order.document_status === 'READY' && // dokumen siap cetak
+      (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL') // status sesuai
     ).length;
   };
 
-  // Update fungsi handlePrintUnprinted untuk menggunakan orders (global)
-  const handlePrintUnprinted = async () => {
-    // Filter hanya untuk dokumen yang belum dicetak
-    const unprintedOrders = orders
-      .filter(order => 
-        isOrderCheckable(order) && // Dapat dicetak
-        !order.is_printed &&       // Belum pernah dicetak
-        (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL') // Status yang valid
-      )
-      .map(order => order.order_sn);
-      
-    if (unprintedOrders.length === 0) {
+  // Tambahkan state untuk dialog konfirmasi cetak belum print
+  const [isUnprintedConfirmOpen, setIsUnprintedConfirmOpen] = useState(false);
+
+  // Update fungsi handlePrintUnprinted
+  const handlePrintUnprinted = () => {
+    const unprintedOrders = orders.filter(order => 
+      !order.is_printed && 
+      order.document_status === 'READY' &&
+      (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL')
+    );
+    
+    setSelectedOrders(unprintedOrders.map(order => order.order_sn));
+    setIsUnprintedConfirmOpen(true);
+  };
+
+  // Update fungsi handleConfirmUnprinted
+  const handleConfirmUnprinted = async () => {
+    setIsUnprintedConfirmOpen(false);
+    
+    if (selectedOrders.length === 0) {
       toast.info('Tidak ada dokumen yang belum dicetak');
       return;
     }
     
-    // Set selected orders ke dokumen yang belum dicetak
-    setSelectedOrders(unprintedOrders);
-    
     try {
-      // Gunakan handleBulkPrint yang sudah ada
       await handleBulkPrint();
       
-      // Update status is_printed jika berhasil
       if (onOrderUpdate) {
-        unprintedOrders.forEach(orderSn => {
+        selectedOrders.forEach(orderSn => {
           onOrderUpdate(orderSn, { is_printed: true });
         });
       }
@@ -889,11 +994,64 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={isUnprintedConfirmOpen} onOpenChange={setIsUnprintedConfirmOpen}>
+        <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="dark:text-white">
+              Konfirmasi Cetak Dokumen
+            </AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-300">
+              Anda akan mencetak {getUnprintedDocuments()} dokumen yang belum pernah dicetak sebelumnya. 
+              Lanjutkan?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 dark:border-gray-600">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmUnprinted}
+              className="bg-primary hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/90 text-white"
+            >
+              Cetak Dokumen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <OrderHistory 
         userId={selectedUserId}
         isOpen={isOrderHistoryOpen}
         onClose={() => setIsOrderHistoryOpen(false)}
       />
+
+      {/* Tampilkan banner jika ada izin yang belum diberikan */}
+      {(!permissions.popups || !permissions.notifications) && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg dark:bg-yellow-900/30 dark:border-yellow-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={16} className="text-yellow-600 dark:text-yellow-500 shrink-0" />
+              <div className="text-sm text-yellow-800 dark:text-yellow-200">
+                <p className="font-medium">Beberapa fitur memerlukan izin browser:</p>
+                <ul className="mt-1 space-y-1 ml-4 list-disc">
+                  {!permissions.popups && (
+                    <li>Popup (untuk membuka dokumen di tab baru)</li>
+                  )}
+                  {!permissions.notifications && (
+                    <li>Notifikasi (untuk pemberitahuan)</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+            <button 
+              onClick={requestPermissions}
+              className="shrink-0 ml-4 text-xs bg-yellow-100 dark:bg-yellow-800 hover:bg-yellow-200 dark:hover:bg-yellow-700 text-yellow-800 dark:text-yellow-200 px-3 py-1.5 rounded-md"
+            >
+              Cek Ulang Izin
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
