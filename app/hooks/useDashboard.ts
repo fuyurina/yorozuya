@@ -105,47 +105,91 @@ export const useDashboard = () => {
       }, async (payload) => {
         const newOrder = payload.new as OrderItem;
         
-        setDashboardData(prevData => {
-          const existingOrderIndex = prevData.orders.findIndex(order => order.order_sn === newOrder.order_sn);
+        if (newOrder.order_status === 'READY_TO_SHIP') {
+          console.log('Pesanan baru READY_TO_SHIP terdeteksi:', newOrder.order_sn);
           
-          if (existingOrderIndex !== -1) {
-            const updatedOrders = [...prevData.orders];
-            updatedOrders[existingOrderIndex] = {
-              ...updatedOrders[existingOrderIndex],
-              order_status: newOrder.order_status,
-              shipping_carrier: newOrder.shipping_carrier
-            };
-            
-            // Hitung summary baru
-            const newSummary = {
-              pesananPerToko: {},
-              omsetPerToko: {},
-              totalOrders: 0,
-              totalOmset: 0,
-              totalIklan: prevData.summary.totalIklan,
-              iklanPerToko: prevData.summary.iklanPerToko
-            };
-            updatedOrders.forEach(order => processOrder(order, newSummary));
+          setDashboardData(prevData => {
+            const newSummary = { ...prevData.summary };
+            processOrder(newOrder, newSummary);
+            console.log('Summary diperbarui:', newSummary);
 
-            // Periksa apakah total order atau total omset berubah
-            if (newSummary.totalOrders !== prevData.summary.totalOrders ||
-                newSummary.totalOmset !== prevData.summary.totalOmset) {
-              // Jika berubah, perbarui keduanya
-              return {
-                summary: newSummary,
-                orders: updatedOrders
-              };
-            } else {
-              // Jika tidak berubah, hanya perbarui orders
-              return {
-                ...prevData,
-                orders: updatedOrders
-              };
+            console.log('Menambahkan pesanan baru ke daftar');
+            return {
+              summary: newSummary,
+              orders: [newOrder, ...prevData.orders]
+            };
+          });
+
+          try {
+            const orderDetails = await getOrderDetails(newOrder.order_sn, newOrder.shop_id);
+            console.log('Detail pesanan diterima:', orderDetails);
+            
+            if (orderDetails) {
+              setDashboardData(prevData => {
+                const updatedOrders = prevData.orders.map(order => 
+                  order.order_sn === newOrder.order_sn 
+                    ? { ...order, ...orderDetails, total_amount: orderDetails.total_price ?? order.total_amount }
+                    : order
+                );
+                
+                const newSummary = {
+                  pesananPerToko: {},
+                  omsetPerToko: {},
+                  totalOrders: 0,
+                  totalOmset: 0,
+                  totalIklan: prevData.summary.totalIklan,
+                  iklanPerToko: prevData.summary.iklanPerToko
+                };
+                updatedOrders.forEach(order => processOrder(order, newSummary));
+
+                return {
+                  summary: newSummary,
+                  orders: updatedOrders
+                };
+              });
             }
-          } else {
-            return prevData;
+          } catch (error) {
+            console.error('Error saat mengambil detail pesanan:', error);
           }
-        });
+        } else {
+          setDashboardData(prevData => {
+            const existingOrderIndex = prevData.orders.findIndex(order => order.order_sn === newOrder.order_sn);
+            
+            if (existingOrderIndex !== -1) {
+              const updatedOrders = [...prevData.orders];
+              updatedOrders[existingOrderIndex] = {
+                ...updatedOrders[existingOrderIndex],
+                order_status: newOrder.order_status,
+                shipping_carrier: newOrder.shipping_carrier
+              };
+              
+              const newSummary = {
+                pesananPerToko: {},
+                omsetPerToko: {},
+                totalOrders: 0,
+                totalOmset: 0,
+                totalIklan: prevData.summary.totalIklan,
+                iklanPerToko: prevData.summary.iklanPerToko
+              };
+              updatedOrders.forEach(order => processOrder(order, newSummary));
+
+              if (newSummary.totalOrders !== prevData.summary.totalOrders ||
+                  newSummary.totalOmset !== prevData.summary.totalOmset) {
+                return {
+                  summary: newSummary,
+                  orders: updatedOrders
+                };
+              } else {
+                return {
+                  ...prevData,
+                  orders: updatedOrders
+                };
+              }
+            } else {
+              return prevData;
+            }
+          });
+        }
       });
   };
 
