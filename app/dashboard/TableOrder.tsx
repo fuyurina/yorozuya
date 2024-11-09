@@ -873,7 +873,10 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
             <AlertDialogCancel className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
               Batal
             </AlertDialogCancel>
-            <AlertDialogAction className="dark:bg-primary dark:text-white dark:hover:bg-primary/90">
+            <AlertDialogAction 
+              onClick={handleConfirmAction}
+              className="dark:bg-primary dark:text-white dark:hover:bg-primary/90"
+            >
               {selectedAction.action === 'ACCEPT' ? 'Terima Pembatalan' : 'Tolak Pembatalan'}
             </AlertDialogAction>
           </AlertDialogFooter>
