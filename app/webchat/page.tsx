@@ -37,6 +37,39 @@ interface Message {
   time: string;
 }
 
+// Tambahkan interface untuk props MessageInput
+interface MessageInputProps {
+  onSendMessage: (message: string) => void;
+  isSendingMessage: boolean;
+}
+
+// Update komponen dengan type yang sesuai
+const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, isSendingMessage }) => {
+  const [newMessage, setNewMessage] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSendMessage(newMessage);
+    setNewMessage('');
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex gap-2">
+      <Input
+        type="text"
+        placeholder="Ketik pesan..."
+        value={newMessage}
+        onChange={(e) => setNewMessage(e.target.value)}
+        className="flex-grow"
+        disabled={isSendingMessage}
+      />
+      <Button type="submit" disabled={!newMessage.trim() || isSendingMessage}>
+        <Send className="h-4 w-4" />
+      </Button>
+    </form>
+  );
+};
+
 const WebChatPage: React.FC = () => {
   const [selectedShop, setSelectedShop] = useState<number | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
@@ -110,29 +143,24 @@ const WebChatPage: React.FC = () => {
     }
   }, [sseData, selectedConversation]);
 
-  const handleSendMessage = async () => {
-    if (!selectedConversationData || !newMessage.trim()) return;
+  const handleSendMessage = async (message: string) => {
+    if (!selectedConversationData || !message.trim()) return;
 
     try {
       const sentMessage = await sendMessage({
         toId: selectedConversationData.to_id,
-        content: newMessage,
+        content: message,
         shopId: selectedConversationData.shop_id,
       });
       
-      // Tambahkan pesan yang berhasil dikirim ke daftar pesan
       const newSentMessage: Message = {
         id: sentMessage.data.message_id,
         sender: 'seller',
-        content: newMessage,
+        content: message,
         time: new Date(sentMessage.data.created_timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       
-      // Update state messages dengan pesan baru
       setMessages(prevMessages => [...prevMessages, newSentMessage]);
-      
-      // Reset input setelah mengirim
-      setNewMessage('');
     } catch (error) {
       console.error('Gagal mengirim pesan:', error);
     }
@@ -372,19 +400,10 @@ const WebChatPage: React.FC = () => {
 
           {/* Area Input */}
           <div className="p-4 border-t">
-            <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="Ketik pesan..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                className="flex-grow"
-                disabled={isSendingMessage}
-              />
-              <Button type="submit" disabled={!newMessage.trim() || isSendingMessage}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
+            <MessageInput 
+              onSendMessage={(message) => handleSendMessage(message)} 
+              isSendingMessage={isSendingMessage}
+            />
             {sendMessageError && (
               <p className="text-red-500 text-sm mt-2">{sendMessageError}</p>
             )}

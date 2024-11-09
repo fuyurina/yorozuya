@@ -60,6 +60,7 @@ export default function OrderChangesPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const [orderDetails, setOrderDetails] = useState<OrderDetail[] | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
+  const [activeTab, setActiveTab] = useState<'chat' | 'orders'>('chat')
 
   const handleStatusClick = async (order: PerubahanPesanan) => {
     const newStatus = order.status === "BARU" ? "DICATAT" : "BARU"
@@ -167,7 +168,7 @@ export default function OrderChangesPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-6">Data Perubahan Pesanan</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 dark:text-white">Data Perubahan Pesanan</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {perubahanPesanan.map((order) => (
@@ -231,28 +232,58 @@ export default function OrderChangesPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] flex flex-col">
-          <DialogHeader className="py-2 border-b">
-            <DialogTitle className="flex justify-between items-center">
+        <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] flex flex-col dark:bg-gray-800">
+          <DialogHeader className="py-2 border-b dark:border-gray-700">
+            <DialogTitle className="flex justify-between items-center dark:text-white">
               <span>{selectedOrder?.nomor_invoice}</span>
-              <span className="text-gray-500">{selectedOrder?.nama_toko}</span>
-              <span className="text-sm text-gray-400">ID: {selectedOrder?.id_pengguna}</span>
+              <span className="text-gray-500 dark:text-gray-400">{selectedOrder?.nama_toko}</span>
+              <span className="text-sm text-gray-400 dark:text-gray-500">ID: {selectedOrder?.id_pengguna}</span>
             </DialogTitle>
           </DialogHeader>
 
+          {/* Tab buttons untuk mobile */}
+          <div className="sm:hidden flex border-b dark:border-gray-700">
+            <button
+              className={`flex-1 py-2 text-sm font-medium ${
+                activeTab === 'chat'
+                  ? 'border-b-2 border-blue-500 text-blue-500'
+                  : 'text-gray-500'
+              }`}
+              onClick={() => setActiveTab('chat')}
+            >
+              Chat
+            </button>
+            <button
+              className={`flex-1 py-2 text-sm font-medium ${
+                activeTab === 'orders'
+                  ? 'border-b-2 border-blue-500 text-blue-500'
+                  : 'text-gray-500'
+              }`}
+              onClick={() => setActiveTab('orders')}
+            >
+              Detail Pesanan
+            </button>
+          </div>
+
           <div className="flex-grow flex gap-4 h-[calc(90vh-100px)]">
             {/* Chat Section */}
-            <div className="w-1/2 flex flex-col">
+            <div className={`
+              w-1/2 flex flex-col
+              sm:block
+              ${activeTab === 'chat' ? 'block' : 'hidden'}
+              sm:w-1/2
+              w-full
+            `}>
               <div ref={chatContainerRef} className="flex-grow overflow-y-auto p-4 space-y-4">
                 {chats.map((chat) => (
                   <div key={chat.id} className={`flex ${chat.sender === 'seller' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[80%] rounded-lg ${
                       chat.sender === 'seller' 
-                      ? 'bg-blue-100 ml-auto' 
-                      : 'bg-gray-100'
+                      ? 'bg-blue-100 dark:bg-blue-900 dark:text-white' 
+                      : 'bg-gray-100 dark:bg-gray-700 dark:text-white'
                     } p-3`}>
                       <p className="text-sm whitespace-pre-wrap break-words">{chat.message}</p>
-                      <p className="text-[10px] text-gray-500 mt-1">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
                         {new Date(chat.timestamp).toLocaleString()}
                       </p>
                     </div>
@@ -260,7 +291,7 @@ export default function OrderChangesPage() {
                 ))}
               </div>
               
-              <form onSubmit={handleSendMessage} className="p-4 border-t">
+              <form onSubmit={handleSendMessage} className="p-4 border-t dark:border-gray-700">
                 <div className="flex gap-2">
                   <Input
                     type="text"
@@ -278,7 +309,13 @@ export default function OrderChangesPage() {
             </div>
 
             {/* Order Details Section */}
-            <div className="w-1/2 border-l flex flex-col">
+            <div className={`
+              w-1/2 border-l dark:border-gray-700 flex flex-col
+              sm:block
+              ${activeTab === 'orders' ? 'block' : 'hidden'}
+              sm:w-1/2
+              w-full
+            `}>
               <div className="overflow-y-auto p-4">
                 {loadingDetails ? (
                   <div className="space-y-2">
@@ -290,7 +327,7 @@ export default function OrderChangesPage() {
                     {orderDetails.map((order) => (
                       <div 
                         key={order.order_sn} 
-                        className={`bg-white rounded-lg border shadow-sm transition-all duration-300
+                        className={`bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 shadow-sm transition-all duration-300
                           ${order.order_sn === selectedOrder?.nomor_invoice 
                             ? 'border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]' 
                             : 'hover:shadow-md'
@@ -298,14 +335,14 @@ export default function OrderChangesPage() {
                         `}
                       >
                         {/* Header Pesanan */}
-                        <div className="p-3 border-b">
+                        <div className="p-3 border-b dark:border-gray-700">
                           <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-xs font-medium">No. Pesanan: {order.order_sn}</h3>
+                            <h3 className="text-xs font-medium dark:text-white">No. Pesanan: {order.order_sn}</h3>
                             <Badge variant="outline" className="bg-black text-white hover:bg-black text-xs">
                               {order.order_status}
                             </Badge>
                           </div>
-                          <div className="grid grid-cols-2 gap-x-12 text-xs text-gray-500">
+                          <div className="grid grid-cols-2 gap-x-12 text-xs text-gray-500 dark:text-gray-400">
                             <div className="space-y-0.5">
                               <p>Pembeli: {order.buyer_username}</p>
                               <p>{order.shipping_carrier}</p>
@@ -324,20 +361,20 @@ export default function OrderChangesPage() {
                               <img 
                                 src={item.image_url} 
                                 alt={item.item_name}
-                                className="w-20 h-20 object-cover rounded-md border"
+                                className="w-20 h-20 object-cover rounded-md border dark:border-gray-700"
                               />
                               <div className="flex-1">
-                                <h4 className="font-medium text-sm line-clamp-2 mb-1">
+                                <h4 className="font-medium text-sm line-clamp-2 mb-1 dark:text-white">
                                   {item.item_name}
                                 </h4>
-                                <p className="text-xs text-gray-600 mb-2">
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
                                   Variasi: {item.model_name}
                                 </p>
                                 <div className="flex justify-between items-center">
-                                  <span className="text-xs text-gray-600">
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">
                                     {item.model_quantity_purchased}x
                                   </span>
-                                  <span className="font-medium text-sm">
+                                  <span className="font-medium text-sm dark:text-white">
                                     Rp {item.model_discounted_price.toLocaleString()}
                                   </span>
                                 </div>
@@ -347,10 +384,10 @@ export default function OrderChangesPage() {
                         </div>
 
                         {/* Footer dengan Total */}
-                        <div className="p-3 bg-gray-50 rounded-b-lg border-t">
+                        <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-b-lg border-t dark:border-gray-700">
                           <div className="flex justify-between items-center">
-                            <span className="font-medium text-sm">Total Belanja</span>
-                            <span className="text-base font-bold">
+                            <span className="font-medium text-sm dark:text-white">Total Belanja</span>
+                            <span className="text-base font-bold dark:text-white">
                               Rp {order.total_belanja.toLocaleString()}
                             </span>
                           </div>
@@ -359,7 +396,7 @@ export default function OrderChangesPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-gray-500">Tidak ada detail pesanan</p>
+                  <p className="text-center text-gray-500 dark:text-gray-400">Tidak ada detail pesanan</p>
                 )}
               </div>
             </div>

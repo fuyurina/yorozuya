@@ -803,20 +803,20 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 p-0 hover:bg-green-100"
+                            className="h-6 w-6 p-0 hover:bg-green-100 dark:hover:bg-green-900/30"
                             onClick={() => handleCancellationAction(order.order_sn, 'ACCEPT')}
                             title="Terima Pembatalan"
                           >
-                            <CheckCircle size={16} className="text-green-600" />
+                            <CheckCircle size={16} className="text-green-600 dark:text-green-400" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 p-0 hover:bg-red-100"
+                            className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30"
                             onClick={() => handleCancellationAction(order.order_sn, 'REJECT')}
                             title="Tolak Pembatalan"
                           >
-                            <XCircle size={16} className="text-red-600" />
+                            <XCircle size={16} className="text-red-600 dark:text-red-400" />
                           </Button>
                         </div>
                       )}
@@ -859,9 +859,11 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       />
 
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <AlertDialogContent className="dark:bg-gray-800">
+        <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
           <AlertDialogHeader>
-            <AlertDialogTitle className="dark:text-white">Konfirmasi Pembatalan</AlertDialogTitle>
+            <AlertDialogTitle className="dark:text-white">
+              Konfirmasi Pembatalan
+            </AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-300">
               Apakah Anda yakin ingin {selectedAction.action === 'ACCEPT' ? 'menerima' : 'menolak'} pembatalan untuk pesanan ini?
               {selectedAction.action === 'ACCEPT' 
@@ -870,12 +872,16 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
+            <AlertDialogCancel className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 dark:border-gray-600">
               Batal
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleConfirmAction}
-              className="dark:bg-primary dark:text-white dark:hover:bg-primary/90"
+              className={`${
+                selectedAction.action === 'ACCEPT'
+                  ? 'bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700'
+                  : 'bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700'
+              } text-white`}
             >
               {selectedAction.action === 'ACCEPT' ? 'Terima Pembatalan' : 'Tolak Pembatalan'}
             </AlertDialogAction>
