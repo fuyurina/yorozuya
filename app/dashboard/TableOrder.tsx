@@ -91,8 +91,8 @@ StatusBadge.displayName = 'StatusBadge';
 // Tambahkan interface
 interface ShippingDocumentParams {
   order_sn: string;
-  shipping_document_type: "THERMAL_AIR_WAYBILL";
   package_number?: string;
+  shipping_document_type: "THERMAL_AIR_WAYBILL";
   shipping_carrier?: string;
 }
 
@@ -207,34 +207,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     try {
       const currentPermissions = await checkPermissions();
       setPermissions(currentPermissions);
-
-      // Jika popup diblokir, tampilkan panduan
-      if (!currentPermissions.popups) {
-        toast.error(
-          <div className="flex flex-col gap-2">
-            <p className="font-medium">Popup diblokir oleh browser</p>
-            <div className="text-sm space-y-1">
-              <p>Untuk mengaktifkan popup:</p>
-              <ol className="list-decimal ml-4 space-y-1">
-                <li>Lihat ikon di address bar browser</li>
-                <li>Klik ikon blokir popup</li>
-                <li>Pilih "Selalu izinkan popup untuk situs ini"</li>
-                <li>Muat ulang halaman</li>
-              </ol>
-            </div>
-            <button 
-              onClick={requestPermissions}
-              className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 rounded-md mt-1"
-            >
-              Cek Ulang Izin
-            </button>
-          </div>,
-          {
-            duration: 0, // Tidak otomatis hilang
-            position: 'top-center'
-          }
-        );
-      }
     } catch (error) {
       console.error('Error requesting permissions:', error);
     }
@@ -247,17 +219,11 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
   // Update fungsi handleDownloadDocument
   const handleDownloadDocument = async (order: OrderItem) => {
-    if (!permissions.popups) {
-      toast.error('Mohon izinkan popup terlebih dahulu');
-      requestPermissions(); // Minta izin lagi
-      return;
-    }
-
     try {
       const orderParams: ShippingDocumentParams[] = [{
         order_sn: order.order_sn,
         package_number: order.package_number,
-        shipping_document_type: "THERMAL_AIR_WAYBILL",
+        shipping_document_type: "THERMAL_AIR_WAYBILL" as const,
         shipping_carrier: order.shipping_carrier
       }];
 
@@ -278,12 +244,9 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           </html>
         `);
         newWindow.document.close();
-        
-        // Fokus kembali ke tab saat ini
         window.focus();
       }
 
-      // Cleanup
       setTimeout(() => {
         URL.revokeObjectURL(pdfUrl);
       }, 1000);

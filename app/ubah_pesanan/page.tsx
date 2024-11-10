@@ -234,10 +234,10 @@ export default function OrderChangesPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] flex flex-col dark:bg-gray-800">
           <DialogHeader className="py-2 border-b dark:border-gray-700">
-            <DialogTitle className="flex justify-between items-center dark:text-white">
-              <span>{selectedOrder?.nomor_invoice}</span>
-              <span className="text-gray-500 dark:text-gray-400">{selectedOrder?.nama_toko}</span>
-              <span className="text-sm text-gray-400 dark:text-gray-500">ID: {selectedOrder?.id_pengguna}</span>
+            <DialogTitle className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0 dark:text-white">
+              <span className="text-sm sm:text-base">{selectedOrder?.nomor_invoice}</span>
+              <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{selectedOrder?.nama_toko}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">ID: {selectedOrder?.id_pengguna}</span>
             </DialogTitle>
           </DialogHeader>
 

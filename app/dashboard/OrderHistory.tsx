@@ -153,7 +153,7 @@ export function OrderHistory({ userId, isOpen, onClose }: OrderHistoryProps) {
                     <div className="bg-muted p-4 rounded-lg">
                       <div className="flex flex-wrap items-center gap-2 justify-between">
                         <h3 className="text-[11px] md:text-base font-semibold flex items-center gap-2">
-                          <Receipt className="h-4 w-4" />
+                          
                           {order.order_sn}
                         </h3>
                         <Badge 
