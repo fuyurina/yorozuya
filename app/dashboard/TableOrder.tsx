@@ -96,34 +96,6 @@ interface ShippingDocumentParams {
   shipping_carrier?: string;
 }
 
-// Tambahkan utility function untuk cek permissions
-const checkPermissions = async () => {
-  const permissions = {
-    notifications: false,
-    popups: false
-  };
-
-  try {
-    // Cek izin notifikasi
-    if ('Notification' in window) {
-      const notificationPermission = await Notification.requestPermission();
-      permissions.notifications = notificationPermission === 'granted';
-    }
-
-    // Cek popup menggunakan window.open
-    const popupTest = window.open('about:blank', '_blank');
-    if (popupTest) {
-      permissions.popups = true;
-      popupTest.close();
-    }
-
-    return permissions;
-  } catch (error) {
-    console.error('Error checking permissions:', error);
-    return permissions;
-  }
-};
-
 export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTableProps) {
   const categories = useMemo(() => [
     { name: "Semua", count: 0, status: "" },
@@ -193,29 +165,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     const uniqueShops = Array.from(new Set(orders.map(order => order.shop_name)))
     setShops(uniqueShops)
   }, [filterOrders, orders])
-
-  const [permissions, setPermissions] = useState<{
-    notifications: boolean;
-    popups: boolean;
-  }>({
-    notifications: false,
-    popups: false
-  });
-
-  // Fungsi untuk mengecek dan meminta izin
-  const requestPermissions = useCallback(async () => {
-    try {
-      const currentPermissions = await checkPermissions();
-      setPermissions(currentPermissions);
-    } catch (error) {
-      console.error('Error requesting permissions:', error);
-    }
-  }, []);
-
-  // Cek izin saat komponen dimount
-  useEffect(() => {
-    requestPermissions();
-  }, [requestPermissions]);
 
   // Update fungsi handleDownloadDocument
   const handleDownloadDocument = async (order: OrderItem) => {
@@ -432,9 +381,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     }
   };
 
-  // Tambahkan state untuk indeterminate
-  const [isIndeterminate, setIsIndeterminate] = useState(false);
-
   const checkboxRef = useRef<HTMLButtonElement>(null);
 
   // Update useEffect untuk menghandle indeterminate state
@@ -463,9 +409,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL') // status sesuai
     ).length;
   };
-
-  // Tambahkan state untuk dialog konfirmasi cetak belum print
-  const [isUnprintedConfirmOpen, setIsUnprintedConfirmOpen] = useState(false);
 
   // Update fungsi handlePrintUnprinted
   const handlePrintUnprinted = () => {
@@ -589,6 +532,9 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       document.title = 'Dashboard Pesanan';
     };
   }, [orders]);
+
+  // Tambahkan state ini
+  const [isUnprintedConfirmOpen, setIsUnprintedConfirmOpen] = useState(false);
 
   return (
     <div className="w-full">
@@ -987,34 +933,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         isOpen={isOrderHistoryOpen}
         onClose={() => setIsOrderHistoryOpen(false)}
       />
-
-      {/* Tampilkan banner jika ada izin yang belum diberikan */}
-      {(!permissions.popups || !permissions.notifications) && (
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg dark:bg-yellow-900/30 dark:border-yellow-800">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertCircle size={16} className="text-yellow-600 dark:text-yellow-500 shrink-0" />
-              <div className="text-sm text-yellow-800 dark:text-yellow-200">
-                <p className="font-medium">Beberapa fitur memerlukan izin browser:</p>
-                <ul className="mt-1 space-y-1 ml-4 list-disc">
-                  {!permissions.popups && (
-                    <li>Popup (untuk membuka dokumen di tab baru)</li>
-                  )}
-                  {!permissions.notifications && (
-                    <li>Notifikasi (untuk pemberitahuan)</li>
-                  )}
-                </ul>
-              </div>
-            </div>
-            <button 
-              onClick={requestPermissions}
-              className="shrink-0 ml-4 text-xs bg-yellow-100 dark:bg-yellow-800 hover:bg-yellow-200 dark:hover:bg-yellow-700 text-yellow-800 dark:text-yellow-200 px-3 py-1.5 rounded-md"
-            >
-              Cek Ulang Izin
-            </button>
-          </div>
-        </div>
-      )}
     </div>
-  )
+  );
 }
