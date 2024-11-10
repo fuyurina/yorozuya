@@ -232,32 +232,38 @@ export default function OrderChangesPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] flex flex-col dark:bg-gray-800">
-          <DialogHeader className="py-2 border-b dark:border-gray-700">
-            <DialogTitle className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0 dark:text-white">
-              <span className="text-sm sm:text-base">{selectedOrder?.nomor_invoice}</span>
-              <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{selectedOrder?.nama_toko}</span>
-              <span className="text-xs text-gray-400 dark:text-gray-500">ID: {selectedOrder?.id_pengguna}</span>
+        <DialogContent className="sm:max-w-[900px] w-[95vw] h-[90vh] overflow-hidden flex flex-col bg-white dark:bg-gray-800">
+          <DialogHeader className="py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
+            <DialogTitle className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+              <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100">
+                {selectedOrder?.nomor_invoice}
+              </span>
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+                {selectedOrder?.nama_toko}
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                ID: {selectedOrder?.id_pengguna}
+              </span>
             </DialogTitle>
           </DialogHeader>
 
           {/* Tab buttons untuk mobile */}
-          <div className="sm:hidden flex border-b dark:border-gray-700">
+          <div className="sm:hidden flex border-b border-gray-200 dark:border-gray-700 shrink-0">
             <button
-              className={`flex-1 py-2 text-sm font-medium ${
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
                 activeTab === 'chat'
-                  ? 'border-b-2 border-blue-500 text-blue-500'
-                  : 'text-gray-500'
+                  ? 'border-b-2 border-blue-500 text-blue-500 dark:border-blue-400 dark:text-blue-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
               onClick={() => setActiveTab('chat')}
             >
               Chat
             </button>
             <button
-              className={`flex-1 py-2 text-sm font-medium ${
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
                 activeTab === 'orders'
-                  ? 'border-b-2 border-blue-500 text-blue-500'
-                  : 'text-gray-500'
+                  ? 'border-b-2 border-blue-500 text-blue-500 dark:border-blue-400 dark:text-blue-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
               onClick={() => setActiveTab('orders')}
             >
@@ -265,23 +271,25 @@ export default function OrderChangesPage() {
             </button>
           </div>
 
-          <div className="flex-grow flex gap-4 h-[calc(90vh-100px)]">
+          <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
             {/* Chat Section */}
             <div className={`
-              w-1/2 flex flex-col
-              sm:block
-              ${activeTab === 'chat' ? 'block' : 'hidden'}
-              sm:w-1/2
+              sm:w-1/2 flex flex-col
+              ${activeTab === 'chat' ? 'flex' : 'hidden sm:flex'}
               w-full
+              h-full
             `}>
-              <div ref={chatContainerRef} className="flex-grow overflow-y-auto p-4 space-y-4">
+              <div 
+                ref={chatContainerRef} 
+                className="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-gray-800"
+              >
                 {chats.map((chat) => (
                   <div key={chat.id} className={`flex ${chat.sender === 'seller' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] rounded-lg ${
+                    <div className={`max-w-[85%] rounded-lg ${
                       chat.sender === 'seller' 
-                      ? 'bg-blue-100 dark:bg-blue-900 dark:text-white' 
-                      : 'bg-gray-100 dark:bg-gray-700 dark:text-white'
-                    } p-3`}>
+                      ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100' 
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                    } p-3 shadow-sm`}>
                       <p className="text-sm whitespace-pre-wrap break-words">{chat.message}</p>
                       <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
                         {new Date(chat.timestamp).toLocaleString()}
@@ -291,17 +299,22 @@ export default function OrderChangesPage() {
                 ))}
               </div>
               
-              <form onSubmit={handleSendMessage} className="p-4 border-t dark:border-gray-700">
+              <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
                 <div className="flex gap-2">
                   <Input
                     type="text"
                     placeholder="Ketik pesan..."
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
-                    className="flex-grow"
+                    className="flex-grow bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700"
                     disabled={isLoadingSend}
                   />
-                  <Button type="submit" size="sm" disabled={isLoadingSend}>
+                  <Button 
+                    type="submit" 
+                    size="sm" 
+                    disabled={isLoadingSend}
+                    className="bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
+                  >
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
@@ -310,26 +323,26 @@ export default function OrderChangesPage() {
 
             {/* Order Details Section */}
             <div className={`
-              w-1/2 border-l dark:border-gray-700 flex flex-col
-              sm:block
-              ${activeTab === 'orders' ? 'block' : 'hidden'}
-              sm:w-1/2
+              sm:w-1/2 sm:border-l border-gray-200 dark:border-gray-700
+              ${activeTab === 'orders' ? 'flex' : 'hidden sm:flex'}
+              flex-col
               w-full
+              h-full
             `}>
-              <div className="overflow-y-auto p-4">
+              <div className="flex-1 overflow-y-auto p-4 bg-white dark:bg-gray-800">
                 {loadingDetails ? (
                   <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-full bg-gray-200 dark:bg-gray-700" />
+                    <Skeleton className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700" />
                   </div>
                 ) : orderDetails && orderDetails.length > 0 ? (
                   <div className="space-y-4">
                     {orderDetails.map((order) => (
                       <div 
                         key={order.order_sn} 
-                        className={`bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 shadow-sm transition-all duration-300
+                        className={`bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700 shadow-sm transition-all duration-300
                           ${order.order_sn === selectedOrder?.nomor_invoice 
-                            ? 'border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]' 
+                            ? 'border-blue-400 dark:border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' 
                             : 'hover:shadow-md'
                           }
                         `}
@@ -396,7 +409,9 @@ export default function OrderChangesPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-gray-500 dark:text-gray-400">Tidak ada detail pesanan</p>
+                  <p className="text-center text-gray-500 dark:text-gray-400">
+                    Tidak ada detail pesanan
+                  </p>
                 )}
               </div>
             </div>

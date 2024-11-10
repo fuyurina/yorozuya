@@ -114,31 +114,31 @@ async function handleTrackingUpdate(data: any): Promise<void> {
 
 // Fungsi-fungsi helper (perlu diimplementasikan)
 async function updateOrderStatus(shop_id: number, ordersn: string, status: string, updateTime: number) {
+  let orderDetail: any;
+  
   try {
-
-
-    // Ganti pemanggilan shopeeApi.getOrderDetail dengan getOrderDetail dari shopeeService
-    const orderDetail = await getOrderDetail(shop_id, ordersn);
+    orderDetail = await getOrderDetail(shop_id, ordersn);
     
-    if (orderDetail && 'order_list' in orderDetail) {
+    if (orderDetail?.order_list?.[0]) {
       const orderData = orderDetail.order_list[0];
       
-      // Panggil fungsi upsertOrderData
+      // Tambahkan validasi data
+      if (!orderData.order_sn) {
+        throw new Error(`Data order tidak valid untuk ordersn: ${ordersn}`);
+      }
+      
       await upsertOrderData(orderData, shop_id);
-      
-      // Panggil fungsi upsertOrderItems
       await upsertOrderItems(orderData);
-      
-      // Panggil fungsi upsertLogisticData
       await upsertLogisticData(orderData, shop_id);
       
       console.log(`Status pesanan berhasil diperbarui untuk ordersn: ${ordersn}`);
     } else {
-      console.error('Data pesanan tidak valid atau tidak ditemukan');
+      throw new Error(`Data pesanan tidak ditemukan untuk ordersn: ${ordersn}`);
     }
   } catch (error) {
     console.error('Error dalam updateOrderStatus:', error);
-    // Tangani error sesuai kebutuhan
+    // Log detail error untuk debugging
+    console.error('Detail orderDetail:', orderDetail);
   }
 }
 

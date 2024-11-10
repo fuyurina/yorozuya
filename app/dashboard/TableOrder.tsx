@@ -12,7 +12,7 @@ import {
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 // Impor ikon-ikon yang diperlukan
-import { Package, Clock, Truck, XCircle, AlertCircle, RefreshCcw, Search, Filter, Printer, PrinterCheck, CheckSquare, CheckCircle } from 'lucide-react'
+import { Package, Clock, Truck, XCircle, AlertCircle, RefreshCcw, Search, Filter, Printer, PrinterCheck, CheckSquare, CheckCircle, Send } from 'lucide-react'
 import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { OrderDetails } from '@/app/dashboard/OrderDetails'
@@ -21,7 +21,6 @@ import { Button } from "@/components/ui/button";
 import { mergePDFs } from '@/app/utils/pdfUtils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Check, X } from 'lucide-react'; // Tambahkan import icon
 import { OrderHistory } from '@/app/dashboard/OrderHistory';
 
 function formatDate(timestamp: number): string {
@@ -78,14 +77,35 @@ const getStatusIcon = (status: OrderStatus) => {
   }
 };
 
-const StatusBadge = React.memo(({ status }: { status: OrderStatus }) => (
-  <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}`}>
-    {getStatusIcon(status)}
-    {status}
-  </span>
+// Update tipe props StatusBadge
+type StatusBadgeProps = {
+  status: OrderStatus;
+  order: OrderItem;
+  onProcess: (order: OrderItem) => void;
+};
+
+// Update komponen StatusBadge
+const StatusBadge = React.memo(({ status, order, onProcess }: StatusBadgeProps) => (
+  <div className="flex items-center gap-2">
+    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}`}>
+      {getStatusIcon(status)}
+      {status}
+    </span>
+    {status === 'READY_TO_SHIP' && (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+        onClick={() => onProcess(order)}
+        title="Proses Pesanan"
+      >
+        <Send size={16} className="text-blue-600 dark:text-blue-400" />
+      </Button>
+    )}
+  </div>
 ));
 
-// Tambahkan baris berikut setelah definisi komponen StatusBadge
+// Tambahkan baris ini setelah definisi komponen StatusBadge
 StatusBadge.displayName = 'StatusBadge';
 
 // Tambahkan interface
@@ -259,16 +279,20 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
     console.log('Orders yang akan dicetak:', ordersToPrint.length, 'dokumen');
 
-    if (ordersToPrint.length === 0) return;
-
-    setBulkProgress({
-      processed: 0,
-      total: ordersToPrint.length,
-      currentCarrier: '',
-      currentShop: ''
-    });
+    if (ordersToPrint.length === 0) {
+      toast.info('Tidak ada dokumen yang dapat dicetak');
+      return;
+    }
 
     try {
+      // Set selectedOrders dan inisialisasi progress
+      setBulkProgress({
+        processed: 0,
+        total: ordersToPrint.length,
+        currentCarrier: '',
+        currentShop: ''
+      });
+
       // Kelompokkan berdasarkan shop_id
       const ordersByShop = orders
         .filter(order => ordersToPrint.includes(order.order_sn))
@@ -281,19 +305,21 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           return groups;
         }, {});
 
-      // Log pengelompokan per toko
-      console.log('Pengelompokan per toko:', Object.entries(ordersByShop).map(([shopId, orders]) => ({
-        shop_id: shopId,
-        shop_name: orders[0].shop_name,
-        order_count: orders.length
-      })));
+      // Log pengelompokan
+      console.log('Pengelompokan pesanan:', {
+        total_orders: ordersToPrint.length,
+        shops: Object.entries(ordersByShop).map(([shopId, orders]) => ({
+          shop_id: shopId,
+          shop_name: orders[0].shop_name,
+          order_count: orders.length
+        }))
+      });
 
       // Proses setiap toko
       for (const [shopId, shopOrders] of Object.entries(ordersByShop)) {
         const shopName = shopOrders[0].shop_name;
         const blobs: Blob[] = [];
 
-        // Update progress dengan nama toko
         setBulkProgress(prev => ({
           ...prev,
           currentShop: shopName
@@ -311,13 +337,25 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           return groups;
         }, {});
 
+        // Log untuk debugging
+        console.log(`Processing shop ${shopName}:`, {
+          carriers: Object.entries(ordersByCarrier).map(([carrier, orders]) => ({
+            carrier,
+            order_count: orders.length
+          }))
+        });
+
         // Proses setiap kurir
         for (const [carrier, carrierOrders] of Object.entries(ordersByCarrier)) {
-          // Update progress dengan nama toko dan kurir
+          console.log(`Processing carrier ${carrier} for shop ${shopName}:`, {
+            order_count: carrierOrders.length,
+            orders: carrierOrders.map(o => o.order_sn)
+          });
+
           setBulkProgress(prev => ({
             ...prev,
             currentCarrier: carrier || 'Unknown',
-            currentShop: shopName // Pastikan nama toko tetap ada
+            currentShop: shopName
           }));
 
           const orderParams: ShippingDocumentParams[] = carrierOrders.map(order => ({
@@ -327,57 +365,89 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
             shipping_carrier: order.shipping_carrier
           }));
 
-          const blob = await downloadDocument(parseInt(shopId), orderParams);
-          blobs.push(blob);
+          try {
+            const blob = await downloadDocument(parseInt(shopId), orderParams);
+            blobs.push(blob);
 
-          // Update jumlah yang telah diproses
-          setBulkProgress(prev => ({
-            ...prev,
-            processed: prev.processed + carrierOrders.length,
-            currentCarrier: carrier || 'Unknown',
-            currentShop: shopName // Pastikan nama toko tetap ada
-          }));
+            setBulkProgress(prev => ({
+              ...prev,
+              processed: prev.processed + carrierOrders.length,
+              currentCarrier: carrier || 'Unknown',
+              currentShop: shopName
+            }));
 
-          // Tambahkan delay kecil antara setiap kurir
+            console.log(`Successfully downloaded documents for carrier ${carrier}:`, {
+              processed: carrierOrders.length,
+              total_processed: carrierOrders.length
+            });
+
+          } catch (error) {
+            console.error(`Error downloading documents for carrier ${carrier}:`, error);
+            toast.error(`Gagal mengunduh dokumen untuk ${carrier}`);
+          }
+
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
         // Proses PDF untuk toko ini
-        const mergedPDF = await mergePDFs(blobs);
-        const pdfUrl = URL.createObjectURL(mergedPDF);
-        
-        const newWindow = window.open('', '_blank');
-        if (newWindow) {
-          newWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <title>${shopName}</title>
-              </head>
-              <body style="margin:0;padding:0;height:100vh;">
-                <embed src="${pdfUrl}" type="application/pdf" width="100%" height="100%">
-              </body>
-            </html>
-          `);
-          newWindow.document.close();
-          window.focus();
-        }
+        if (blobs.length > 0) {
+          try {
+            const mergedPDF = await mergePDFs(blobs);
+            const pdfUrl = URL.createObjectURL(mergedPDF);
+            
+            const newWindow = window.open('', '_blank');
+            if (newWindow) {
+              newWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                  <head>
+                    <title>${shopName}</title>
+                  </head>
+                  <body style="margin:0;padding:0;height:100vh;">
+                    <embed src="${pdfUrl}" type="application/pdf" width="100%" height="100%">
+                  </body>
+                </html>
+              `);
+              newWindow.document.close();
+            }
 
-        // Cleanup
-        setTimeout(() => {
-          URL.revokeObjectURL(pdfUrl);
-        }, 1000);
+            setTimeout(() => {
+              URL.revokeObjectURL(pdfUrl);
+            }, 1000);
+
+          } catch (error) {
+            console.error(`Error merging PDFs for shop ${shopName}:`, error);
+            toast.error(`Gagal menggabungkan PDF untuk ${shopName}`);
+          }
+        }
       }
+
+      // Update status cetak
+      if (onOrderUpdate) {
+        orders
+          .filter(order => ordersToPrint.includes(order.order_sn))
+          .forEach(order => {
+            onOrderUpdate(order.order_sn, { is_printed: true });
+          });
+      }
+
+      // Reset selectedOrders setelah selesai
+      setSelectedOrders([]);
+      toast.success('Proses pencetakan selesai');
+
     } catch (error) {
       console.error('Gagal mencetak dokumen:', error);
       toast.error('Gagal mencetak dokumen');
     } finally {
-      setBulkProgress({
-        processed: 0,
-        total: 0,
-        currentCarrier: '',
-        currentShop: ''
-      });
+      // Reset progress bar setelah selesai
+      setTimeout(() => {
+        setBulkProgress({
+          processed: 0,
+          total: 0,
+          currentCarrier: '',
+          currentShop: ''
+        });
+      }, 2000);
     }
   };
 
@@ -412,13 +482,18 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
   // Update fungsi handlePrintUnprinted
   const handlePrintUnprinted = () => {
-    const unprintedOrders = orders.filter(order => 
+    const unprintedCount = orders.filter(order => 
       !order.is_printed && 
       order.document_status === 'READY' &&
       (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL')
-    );
+    ).length;
     
-    setSelectedOrders(unprintedOrders.map(order => order.order_sn));
+    if (unprintedCount === 0) {
+      toast.info('Tidak ada dokumen yang belum dicetak');
+      return;
+    }
+    
+    // Hanya buka dialog konfirmasi, tanpa mengubah selectedOrders
     setIsUnprintedConfirmOpen(true);
   };
 
@@ -426,22 +501,180 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
   const handleConfirmUnprinted = async () => {
     setIsUnprintedConfirmOpen(false);
     
-    if (selectedOrders.length === 0) {
+    // Mengambil pesanan yang belum dicetak saat konfirmasi
+    const unprintedOrders = orders.filter(order => 
+      !order.is_printed && 
+      order.document_status === 'READY' &&
+      (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL')
+    );
+    
+    if (unprintedOrders.length === 0) {
       toast.info('Tidak ada dokumen yang belum dicetak');
       return;
     }
     
     try {
-      await handleBulkPrint();
+      // Inisialisasi progress bar dengan total dokumen
+      setBulkProgress({
+        processed: 0,
+        total: unprintedOrders.length,
+        currentCarrier: '',
+        currentShop: ''
+      });
+
+      // Kelompokkan berdasarkan shop_id
+      const ordersByShop = unprintedOrders.reduce((groups: { [key: number]: OrderItem[] }, order) => {
+        const shopId = order.shop_id;
+        if (!groups[shopId]) {
+          groups[shopId] = [];
+        }
+        groups[shopId].push(order);
+        return groups;
+      }, {});
+
+      // Log untuk debugging
+      console.log('Pengelompokan pesanan:', {
+        total_unprinted: unprintedOrders.length,
+        shops: Object.entries(ordersByShop).map(([shopId, orders]) => ({
+          shop_id: shopId,
+          shop_name: orders[0].shop_name,
+          order_count: orders.length
+        }))
+      });
+
+      // Proses setiap toko
+      for (const [shopId, shopOrders] of Object.entries(ordersByShop)) {
+        const shopName = shopOrders[0].shop_name;
+        const blobs: Blob[] = [];
+
+        // Update progress dengan nama toko
+        setBulkProgress(prev => ({
+          ...prev,
+          currentShop: shopName
+        }));
+
+        // Kelompokkan orders berdasarkan kurir
+        const ordersByCarrier = shopOrders.reduce((groups: { 
+          [key: string]: OrderItem[] 
+        }, order) => {
+          const carrier = order.shipping_carrier || 'unknown';
+          if (!groups[carrier]) {
+            groups[carrier] = [];
+          }
+          groups[carrier].push(order);
+          return groups;
+        }, {});
+
+        // Log untuk debugging
+        console.log(`Processing shop ${shopName}:`, {
+          carriers: Object.entries(ordersByCarrier).map(([carrier, orders]) => ({
+            carrier,
+            order_count: orders.length
+          }))
+        });
+
+        // Proses setiap kurir
+        for (const [carrier, carrierOrders] of Object.entries(ordersByCarrier)) {
+          console.log(`Processing carrier ${carrier} for shop ${shopName}:`, {
+            order_count: carrierOrders.length,
+            orders: carrierOrders.map(o => o.order_sn)
+          });
+
+          setBulkProgress(prev => ({
+            ...prev,
+            currentCarrier: carrier || 'Unknown',
+            currentShop: shopName
+          }));
+
+          const orderParams: ShippingDocumentParams[] = carrierOrders.map(order => ({
+            order_sn: order.order_sn,
+            package_number: order.package_number,
+            shipping_document_type: "THERMAL_AIR_WAYBILL",
+            shipping_carrier: order.shipping_carrier
+          }));
+
+          try {
+            const blob = await downloadDocument(parseInt(shopId), orderParams);
+            blobs.push(blob);
+
+            // Update progress setelah berhasil mengunduh
+            setBulkProgress(prev => ({
+              ...prev,
+              processed: prev.processed + carrierOrders.length,
+              currentCarrier: carrier || 'Unknown',
+              currentShop: shopName
+            }));
+
+            // Log untuk debugging
+            console.log(`Successfully downloaded documents for carrier ${carrier}:`, {
+              processed: carrierOrders.length,
+              total_processed: carrierOrders.length
+            });
+
+          } catch (error) {
+            console.error(`Error downloading documents for carrier ${carrier}:`, error);
+            toast.error(`Gagal mengunduh dokumen untuk ${carrier}`);
+          }
+
+          // Delay kecil antara setiap kurir
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // Proses PDF untuk toko ini
+        if (blobs.length > 0) {
+          try {
+            const mergedPDF = await mergePDFs(blobs);
+            const pdfUrl = URL.createObjectURL(mergedPDF);
+            
+            const newWindow = window.open('', '_blank');
+            if (newWindow) {
+              newWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                  <head>
+                    <title>${shopName}</title>
+                  </head>
+                  <body style="margin:0;padding:0;height:100vh;">
+                    <embed src="${pdfUrl}" type="application/pdf" width="100%" height="100%">
+                  </body>
+                </html>
+              `);
+              newWindow.document.close();
+            }
+
+            setTimeout(() => {
+              URL.revokeObjectURL(pdfUrl);
+            }, 1000);
+
+          } catch (error) {
+            console.error(`Error merging PDFs for shop ${shopName}:`, error);
+            toast.error(`Gagal menggabungkan PDF untuk ${shopName}`);
+          }
+        }
+      }
       
+      // Update status cetak
       if (onOrderUpdate) {
-        selectedOrders.forEach(orderSn => {
-          onOrderUpdate(orderSn, { is_printed: true });
+        unprintedOrders.forEach(order => {
+          onOrderUpdate(order.order_sn, { is_printed: true });
         });
       }
+      
+      toast.success('Proses pencetakan selesai');
+
     } catch (error) {
       console.error('Gagal mencetak dokumen:', error);
       toast.error('Gagal mencetak dokumen');
+    } finally {
+      // Reset progress bar setelah selesai
+      setTimeout(() => {
+        setBulkProgress({
+          processed: 0,
+          total: 0,
+          currentCarrier: '',
+          currentShop: ''
+        });
+      }, 2000);
     }
   };
 
@@ -536,6 +769,162 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
   // Tambahkan state ini
   const [isUnprintedConfirmOpen, setIsUnprintedConfirmOpen] = useState(false);
 
+  // Tambahkan state untuk dialog konfirmasi print semua
+  const [isPrintAllConfirmOpen, setIsPrintAllConfirmOpen] = useState(false);
+
+  // Update fungsi handleBulkPrint untuk menampilkan konfirmasi terlebih dahulu
+  const handleBulkPrintClick = () => {
+    setIsPrintAllConfirmOpen(true);
+  };
+
+  // Fungsi untuk menangani konfirmasi print semua
+  const handleConfirmPrintAll = async () => {
+    setIsPrintAllConfirmOpen(false);
+    await handleBulkPrint();
+  };
+
+  // Tambahkan fungsi untuk memproses pesanan
+  const handleProcessOrder = async (order: OrderItem) => {
+    try {
+      toast.promise(
+        async () => {
+          const response = await fetch('/api/shopee/process-orders', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              shopId: order.shop_id,
+              orderSn: order.order_sn
+            })
+          });
+
+          const data = await response.json();
+          
+          if (!data.success) {
+            throw new Error(data.message || 'Gagal memproses pesanan');
+          }
+
+          // Update local state jika berhasil
+          if (onOrderUpdate) {
+            onOrderUpdate(order.order_sn, {
+              order_status: 'PROCESSED'
+            });
+          }
+
+          return data;
+        },
+        {
+          loading: 'Memproses pesanan...',
+          success: 'Pesanan berhasil diproses',
+          error: (err) => `${err.message}`
+        }
+      );
+    } catch (error) {
+      console.error('Gagal memproses pesanan:', error);
+    }
+  };
+
+  // Tambahkan state untuk tracking progress bulk process
+  const [bulkProcessProgress, setBulkProcessProgress] = useState<{
+    processed: number;
+    total: number;
+    currentOrder: string;
+  }>({
+    processed: 0,
+    total: 0,
+    currentOrder: ''
+  });
+
+  // Tambahkan state untuk dialog konfirmasi
+  const [isProcessAllConfirmOpen, setIsProcessAllConfirmOpen] = useState(false);
+
+  // Fungsi untuk mendapatkan jumlah pesanan yang siap kirim
+  const getReadyToShipCount = () => {
+    return orders.filter(order => order.order_status === 'READY_TO_SHIP').length;
+  };
+
+  // Fungsi untuk memproses semua pesanan
+  const handleProcessAllOrders = async () => {
+    const readyToShipOrders = orders.filter(order => order.order_status === 'READY_TO_SHIP');
+    
+    if (readyToShipOrders.length === 0) {
+      toast.info('Tidak ada pesanan yang perlu diproses');
+      return;
+    }
+
+    try {
+      // Inisialisasi progress
+      setBulkProcessProgress({
+        processed: 0,
+        total: readyToShipOrders.length,
+        currentOrder: ''
+      });
+
+      for (const order of readyToShipOrders) {
+        setBulkProcessProgress(prev => ({
+          ...prev,
+          currentOrder: order.order_sn
+        }));
+
+        try {
+          const response = await fetch('/api/shopee/process-orders', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              shopId: order.shop_id,
+              orderSn: order.order_sn
+            })
+          });
+
+          const data = await response.json();
+          
+          if (!data.success) {
+            console.error(`Gagal memproses pesanan ${order.order_sn}:`, data.message);
+            toast.error(`Gagal memproses pesanan ${order.order_sn}`);
+            continue;
+          }
+
+          // Update local state
+          if (onOrderUpdate) {
+            onOrderUpdate(order.order_sn, {
+              order_status: 'PROCESSED'
+            });
+          }
+
+          setBulkProcessProgress(prev => ({
+            ...prev,
+            processed: prev.processed + 1
+          }));
+
+          // Delay kecil antara setiap request
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+        } catch (error) {
+          console.error(`Gagal memproses pesanan ${order.order_sn}:`, error);
+          toast.error(`Gagal memproses pesanan ${order.order_sn}`);
+        }
+      }
+
+      toast.success('Proses selesai');
+
+    } catch (error) {
+      console.error('Gagal memproses pesanan:', error);
+      toast.error('Terjadi kesalahan saat memproses pesanan');
+    } finally {
+      // Reset progress setelah selesai
+      setTimeout(() => {
+        setBulkProcessProgress({
+          processed: 0,
+          total: 0,
+          currentOrder: ''
+        });
+      }, 2000);
+    }
+  };
+
   return (
     <div className="w-full">
       {bulkProgress.total > 0 && (
@@ -591,14 +980,42 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row gap-2 w-full mt-2">
-        {/* Card Kategori */}
-        <Card className="px-2 py-2 shadow-none rounded-lg md:flex-1">
-          <div className="w-full">
-            {/* Existing dropdown dan tab kategori */}
-            <div className="w-full sm:hidden">
+      {/* Progress Bar untuk Bulk Process */}
+      {bulkProcessProgress.total > 0 && (
+        <div className="mb-4 p-3 sm:p-4 bg-white dark:bg-gray-800 border rounded-lg shadow-sm">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-2">
+                <Send size={16} className="text-primary dark:text-white animate-pulse" />
+                <span className="text-xs sm:text-sm font-medium dark:text-white">
+                  {bulkProcessProgress.processed}/{bulkProcessProgress.total}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+            <div 
+              className="bg-primary dark:bg-primary-foreground h-1.5 rounded-full transition-all duration-500 ease-in-out"
+              style={{ 
+                width: `${(bulkProcessProgress.processed / bulkProcessProgress.total) * 100}%` 
+              }}
+            />
+          </div>
+          <p className="mt-1.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+            Memproses pesanan... {bulkProcessProgress.currentOrder}
+          </p>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 w-full mt-2">
+        {/* Card Kategori, Pencarian, dan Filter */}
+        <Card className="px-2 py-2 shadow-none rounded-lg">
+          {/* Mobile Layout */}
+          <div className="flex flex-col gap-2 sm:hidden">
+            {/* Baris 1: Kategori */}
+            <div className="w-full">
               <Select value={activeCategory} onValueChange={handleCategoryChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger>
                   <SelectValue placeholder="Pilih kategori" />
                 </SelectTrigger>
                 <SelectContent>
@@ -610,52 +1027,18 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                 </SelectContent>
               </Select>
             </div>
-            <div className="hidden sm:flex space-x-2 overflow-x-auto items-center">
-              {/* Tombol checkbox hanya untuk desktop */}
+
+            {/* Baris 2: Checkbox, Pencarian dan Filter */}
+            <div className="flex items-center gap-2">
+              {/* Tombol checkbox */}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleToggleCheckbox}
-                className="h-6 w-6 p-0"
+                className="h-8 w-8 p-0 shrink-0"
               >
                 <CheckSquare 
-                  size={16} 
-                  className={showCheckbox ? "text-primary" : "text-gray-500"}
-                />
-              </Button>
-
-              {/* Kategori buttons */}
-              {updatedCategories.map(category => (
-                <button
-                  key={category.name}
-                  onClick={() => handleCategoryChange(category.name)}
-                  className={`px-3 py-2 text-xs font-medium rounded-md transition-all
-                    ${activeCategory === category.name
-                      ? 'bg-primary text-white dark:bg-primary-foreground dark:text-primary'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-                    }`}
-                >
-                  {category.name} <span className="ml-1 text-xs font-normal">({category.count})</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        {/* Card Pencarian dan Tombol Cetak */}
-        <Card className="px-2 py-2 shadow-none rounded-lg flex-1">
-          <div className="flex flex-col sm:flex-row gap-2 justify-between">
-            {/* Bagian Pencarian dan Filter */}
-            <div className="flex items-center gap-2 w-full sm:w-[400px]">
-              {/* Tombol Checkbox */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleToggleCheckbox}
-                className="h-[32px] w-[32px] p-0 shrink-0"
-              >
-                <CheckSquare 
-                  size={16} 
+                  size={18}
                   className={showCheckbox ? "text-primary" : "text-gray-500"}
                 />
               </Button>
@@ -667,17 +1050,21 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                   placeholder="Cari username, kurir, atau no. pesanan"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="px-2 py-1 pl-8 border rounded-md w-full text-xs h-[32px] dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                  className="px-2 py-1 pl-8 border rounded-md w-full text-xs h-8 dark:bg-gray-800 dark:text-white dark:border-gray-700"
                 />
                 <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
               </div>
 
               {/* Filter Popover */}
-              <Popover open={isShopFilterOpen} onOpenChange={setIsShopFilterOpen}>
-                <PopoverTrigger asChild>
-                  <button className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 h-[32px] w-[32px] flex items-center justify-center">
-                    <Filter size={20} className="text-gray-500 dark:text-gray-400" />
-                  </button>
+              <Popover>
+                <PopoverTrigger>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 p-0"
+                  >
+                    <Filter size={18} className="text-gray-500 dark:text-gray-400" />
+                  </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-56 dark:bg-gray-800 dark:border-gray-700" align="end" side="bottom" sideOffset={5}>
                   <div className="space-y-2">
@@ -696,33 +1083,144 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                 </PopoverContent>
               </Popover>
             </div>
+          </div>
 
-            {/* Bagian Tombol Cetak */}
-            <div className="flex gap-2 shrink-0 justify-center sm:justify-end">
+          {/* Desktop Layout */}
+          <div className="hidden sm:flex items-center justify-between gap-2">
+            {/* Bagian Kiri: Checkbox dan Kategori */}
+            <div className="flex items-center gap-2 overflow-x-auto">
+              {/* Tombol checkbox */}
               <Button
-                onClick={handlePrintUnprinted}
-                className="px-3 py-2 text-xs font-medium bg-green-600 hover:bg-green-700 text-white whitespace-nowrap h-[32px] min-h-0"
-                disabled={getUnprintedDocuments() === 0}
+                variant="ghost"
+                size="sm"
+                onClick={handleToggleCheckbox}
+                className="h-6 w-6 p-0 shrink-0"
               >
-                <Printer size={14} className="mr-1" />
-                Belum Print ({getUnprintedDocuments()})
+                <CheckSquare 
+                  size={16} 
+                  className={showCheckbox ? "text-primary" : "text-gray-500"}
+                />
               </Button>
 
-              <Button
-                onClick={handleBulkPrint}
-                className={`px-3 py-2 text-xs font-medium text-white whitespace-nowrap h-[32px] min-h-0
-                  ${selectedOrders.length > 0 
-                    ? 'bg-orange-500 hover:bg-orange-600' 
-                    : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
-              >
-                <PrinterCheck size={14} className="mr-1" />
+              {/* Desktop buttons */}
+              <div className="flex space-x-2">
+                {updatedCategories.map(category => (
+                  <button
+                    key={category.name}
+                    onClick={() => handleCategoryChange(category.name)}
+                    className={`px-3 py-2 text-xs font-medium rounded-md transition-all whitespace-nowrap
+                      ${activeCategory === category.name
+                        ? 'bg-primary text-white dark:bg-primary-foreground dark:text-primary'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                      }`}
+                  >
+                    {category.name} <span className="ml-1 text-xs font-normal">({category.count})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Bagian Kanan: Pencarian dan Filter */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Input Pencarian */}
+              <div className="relative w-[300px]">
+                <input
+                  type="text"
+                  placeholder="Cari username, kurir, atau no. pesanan"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="px-2 py-1 pl-8 border rounded-md w-full text-xs h-[32px] dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                />
+                <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              </div>
+
+              {/* Filter Popover */}
+              <Popover>
+                <PopoverTrigger>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 p-0"
+                  >
+                    <Filter size={18} className="text-gray-500 dark:text-gray-400" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 dark:bg-gray-800 dark:border-gray-700" align="end" side="bottom" sideOffset={5}>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold dark:text-white">Filter Toko</h3>
+                    {shops.map(shop => (
+                      <div key={shop} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={shop}
+                          checked={selectedShops.includes(shop)}
+                          onCheckedChange={() => handleShopFilter(shop)}
+                        />
+                        <label htmlFor={shop} className="text-sm dark:text-gray-300">{shop}</label>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        </Card>
+
+        {/* Card Tombol Cetak */}
+        <Card className="px-2 py-2 shadow-none rounded-lg">
+          <div className="flex gap-2 justify-center sm:justify-end">
+            <Button
+              onClick={handlePrintUnprinted}
+              className="px-2 sm:px-3 py-2 text-xs font-medium bg-green-600 hover:bg-green-700 text-white whitespace-nowrap h-[32px] min-h-0 dark:bg-green-700 dark:hover:bg-green-800"
+              disabled={getUnprintedDocuments() === 0}
+              title="Cetak Dokumen Belum Print"
+            >
+              <Printer size={14} className="sm:mr-1" />
+              <span className="hidden sm:inline">
+                Belum Print ({getUnprintedDocuments()})
+              </span>
+              <span className="sm:hidden ml-1">
+                ({getUnprintedDocuments()})
+              </span>
+            </Button>
+
+            <Button
+              onClick={handleBulkPrintClick}
+              className={`px-2 sm:px-3 py-2 text-xs font-medium text-white whitespace-nowrap h-[32px] min-h-0
+                ${selectedOrders.length > 0 
+                  ? 'bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700' 
+                  : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800'
+                }`}
+              title={selectedOrders.length > 0 
+                ? `Cetak ${selectedOrders.length} Dokumen`
+                : `Cetak Semua (${getTotalPrintableDocuments()})`
+              }
+            >
+              <PrinterCheck size={14} className="sm:mr-1" />
+              <span className="hidden sm:inline">
                 {selectedOrders.length > 0 
                   ? `Cetak ${selectedOrders.length} Dokumen`
                   : `Cetak Semua (${getTotalPrintableDocuments()})`
                 }
-              </Button>
-            </div>
+              </span>
+              <span className="sm:hidden ml-1">
+                ({selectedOrders.length || getTotalPrintableDocuments()})
+              </span>
+            </Button>
+
+            <Button
+              onClick={() => setIsProcessAllConfirmOpen(true)}
+              className="px-2 sm:px-3 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap h-[32px] min-h-0 dark:bg-blue-700 dark:hover:bg-blue-800"
+              disabled={getReadyToShipCount() === 0}
+              title="Proses Semua Pesanan"
+            >
+              <Send size={14} className="sm:mr-1" />
+              <span className="hidden sm:inline">
+                Proses Semua ({getReadyToShipCount()})
+              </span>
+              <span className="sm:hidden ml-1">
+                ({getReadyToShipCount()})
+              </span>
+            </Button>
           </div>
         </Card>
       </div>
@@ -810,31 +1308,11 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.sku_qty || '-'}</TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.shipping_carrier || '-'} ({order.tracking_number || '-'})</TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <StatusBadge status={order.order_status as OrderStatus} />
-                      {order.order_status === "IN_CANCEL" && (
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 p-0 hover:bg-green-100 dark:hover:bg-green-900/30"
-                            onClick={() => handleCancellationAction(order.order_sn, 'ACCEPT')}
-                            title="Terima Pembatalan"
-                          >
-                            <CheckCircle size={16} className="text-green-600 dark:text-green-400" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30"
-                            onClick={() => handleCancellationAction(order.order_sn, 'REJECT')}
-                            title="Tolak Pembatalan"
-                          >
-                            <XCircle size={16} className="text-red-600 dark:text-red-400" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                    <StatusBadge 
+                      status={order.order_status as OrderStatus} 
+                      order={order}
+                      onProcess={handleProcessOrder}
+                    />
                   </TableCell>
                   <TableCell className="text-center p-1 h-[32px]">
                     <Button
@@ -907,11 +1385,11 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
           <AlertDialogHeader>
             <AlertDialogTitle className="dark:text-white">
-              Konfirmasi Cetak Dokumen
+              Konfirmasi Cetak Dokumen Belum Print
             </AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-300">
               Anda akan mencetak {getUnprintedDocuments()} dokumen yang belum pernah dicetak sebelumnya. 
-              Lanjutkan?
+              Setelah dicetak, dokumen akan ditandai sebagai sudah dicetak. Lanjutkan?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -920,7 +1398,33 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleConfirmUnprinted}
-              className="bg-primary hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/90 text-white"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+            >
+              Cetak Dokumen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isPrintAllConfirmOpen} onOpenChange={setIsPrintAllConfirmOpen}>
+        <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="dark:text-white">
+              Konfirmasi Cetak Dokumen
+            </AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-300">
+              Anda akan mencetak {selectedOrders.length > 0 
+                ? selectedOrders.length 
+                : getTotalPrintableDocuments()} dokumen yang siap cetak. Lanjutkan?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 dark:border-gray-600">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmPrintAll}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
             >
               Cetak Dokumen
             </AlertDialogAction>
@@ -933,6 +1437,35 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         isOpen={isOrderHistoryOpen}
         onClose={() => setIsOrderHistoryOpen(false)}
       />
+
+      {/* Tambahkan Dialog Konfirmasi */}
+      <AlertDialog open={isProcessAllConfirmOpen} onOpenChange={setIsProcessAllConfirmOpen}>
+        <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="dark:text-white">
+              Konfirmasi Proses Pesanan
+            </AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-300">
+              Anda akan memproses {getReadyToShipCount()} pesanan yang siap kirim. 
+              Proses ini tidak dapat dibatalkan. Lanjutkan?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 dark:border-gray-600">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setIsProcessAllConfirmOpen(false);
+                handleProcessAllOrders();
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800"
+            >
+              Proses Semua
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
