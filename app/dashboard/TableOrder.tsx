@@ -82,10 +82,11 @@ type StatusBadgeProps = {
   status: OrderStatus;
   order: OrderItem;
   onProcess: (order: OrderItem) => void;
+  onCancellationAction: (orderSn: string, action: 'ACCEPT' | 'REJECT') => void;
 };
 
-// Update komponen StatusBadge
-const StatusBadge = React.memo(({ status, order, onProcess }: StatusBadgeProps) => (
+// Update komponen StatusBadge dengan props baru
+const StatusBadge = React.memo(({ status, order, onProcess, onCancellationAction }: StatusBadgeProps) => (
   <div className="flex items-center gap-2">
     <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}`}>
       {getStatusIcon(status)}
@@ -101,6 +102,28 @@ const StatusBadge = React.memo(({ status, order, onProcess }: StatusBadgeProps) 
       >
         <Send size={16} className="text-blue-600 dark:text-blue-400" />
       </Button>
+    )}
+    {status === 'IN_CANCEL' && (
+      <div className="flex gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 p-0 hover:bg-green-100 dark:hover:bg-green-900/30"
+          onClick={() => onCancellationAction(order.order_sn, 'ACCEPT')}
+          title="Terima Pembatalan"
+        >
+          <CheckCircle size={16} className="text-green-600 dark:text-green-400" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30"
+          onClick={() => onCancellationAction(order.order_sn, 'REJECT')}
+          title="Tolak Pembatalan"
+        >
+          <XCircle size={16} className="text-red-600 dark:text-red-400" />
+        </Button>
+      </div>
     )}
   </div>
 ));
@@ -783,12 +806,12 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     await handleBulkPrint();
   };
 
-  // Tambahkan fungsi untuk memproses pesanan
+  // Update URL endpoint untuk memproses pesanan
   const handleProcessOrder = async (order: OrderItem) => {
     try {
       toast.promise(
         async () => {
-          const response = await fetch('/api/shopee/process-orders', {
+          const response = await fetch('/api/process-order', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -868,7 +891,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         }));
 
         try {
-          const response = await fetch('/api/shopee/process-orders', {
+          const response = await fetch('/api/process-order', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1312,6 +1335,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                       status={order.order_status as OrderStatus} 
                       order={order}
                       onProcess={handleProcessOrder}
+                      onCancellationAction={handleCancellationAction}
                     />
                   </TableCell>
                   <TableCell className="text-center p-1 h-[32px]">
