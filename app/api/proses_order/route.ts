@@ -101,3 +101,7 @@ export async function GET(): Promise<Response> {
         }, { status: 500 });
     }
 }
+
+// Tambahkan export config untuk mencegah static generation
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
