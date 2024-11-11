@@ -6,6 +6,13 @@ interface Message {
   sender: 'buyer' | 'seller';
   content: string;
   time: string;
+  type: 'text' | 'image';
+  imageUrl?: string;
+  imageThumb?: {
+    url: string;
+    height: number;
+    width: number;
+  };
 }
 
 export function useConversationMessages(conversationId: string | null, shopId: number) {
@@ -35,7 +42,14 @@ export function useConversationMessages(conversationId: string | null, shopId: n
       const formattedMessages = response.data.response.messages.map((msg: any) => ({
         id: msg.message_id,
         sender: msg.from_shop_id === shopId ? 'seller' : 'buyer',
-        content: msg.content.text,
+        type: msg.message_type,
+        content: msg.message_type === 'text' ? msg.content.text : '',
+        imageUrl: msg.message_type === 'image' ? msg.content.url : undefined,
+        imageThumb: msg.message_type === 'image' ? {
+          url: msg.content.thumb_url || msg.content.url,
+          height: msg.content.thumb_height,
+          width: msg.content.thumb_width
+        } : undefined,
         time: new Date(msg.created_timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }));
       

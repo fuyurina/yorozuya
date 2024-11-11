@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useConversationList } from '@/app/hooks/useWebchat';
 import { useConversationMessages } from '@/app/hooks/useGetMessage';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -35,6 +35,13 @@ interface Message {
   sender: 'buyer' | 'seller';
   content: string;
   time: string;
+  type: 'text' | 'image';
+  imageUrl?: string;
+  imageThumb?: {
+    url: string;
+    height: number;
+    width: number;
+  };
 }
 
 // Tambahkan interface untuk props MessageInput
@@ -179,7 +186,14 @@ const WebChatPage: React.FC = () => {
       const newMessage: Message = {
         id: sseData.message_id,
         sender: sseData.sender === selectedConversationData?.to_id ? 'buyer' : 'seller',
-        content: sseData.content,
+        type: sseData.message_type,
+        content: sseData.message_type === 'text' ? sseData.content.text : '',
+        imageUrl: sseData.message_type === 'image' ? sseData.content.url : undefined,
+        imageThumb: sseData.message_type === 'image' ? {
+          url: sseData.content.thumb_url || sseData.content.url,
+          height: sseData.content.thumb_height,
+          width: sseData.content.thumb_width
+        } : undefined,
         time: new Date(sseData.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       addNewMessage(newMessage);
@@ -201,6 +215,7 @@ const WebChatPage: React.FC = () => {
         sender: 'seller',
         content: message,
         time: new Date(sentMessage.data.created_timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'text',
       };
       
       setMessages(prevMessages => [...prevMessages, newSentMessage]);
@@ -277,6 +292,30 @@ const WebChatPage: React.FC = () => {
 
   // Tambahkan state untuk tab aktif
   const [activeTab, setActiveTab] = useState<'chat' | 'orders'>('chat');
+
+  // Tambahkan ref untuk scroll area
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Tambahkan fungsi untuk mendeteksi scroll
+  const handleScroll = useCallback(() => {
+    if (!scrollAreaRef.current || !hasMoreMessages || isLoading) return;
+
+    const { scrollTop } = scrollAreaRef.current;
+    
+    // Jika scroll mendekati atas (threshold 100px), load more messages
+    if (scrollTop < 100) {
+      loadMoreMessages();
+    }
+  }, [hasMoreMessages, isLoading, loadMoreMessages]);
+
+  // Tambahkan useEffect untuk scroll event listener
+  useEffect(() => {
+    const scrollArea = scrollAreaRef.current;
+    if (scrollArea) {
+      scrollArea.addEventListener('scroll', handleScroll);
+      return () => scrollArea.removeEventListener('scroll', handleScroll);
+    }
+  }, [handleScroll]);
 
   return (
     <div className={`flex h-full w-full overflow-hidden ${isFullScreenChat ? 'fixed inset-0 z-50 bg-background' : ''}`}>
@@ -425,22 +464,33 @@ const WebChatPage: React.FC = () => {
             activeTab === 'chat' ? (
               <>
                 {/* Area Pesan */}
-                <ScrollArea className="flex-grow p-4">
+                <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
                   {isLoading ? (
                     <div>Memuat pesan...</div>
                   ) : error ? (
                     <div>Error: {error}</div>
                   ) : (
                     <>
-                      {hasMoreMessages && (
-                        <Button onClick={loadMoreMessages} variant="outline" className="mb-4 w-full">
-                          Muat pesan sebelumnya
-                        </Button>
-                      )}
                       {messages.map((message) => (
                         <div key={message.id} className={`flex ${message.sender === 'seller' ? 'justify-end' : 'justify-start'} mb-4`}>
                           <div className={`max-w-[70%] rounded-lg p-3 ${message.sender === 'seller' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                            <p className="break-words">{message.content}</p>
+                            {message.type === 'text' ? (
+                              <p className="break-words">{message.content}</p>
+                            ) : message.type === 'image' && message.imageUrl && (
+                              <div className="relative">
+                                <img
+                                  src={message.imageUrl}
+                                  alt="Pesan gambar"
+                                  className="rounded max-w-full cursor-pointer hover:opacity-90 transition-opacity"
+                                  style={{
+                                    maxHeight: '300px',
+                                    width: 'auto',
+                                    aspectRatio: message.imageThumb ? `${message.imageThumb.width}/${message.imageThumb.height}` : 'auto'
+                                  }}
+                                  onClick={() => window.open(message.imageUrl, '_blank')}
+                                />
+                              </div>
+                            )}
                             <p className="text-xs mt-1 opacity-70">{message.time}</p>
                           </div>
                         </div>
@@ -521,22 +571,33 @@ const WebChatPage: React.FC = () => {
           ) : (
             <>
               {/* Tampilan desktop tetap sama */}
-              <ScrollArea className="flex-grow p-4">
+              <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
                 {isLoading ? (
                   <div>Memuat pesan...</div>
                 ) : error ? (
                   <div>Error: {error}</div>
                 ) : (
                   <>
-                    {hasMoreMessages && (
-                      <Button onClick={loadMoreMessages} variant="outline" className="mb-4 w-full">
-                        Muat pesan sebelumnya
-                      </Button>
-                    )}
                     {messages.map((message) => (
                       <div key={message.id} className={`flex ${message.sender === 'seller' ? 'justify-end' : 'justify-start'} mb-4`}>
                         <div className={`max-w-[70%] rounded-lg p-3 ${message.sender === 'seller' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                          <p className="break-words">{message.content}</p>
+                          {message.type === 'text' ? (
+                            <p className="break-words">{message.content}</p>
+                          ) : message.type === 'image' && message.imageUrl && (
+                            <div className="relative">
+                              <img
+                                src={message.imageUrl}
+                                alt="Pesan gambar"
+                                className="rounded max-w-full cursor-pointer hover:opacity-90 transition-opacity"
+                                style={{
+                                  maxHeight: '300px',
+                                  width: 'auto',
+                                  aspectRatio: message.imageThumb ? `${message.imageThumb.width}/${message.imageThumb.height}` : 'auto'
+                                }}
+                                onClick={() => window.open(message.imageUrl, '_blank')}
+                              />
+                            </div>
+                          )}
                           <p className="text-xs mt-1 opacity-70">{message.time}</p>
                         </div>
                       </div>

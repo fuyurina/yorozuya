@@ -402,17 +402,26 @@ def tangani_keluhan(id_pengguna: str, nama_toko: str, jenis_keluhan: str, deskri
 
 def cek_keluhan_dan_perubahan(nomor_invoice: str):
     try:
-        # Tambah retry logic
+        # Konfigurasi retry
         max_retries = 3
         retry_delay = 2  # detik
+        timeout = 10  # detik
         
         for attempt in range(max_retries):
             try:
-                # Memeriksa keluhan
-                keluhan_result = supabase.table('keluhan').select('*').eq('nomor_invoice', nomor_invoice).execute()
+                # Memeriksa keluhan dengan timeout
+                keluhan_result = supabase.table('keluhan') \
+                    .select('*') \
+                    .eq('nomor_invoice', nomor_invoice) \
+                    .timeout(timeout) \
+                    .execute()
                 
-                # Memeriksa perubahan pesanan 
-                perubahan_result = supabase.table('perubahan_pesanan').select('*').eq('nomor_invoice', nomor_invoice).execute()
+                # Memeriksa perubahan pesanan dengan timeout
+                perubahan_result = supabase.table('perubahan_pesanan') \
+                    .select('*') \
+                    .eq('nomor_invoice', nomor_invoice) \
+                    .timeout(timeout) \
+                    .execute()
                 
                 logging.info(f"Berhasil memeriksa keluhan dan perubahan untuk invoice {nomor_invoice}")
                 return {
@@ -423,10 +432,11 @@ def cek_keluhan_dan_perubahan(nomor_invoice: str):
             except Exception as e:
                 if attempt < max_retries - 1:
                     logging.warning(f"Percobaan {attempt + 1} gagal: {str(e)}. Mencoba lagi dalam {retry_delay} detik...")
-                    time.sleep(retry_delay)
+                    time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
                     continue
                 else:
-                    raise  # Re-raise exception jika semua percobaan gagal
+                    logging.error(f"Gagal setelah {max_retries} percobaan: {str(e)}")
+                    raise
                     
     except Exception as e:
         logging.error(f"Terjadi kesalahan fatal saat memeriksa keluhan dan perubahan pesanan: {str(e)}")
