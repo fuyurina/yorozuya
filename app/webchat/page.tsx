@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Phone, Video, User, CheckCircle2, ChevronLeft, Filter, ShoppingBag } from "lucide-react"
+import { Send, User, CheckCircle2, ChevronLeft, Filter, ShoppingBag } from "lucide-react"
 import { useSendMessage } from '@/app/hooks/useSendMessage';
 
 import { useSSE } from '@/app/hooks/useSSE';
@@ -70,6 +70,26 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, isSendingMes
   );
 };
 
+// Tambahkan interface untuk Order
+interface OrderItem {
+  item_id: number;
+  item_name: string;
+  model_name: string;
+  model_quantity_purchased: number;
+  model_discounted_price: number;
+  image_url: string;
+}
+
+interface Order {
+  order_sn: string;
+  order_status: string;
+  total_amount: number;
+  shipping_carrier: string;
+  payment_method: string;
+  order_items: OrderItem[];
+  tracking_number: string;
+}
+
 const WebChatPage: React.FC = () => {
   const [selectedShop, setSelectedShop] = useState<number | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
@@ -81,6 +101,8 @@ const WebChatPage: React.FC = () => {
   const [selectedShops, setSelectedShops] = useState<number[]>([]);
   const [statusFilter, setStatusFilter] = useState<'SEMUA' | 'BELUM DIBACA' | 'BELUM DIBALAS'>('SEMUA');
   const [isFullScreenChat, setIsFullScreenChat] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
   const { conversations, updateConversationList } = useConversationList();
   const { 
@@ -103,6 +125,27 @@ const WebChatPage: React.FC = () => {
   const { data: sseData, error: sseError } = useSSE('api/webhook'); // Ganti dengan URL SSE yang sesuai
 
   const { markAsRead, isLoading: isMarkingAsRead, error: markAsReadError } = useMarkAsRead();
+
+  // Tambahkan fungsi untuk mengambil data pesanan
+  const fetchOrders = async (userId: string) => {
+    setIsLoadingOrders(true);
+    try {
+      const response = await fetch(`/api/order_details?user_id=${userId}`);
+      const data = await response.json();
+      setOrders(data.data);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  };
+
+  // Panggil fetchOrders ketika conversation dipilih
+  useEffect(() => {
+    if (selectedConversationData?.to_id) {
+      fetchOrders(selectedConversationData.to_id.toString());
+    }
+  }, [selectedConversationData]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -232,6 +275,9 @@ const WebChatPage: React.FC = () => {
     }
   }, [selectedConversation, messages]);
 
+  // Tambahkan state untuk tab aktif
+  const [activeTab, setActiveTab] = useState<'chat' | 'orders'>('chat');
+
   return (
     <div className={`flex h-full w-full overflow-hidden ${isFullScreenChat ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       {/* Daftar Percakapan */}
@@ -328,91 +374,257 @@ const WebChatPage: React.FC = () => {
         </div>
       )}
 
-      {/* Area Chat */}
+      {/* Area Chat dan Pesanan untuk Mobile */}
       {(!isMobileView || (isMobileView && !showConversationList)) && (
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
           {/* Header Chat */}
-          <div className="p-3 border-b flex items-center sticky top-0 bg-background z-10">
-            {isMobileView && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setShowConversationList(true);
-                  setIsFullScreenChat(false);
-                }}
-                className="mr-2 md:hidden"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-            )}
-            {selectedConversation && selectedConversationData ? (
-              <>
-                <div className="flex items-center gap-2 overflow-hidden flex-grow">
-                  <Avatar className={isMobileView ? 'h-8 w-8' : ''}>
-                    <AvatarImage src={selectedConversationData.to_avatar} />
-                    <AvatarFallback><User className={isMobileView ? 'h-4 w-4' : ''} /></AvatarFallback>
-                  </Avatar>
-                  <div className="overflow-hidden">
-                    <p className={`font-medium truncate ${isMobileView ? 'text-sm' : ''}`}>{selectedConversationData.shop_name}</p>
-                    <p className={`font-bold truncate ${isMobileView ? 'text-xs' : 'text-sm'}`}>{selectedConversationData.to_name}</p>
+          <div className="border-b sticky top-0 bg-background z-10">
+            <div className="p-3 flex items-center gap-2 h-[65px]">
+              {isMobileView && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setShowConversationList(true);
+                    setIsFullScreenChat(false);
+                  }}
+                  className="md:hidden"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+              )}
+              {selectedConversation && selectedConversationData ? (
+                <>
+                  <div className="flex items-center gap-2 overflow-hidden flex-grow">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={selectedConversationData.to_avatar} />
+                      <AvatarFallback><User className="h-4 w-4" /></AvatarFallback>
+                    </Avatar>
+                    <div className="overflow-hidden">
+                      <p className="font-medium truncate text-sm">{selectedConversationData.shop_name}</p>
+                      <p className="font-bold truncate text-xs">{selectedConversationData.to_name}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex-shrink-0">
-                  <Button variant="ghost" size="icon">
-                    <ShoppingBag className={isMobileView ? 'h-4 w-4' : 'h-5 w-5'} />
-                  </Button>
-                  <Button variant="ghost" size="icon">
-                    <Video className={isMobileView ? 'h-4 w-4' : 'h-5 w-5'} />
-                  </Button>
+                  {isMobileView && (
+                    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'chat' | 'orders')}>
+                      <TabsList>
+                        <TabsTrigger value="chat">Chat</TabsTrigger>
+                        <TabsTrigger value="orders">Pesanan</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  )}
+                </>
+              ) : (
+                <p className="text-muted-foreground text-sm">Pilih percakapan untuk memulai chat</p>
+              )}
+            </div>
+          </div>
+
+          {/* Konten berdasarkan tab aktif untuk mobile */}
+          {isMobileView ? (
+            activeTab === 'chat' ? (
+              <>
+                {/* Area Pesan */}
+                <ScrollArea className="flex-grow p-4">
+                  {isLoading ? (
+                    <div>Memuat pesan...</div>
+                  ) : error ? (
+                    <div>Error: {error}</div>
+                  ) : (
+                    <>
+                      {hasMoreMessages && (
+                        <Button onClick={loadMoreMessages} variant="outline" className="mb-4 w-full">
+                          Muat pesan sebelumnya
+                        </Button>
+                      )}
+                      {messages.map((message) => (
+                        <div key={message.id} className={`flex ${message.sender === 'seller' ? 'justify-end' : 'justify-start'} mb-4`}>
+                          <div className={`max-w-[70%] rounded-lg p-3 ${message.sender === 'seller' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                            <p className="break-words">{message.content}</p>
+                            <p className="text-xs mt-1 opacity-70">{message.time}</p>
+                          </div>
+                        </div>
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </>
+                  )}
+                </ScrollArea>
+                {/* Area Input */}
+                <div className="p-4 border-t">
+                  <MessageInput 
+                    onSendMessage={(message) => handleSendMessage(message)} 
+                    isSendingMessage={isSendingMessage}
+                  />
                 </div>
               </>
             ) : (
-              <p className={`text-muted-foreground ${isMobileView ? 'text-sm' : ''}`}>Pilih percakapan untuk memulai chat</p>
-            )}
-          </div>
-
-          {/* Area Pesan */}
-          <ScrollArea className="flex-grow p-4">
-            {isLoading ? (
-              <div>Memuat pesan...</div>
-            ) : error ? (
-              <div>Error: {error}</div>
-            ) : (
-              <>
-                {hasMoreMessages && (
-                  <Button onClick={loadMoreMessages} variant="outline" className="mb-4 w-full">
-                    Muat pesan sebelumnya
-                  </Button>
+              <ScrollArea className="flex-grow">
+                {isLoadingOrders ? (
+                  <div className="p-4">Memuat pesanan...</div>
+                ) : orders.length > 0 ? (
+                  <div className="p-4 space-y-4">
+                    {orders.map((order) => (
+                      <div key={order.order_sn} className="border rounded-lg p-3 bg-background">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-medium">No. Pesanan:</p>
+                            <p className="text-sm">{order.order_sn}</p>
+                          </div>
+                          <span className="text-xs px-2 py-1 bg-primary/10 rounded-full">
+                            {order.order_status}
+                          </span>
+                        </div>
+                        
+                        {order.order_items.map((item, index) => (
+                          <div key={`${item.item_id}-${index}`} className="flex gap-2 mt-2 pb-2 border-b">
+                            <img 
+                              src={item.image_url} 
+                              alt={item.item_name}
+                              className="w-16 h-16 object-cover rounded"
+                            />
+                            <div className="flex-1">
+                              <p className="text-sm line-clamp-2">{item.item_name}</p>
+                              <p className="text-xs text-muted-foreground">{item.model_name}</p>
+                              <div className="flex justify-between mt-1">
+                                <p className="text-sm">x{item.model_quantity_purchased}</p>
+                                <p className="text-sm font-medium">
+                                  Rp{item.model_discounted_price.toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        <div className="mt-2 pt-2 border-t">
+                          <div className="flex justify-between">
+                            <span className="text-sm">Total Pembayaran:</span>
+                            <span className="font-semibold">
+                              Rp{order.total_amount.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            <p>Kurir: {order.shipping_carrier}</p>
+                            <p>No. Resi: {order.tracking_number}</p>
+                            <p>Pembayaran: {order.payment_method}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-muted-foreground">
+                    Tidak ada pesanan ditemukan
+                  </div>
                 )}
-                {messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.sender === 'seller' ? 'justify-end' : 'justify-start'} mb-4`}>
-                    <div className={`max-w-[70%] rounded-lg p-3 ${message.sender === 'seller' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                      <p className="break-words">{message.content}</p>
-                      <p className="text-xs mt-1 opacity-70">{message.time}</p>
+              </ScrollArea>
+            )
+          ) : (
+            <>
+              {/* Tampilan desktop tetap sama */}
+              <ScrollArea className="flex-grow p-4">
+                {isLoading ? (
+                  <div>Memuat pesan...</div>
+                ) : error ? (
+                  <div>Error: {error}</div>
+                ) : (
+                  <>
+                    {hasMoreMessages && (
+                      <Button onClick={loadMoreMessages} variant="outline" className="mb-4 w-full">
+                        Muat pesan sebelumnya
+                      </Button>
+                    )}
+                    {messages.map((message) => (
+                      <div key={message.id} className={`flex ${message.sender === 'seller' ? 'justify-end' : 'justify-start'} mb-4`}>
+                        <div className={`max-w-[70%] rounded-lg p-3 ${message.sender === 'seller' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                          <p className="break-words">{message.content}</p>
+                          <p className="text-xs mt-1 opacity-70">{message.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </>
+                )}
+              </ScrollArea>
+              <div className="p-4 border-t">
+                <MessageInput 
+                  onSendMessage={(message) => handleSendMessage(message)} 
+                  isSendingMessage={isSendingMessage}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Tambahkan kolom order details */}
+      {selectedConversation && !isMobileView && (
+        <div className="w-1/4 border-l bg-muted/20 overflow-hidden flex flex-col">
+          {/* Header dengan tinggi yang sama */}
+          <div className="p-3 border-b flex items-center sticky top-0 bg-background z-10 h-[66px]">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="h-5 w-5" />
+              <h3 className="font-semibold">Daftar Pesanan</h3>
+            </div>
+          </div>
+          <ScrollArea className="flex-grow">
+            {isLoadingOrders ? (
+              <div className="p-4">Memuat pesanan...</div>
+            ) : orders.length > 0 ? (
+              <div className="p-4 space-y-4">
+                {orders.map((order) => (
+                  <div key={order.order_sn} className="border rounded-lg p-3 bg-background">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-medium">No. Pesanan:</p>
+                        <p className="text-sm">{order.order_sn}</p>
+                      </div>
+                      <span className="text-xs px-2 py-1 bg-primary/10 rounded-full">
+                        {order.order_status}
+                      </span>
+                    </div>
+                    
+                    {order.order_items.map((item, index) => (
+                      <div key={`${item.item_id}-${index}`} className="flex gap-2 mt-2 pb-2 border-b">
+                        <img 
+                          src={item.image_url} 
+                          alt={item.item_name}
+                          className="w-16 h-16 object-cover rounded"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm line-clamp-2">{item.item_name}</p>
+                          <p className="text-xs text-muted-foreground">{item.model_name}</p>
+                          <div className="flex justify-between mt-1">
+                            <p className="text-sm">x{item.model_quantity_purchased}</p>
+                            <p className="text-sm font-medium">
+                              Rp{item.model_discounted_price.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <div className="mt-2 pt-2 border-t">
+                      <div className="flex justify-between">
+                        <span className="text-sm">Total Pembayaran:</span>
+                        <span className="font-semibold">
+                          Rp{order.total_amount.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        <p>Kurir: {order.shipping_carrier}</p>
+                        <p>No. Resi: {order.tracking_number}</p>
+                        <p>Pembayaran: {order.payment_method}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
-                <div ref={messagesEndRef} />
-              </>
-            )}
-          </ScrollArea>
-
-          {/* Area Input */}
-          <div className="p-4 border-t">
-            <MessageInput 
-              onSendMessage={(message) => handleSendMessage(message)} 
-              isSendingMessage={isSendingMessage}
-            />
-            {sendMessageError && (
-              <p className="text-red-500 text-sm mt-2">{sendMessageError}</p>
-            )}
-            {sseError && (
-              <div className="text-red-500 text-sm p-2">
-                Error SSE: {sseError}
+              </div>
+            ) : (
+              <div className="p-4 text-center text-muted-foreground">
+                Tidak ada pesanan ditemukan
               </div>
             )}
-          </div>
+          </ScrollArea>
         </div>
       )}
     </div>
