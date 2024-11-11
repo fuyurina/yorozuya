@@ -31,18 +31,26 @@ async function getAllOrders(shopId: string, accessToken: string) {
 export async function GET(): Promise<Response> {
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1000 * 60 * 5); // 5 menit
+        const timeoutId = setTimeout(() => controller.abort(), 1000 * 60 * 5);
 
-        // Ambil semua toko aktif
+        // Tambahkan logging untuk debug
+        console.log('Memulai proses pengambilan toko...');
         const shops = await getAllShops();
+        console.log(`Berhasil mengambil ${shops.length} toko`);
+        
         const results = [];
 
-        // Proses setiap toko
         for (const shop of shops) {
             try {
-                // Ambil pesanan ready to ship
+                console.log(`Memproses toko ${shop.shop_id}...`);
+                // Verifikasi access token tidak kosong
+                if (!shop.access_token) {
+                    throw new Error('Access token tidak ditemukan');
+                }
+
                 const orders = await getAllOrders(shop.shop_id, shop.access_token);
-                
+                console.log(`Ditemukan ${orders.length} pesanan untuk toko ${shop.shop_id}`);
+
                 // Proses setiap pesanan
                 for (const order of orders) {
                     const processResult = await processReadyToShipOrders(
@@ -58,10 +66,11 @@ export async function GET(): Promise<Response> {
                     });
                 }
             } catch (shopError) {
-                console.error(`Error memproses toko ${shop.shop_id}:`, shopError);
+                console.error(`Error detail untuk toko ${shop.shop_id}:`, shopError);
                 results.push({
                     shop_id: shop.shop_id,
-                    error: (shopError as Error).message
+                    error: shopError instanceof Error ? shopError.message : 'Unknown error',
+                    errorDetail: shopError instanceof Error ? shopError.stack : null
                 });
             }
         }
@@ -83,11 +92,12 @@ export async function GET(): Promise<Response> {
         clearTimeout(timeoutId);
         return result;
     } catch (error) {
-        console.error('Error dalam memproses pesanan:', error);
+        console.error('Error lengkap:', error);
         return NextResponse.json({
             success: false,
             error: 'Terjadi kesalahan saat memproses pesanan',
-            details: error instanceof Error ? error.message : 'Unknown error'
+            details: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : null
         }, { status: 500 });
     }
 }

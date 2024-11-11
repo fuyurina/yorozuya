@@ -402,21 +402,35 @@ def tangani_keluhan(id_pengguna: str, nama_toko: str, jenis_keluhan: str, deskri
 
 def cek_keluhan_dan_perubahan(nomor_invoice: str):
     try:
-        # Memeriksa keluhan
-        keluhan_result = supabase.table('keluhan').select('*').eq('nomor_invoice', nomor_invoice).execute()
+        # Tambah retry logic
+        max_retries = 3
+        retry_delay = 2  # detik
         
-        # Memeriksa perubahan pesanan
-        perubahan_result = supabase.table('perubahan_pesanan').select('*').eq('nomor_invoice', nomor_invoice).execute()
-        logging.info(f"Perubahan result: {perubahan_result}")
-        ada_keluhan = len(keluhan_result.data) > 0
-        ada_perubahan = len(perubahan_result.data) > 0
-
-        return {
-            "ada_keluhan": ada_keluhan,
-            "ada_perubahan": ada_perubahan
-        }
+        for attempt in range(max_retries):
+            try:
+                # Memeriksa keluhan
+                keluhan_result = supabase.table('keluhan').select('*').eq('nomor_invoice', nomor_invoice).execute()
+                
+                # Memeriksa perubahan pesanan 
+                perubahan_result = supabase.table('perubahan_pesanan').select('*').eq('nomor_invoice', nomor_invoice).execute()
+                
+                logging.info(f"Berhasil memeriksa keluhan dan perubahan untuk invoice {nomor_invoice}")
+                return {
+                    "ada_keluhan": len(keluhan_result.data) > 0,
+                    "ada_perubahan": len(perubahan_result.data) > 0
+                }
+                
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logging.warning(f"Percobaan {attempt + 1} gagal: {str(e)}. Mencoba lagi dalam {retry_delay} detik...")
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    raise  # Re-raise exception jika semua percobaan gagal
+                    
     except Exception as e:
-        logging.error(f"Terjadi kesalahan saat memeriksa keluhan dan perubahan pesanan: {e}")
+        logging.error(f"Terjadi kesalahan fatal saat memeriksa keluhan dan perubahan pesanan: {str(e)}")
+        # Return default values jika terjadi error
         return {
             "ada_keluhan": False,
             "ada_perubahan": False
