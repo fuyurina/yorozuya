@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, User, CheckCircle2, ChevronLeft, Filter, ShoppingBag } from "lucide-react"
+import { Send, User, CheckCircle2, ChevronLeft, Filter, ShoppingBag, MessageSquare } from "lucide-react"
 import { useSendMessage } from '@/app/hooks/useSendMessage';
 
 import { useSSE } from '@/app/hooks/useSSE';
@@ -25,8 +25,9 @@ interface Conversation {
   latest_message_content: {
     text?: string;
   } | null;
+  latest_message_from_id: number;
   last_message_timestamp: number;
-  unread_count: number; // Tambahkan properti ini
+  unread_count: number;
 }
 
 // Hapus interface Message karena tidak digunakan
@@ -133,6 +134,9 @@ const WebChatPage: React.FC = () => {
 
   const { markAsRead, isLoading: isMarkingAsRead, error: markAsReadError } = useMarkAsRead();
 
+  // Tambahkan flag untuk mencegah double fetch
+  const [shouldFetchOrders, setShouldFetchOrders] = useState(false);
+
   // Tambahkan fungsi untuk mengambil data pesanan
   const fetchOrders = async (userId: string) => {
     setIsLoadingOrders(true);
@@ -147,12 +151,13 @@ const WebChatPage: React.FC = () => {
     }
   };
 
-  // Panggil fetchOrders ketika conversation dipilih
+  // Pisahkan effect untuk initial fetch dan mark as read
   useEffect(() => {
-    if (selectedConversationData?.to_id) {
+    if (selectedConversationData?.to_id && shouldFetchOrders) {
       fetchOrders(selectedConversationData.to_id.toString());
+      setShouldFetchOrders(false); // Reset flag setelah fetch
     }
-  }, [selectedConversationData]);
+  }, [selectedConversationData?.to_id, shouldFetchOrders]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -219,6 +224,12 @@ const WebChatPage: React.FC = () => {
       };
       
       setMessages(prevMessages => [...prevMessages, newSentMessage]);
+      
+      // Update conversation list untuk menandai sudah dibalas
+      updateConversationList({
+        type: 'mark_as_read',
+        conversation_id: selectedConversationData.conversation_id,
+      });
     } catch (error) {
       console.error('Gagal mengirim pesan:', error);
     }
@@ -227,14 +238,10 @@ const WebChatPage: React.FC = () => {
   const handleConversationSelect = (conversation: Conversation) => {
     setSelectedShop(conversation.shop_id);
     setSelectedConversation(conversation.conversation_id);
+    setShouldFetchOrders(true); // Set flag untuk fetch orders
     if (isMobileView) {
       setShowConversationList(false);
       setIsFullScreenChat(true);
-    }
-    
-    // Tandai pesan sebagai dibaca hanya jika unread_count > 0
-    if (conversation.unread_count > 0) {
-      handleMarkAsRead(conversation.conversation_id);
     }
   };
 
@@ -263,15 +270,16 @@ const WebChatPage: React.FC = () => {
     if (!conversation || conversation.unread_count === 0) return;
 
     try {
-      const lastMessage = messages[messages.length - 1];
-      if (!lastMessage) return;
+      const lastBuyerMessage = [...messages].reverse().find(msg => msg.sender === 'buyer');
+      if (!lastBuyerMessage) return;
 
       await markAsRead({
         shopId: conversation.shop_id,
         conversationId: conversation.conversation_id,
-        lastReadMessageId: lastMessage.id,
+        lastReadMessageId: lastBuyerMessage.id,
       });
-      // Perbarui state lokal untuk menghapus indikator pesan belum dibaca
+
+      // Update conversation list tanpa memicu fetch orders
       updateConversationList({
         type: 'mark_as_read',
         conversation_id: conversationId,
@@ -282,13 +290,20 @@ const WebChatPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (selectedConversation && messages.length > 0) {
+    if (selectedConversation && messages.length > 0 && !isLoading) {
       const selectedConv = conversations.find(conv => conv.conversation_id === selectedConversation);
-      if (selectedConv && selectedConv.unread_count > 0) {
-        handleMarkAsRead(selectedConversation);
+      if (selectedConv && 
+          typeof selectedConv.unread_count === 'number' && 
+          selectedConv.unread_count > 0 &&
+          selectedConv.latest_message_from_id === selectedConv.to_id) { // Tambah kondisi ini
+        const timeoutId = setTimeout(() => {
+          handleMarkAsRead(selectedConversation);
+        }, 500);
+        
+        return () => clearTimeout(timeoutId);
       }
     }
-  }, [selectedConversation, messages]);
+  }, [selectedConversation, messages, isLoading]);
 
   // Tambahkan state untuk tab aktif
   const [activeTab, setActiveTab] = useState<'chat' | 'orders'>('chat');
@@ -446,9 +461,13 @@ const WebChatPage: React.FC = () => {
                   </div>
                   {isMobileView && (
                     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'chat' | 'orders')}>
-                      <TabsList>
-                        <TabsTrigger value="chat">Chat</TabsTrigger>
-                        <TabsTrigger value="orders">Pesanan</TabsTrigger>
+                      <TabsList className="flex gap-1">
+                        <TabsTrigger value="chat" className="px-2">
+                          <MessageSquare className="h-4 w-4" />
+                        </TabsTrigger>
+                        <TabsTrigger value="orders" className="px-2">
+                          <ShoppingBag className="h-4 w-4" />
+                        </TabsTrigger>
                       </TabsList>
                     </Tabs>
                   )}

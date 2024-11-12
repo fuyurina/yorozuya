@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { shopeeApi } from '@/lib/shopeeConfig';
-
-import { getValidAccessToken } from '@/app/services/tokenManager';
+import { readConversation } from '@/app/services/shopeeService';
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,20 +12,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    const encodedAccessToken = await getValidAccessToken(shopId);
-    
-    // Decode access token
-    const decodedAccessToken = decodeURIComponent(encodedAccessToken);
-    
-    // Hapus tanda kutip di awal dan akhir jika ada
-    const cleanAccessToken = decodedAccessToken.replace(/^"|"$/g, '');
-    
+    const result = await readConversation(shopId, conversationId, lastReadMessageId);
 
-    console.log('Token yang di-decode:', cleanAccessToken);
-
-    const result = await shopeeApi.readConversation(shopId, cleanAccessToken, conversationId, lastReadMessageId);
+    if (!result.success) {
+      return NextResponse.json({ 
+        error: result.error,
+        message: result.message 
+      }, { status: 400 });
+    }
 
     return NextResponse.json(result);
+    
   } catch (error) {
     console.error('Kesalahan saat menandai pesan sebagai dibaca:', error);
     return NextResponse.json({ error: 'Terjadi kesalahan internal' }, { status: 500 });

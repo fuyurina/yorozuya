@@ -42,7 +42,7 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
         throw new Error(`Gagal menyimpan data pesanan: ${error.message}`);
       }
   
-      console.log(`Data pesanan berhasil disimpan untuk order_sn: ${orderData.order_sn}`);
+      console.log(`Data pesanan berhasil disimpan untuk order_sn: ${orderData.order_sn} status: ${orderData.order_status}`);
     } catch (error) {
       console.error('Error dalam upsertOrderData:', error);
       // Tangani error sesuai kebutuhan
