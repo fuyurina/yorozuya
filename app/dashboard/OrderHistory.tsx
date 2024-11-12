@@ -90,7 +90,7 @@ export function OrderHistory({ userId, isOpen, onClose }: OrderHistoryProps) {
   useEffect(() => {
     const fetchOrderHistory = async () => {
       if (!userId || !isOpen) {
-        console.log('Skipping fetch - userId or modal not open:', { userId, isOpen });
+        
         setOrderHistory([]);
         return;
       }

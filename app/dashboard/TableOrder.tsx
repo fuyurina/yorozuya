@@ -1206,14 +1206,16 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
               {/* Filter Popover */}
               <Popover>
-                <PopoverTrigger>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 p-0"
-                  >
-                    <Filter size={18} className="text-gray-500 dark:text-gray-400" />
-                  </Button>
+                <PopoverTrigger asChild>
+                  <div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 p-0"
+                    >
+                      <Filter size={18} className="text-gray-500 dark:text-gray-400" />
+                    </Button>
+                  </div>
                 </PopoverTrigger>
                 <PopoverContent className="w-56 dark:bg-gray-800 dark:border-gray-700" align="end" side="bottom" sideOffset={5}>
                   <div className="space-y-2">
@@ -1285,14 +1287,16 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
               {/* Filter Popover */}
               <Popover>
-                <PopoverTrigger>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 p-0"
-                  >
-                    <Filter size={18} className="text-gray-500 dark:text-gray-400" />
-                  </Button>
+                <PopoverTrigger asChild>
+                  <div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 p-0"
+                    >
+                      <Filter size={18} className="text-gray-500 dark:text-gray-400" />
+                    </Button>
+                  </div>
                 </PopoverTrigger>
                 <PopoverContent className="w-56 dark:bg-gray-800 dark:border-gray-700" align="end" side="bottom" sideOffset={5}>
                   <div className="space-y-2">

@@ -10,8 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator
-} from "./ui/dropdown-menu"
-import { Button } from "./ui/button"
+} from "../ui/dropdown-menu"
+import { Button } from "../ui/button"
 
 interface MobileSidebarProps {
   onNavigate: () => void

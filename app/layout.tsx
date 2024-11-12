@@ -1,7 +1,7 @@
 import '@/app/globals.css'
 import { Inter } from 'next/font/google'
-import { Header } from "@/components/Header"
-import {Sidebar} from "@/components/Sidebar"
+import { Header } from "@/components/layout/Header"
+import {Sidebar} from "@/components/layout/Sidebar"
 import dynamic from 'next/dynamic'
 import { Toaster } from 'sonner';
 import Providers from "./services/Providers"
@@ -25,7 +25,7 @@ interface RootLayoutProps {
   children: React.ReactNode
 }
 
-const ThemeProvider = dynamic(() => import('@/components/theme-provider').then(mod => mod.ThemeProvider), {
+const ThemeProvider = dynamic(() => import('@/components/layout/theme-provider').then(mod => mod.ThemeProvider), {
   ssr: false
 })
 
