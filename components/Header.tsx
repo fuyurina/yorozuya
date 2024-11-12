@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import { useTheme } from "next-themes" // Import useTheme
 import { CircleUser, Search, Menu, Sun, Moon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { signOut } from "next-auth/react" // Tambahkan import ini
+
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MobileSidebar } from "./mobile-sidebar"
 import Image from "next/image"
@@ -29,6 +30,17 @@ export function Header() {
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark') // Ubah tema
+  }
+
+  const handleLogout = async () => {
+    try {
+      await signOut({ 
+        redirect: true,
+        callbackUrl: "/login"
+      })
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   return (
@@ -70,7 +82,12 @@ export function Header() {
           <DropdownMenuItem>Pengaturan</DropdownMenuItem>
           <DropdownMenuItem>Dukungan</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Keluar</DropdownMenuItem>
+          <DropdownMenuItem 
+            onClick={handleLogout}
+            className="text-red-600 focus:text-red-600 cursor-pointer"
+          >
+            Keluar
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
