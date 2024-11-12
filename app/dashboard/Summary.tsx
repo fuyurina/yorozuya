@@ -18,6 +18,18 @@ export function OrdersSummary({ summary }: OrdersSummaryProps) {
 
   console.log('Summary data received:', summary);
 
+  // Mengumpulkan semua toko unik dari semua sumber data
+  const allStores = Array.from(new Set([
+    ...Object.keys(summary.pesananPerToko),
+    ...Object.keys(summary.omsetPerToko),
+    ...Object.keys(summary.iklanPerToko)
+  ]));
+
+  // Mengurutkan berdasarkan jumlah pesanan (toko tanpa pesanan akan memiliki nilai 0)
+  const sortedStores = allStores.sort((a, b) => 
+    (summary.pesananPerToko[b] || 0) - (summary.pesananPerToko[a] || 0)
+  );
+
   return (
     <div className="space-y-2">
       <Card 
@@ -64,7 +76,7 @@ export function OrdersSummary({ summary }: OrdersSummaryProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Object.entries(summary.iklanPerToko).map(([toko, biayaIklan]) => (
+                {sortedStores.map((toko) => (
                   <TableRow key={toko}>
                     <TableCell className="font-medium text-xs sm:text-sm truncate max-w-[120px]">{toko}</TableCell>
                     <TableCell className="text-right text-xs sm:text-sm">{summary.pesananPerToko[toko] || 0}</TableCell>
@@ -72,7 +84,7 @@ export function OrdersSummary({ summary }: OrdersSummaryProps) {
                       Rp {(summary.omsetPerToko[toko] || 0).toLocaleString('id-ID')}
                     </TableCell>
                     <TableCell className="text-right text-xs sm:text-sm whitespace-nowrap">
-                      Rp {biayaIklan.toLocaleString('id-ID')}
+                      Rp {(summary.iklanPerToko[toko] || 0).toLocaleString('id-ID')}
                     </TableCell>
                   </TableRow>
                 ))}
