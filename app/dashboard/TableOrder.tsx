@@ -948,6 +948,105 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     }
   };
 
+  // Tambahkan fungsi untuk mendapatkan jumlah pesanan yang meminta pembatalan
+  const getCancelRequestCount = () => {
+    return orders.filter(order => order.order_status === 'IN_CANCEL').length;
+  };
+
+  // Tambahkan state untuk dialog konfirmasi reject all
+  const [isRejectAllConfirmOpen, setIsRejectAllConfirmOpen] = useState(false);
+
+  // Tambahkan state untuk tracking progress bulk reject
+  const [bulkRejectProgress, setBulkRejectProgress] = useState<{
+    processed: number;
+    total: number;
+    currentOrder: string;
+  }>({
+    processed: 0,
+    total: 0,
+    currentOrder: ''
+  });
+
+  // Tambahkan fungsi untuk menolak semua pembatalan
+  const handleRejectAllCancellations = async () => {
+    const cancelRequests = orders.filter(order => order.order_status === 'IN_CANCEL');
+    
+    if (cancelRequests.length === 0) {
+      toast.info('Tidak ada permintaan pembatalan');
+      return;
+    }
+
+    try {
+      // Inisialisasi progress
+      setBulkRejectProgress({
+        processed: 0,
+        total: cancelRequests.length,
+        currentOrder: ''
+      });
+
+      for (const order of cancelRequests) {
+        setBulkRejectProgress(prev => ({
+          ...prev,
+          currentOrder: order.order_sn
+        }));
+
+        try {
+          const response = await fetch('/api/orders/handle-cancellation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              shopId: order.shop_id,
+              orderSn: order.order_sn,
+              operation: 'REJECT'
+            })
+          });
+
+          const result = await response.json();
+          
+          if (result.success) {
+            if (onOrderUpdate) {
+              onOrderUpdate(order.order_sn, {
+                order_status: 'READY_TO_SHIP'
+              });
+            }
+          } else {
+            console.error(`Gagal menolak pembatalan ${order.order_sn}:`, result.message);
+            toast.error(`Gagal menolak pembatalan ${order.order_sn}`);
+          }
+
+          setBulkRejectProgress(prev => ({
+            ...prev,
+            processed: prev.processed + 1
+          }));
+
+          // Delay kecil antara setiap request
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+        } catch (error) {
+          console.error(`Gagal menolak pembatalan ${order.order_sn}:`, error);
+          toast.error(`Gagal menolak pembatalan ${order.order_sn}`);
+        }
+      }
+
+      toast.success('Proses penolakan pembatalan selesai');
+
+    } catch (error) {
+      console.error('Gagal menolak pembatalan:', error);
+      toast.error('Terjadi kesalahan saat menolak pembatalan');
+    } finally {
+      // Reset progress setelah selesai
+      setTimeout(() => {
+        setBulkRejectProgress({
+          processed: 0,
+          total: 0,
+          currentOrder: ''
+        });
+      }, 2000);
+    }
+  };
+
   return (
     <div className="w-full">
       {bulkProgress.total > 0 && (
@@ -1026,6 +1125,33 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           </div>
           <p className="mt-1.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
             Memproses pesanan... {bulkProcessProgress.currentOrder}
+          </p>
+        </div>
+      )}
+
+      {/* Progress Bar untuk Bulk Reject */}
+      {bulkRejectProgress.total > 0 && (
+        <div className="mb-4 p-3 sm:p-4 bg-white dark:bg-gray-800 border rounded-lg shadow-sm">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-2">
+                <XCircle size={16} className="text-red-500 dark:text-red-400 animate-pulse" />
+                <span className="text-xs sm:text-sm font-medium dark:text-white">
+                  {bulkRejectProgress.processed}/{bulkRejectProgress.total}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+            <div 
+              className="bg-red-500 dark:bg-red-400 h-1.5 rounded-full transition-all duration-500 ease-in-out"
+              style={{ 
+                width: `${(bulkRejectProgress.processed / bulkRejectProgress.total) * 100}%` 
+              }}
+            />
+          </div>
+          <p className="mt-1.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+            Menolak pembatalan... {bulkRejectProgress.currentOrder}
           </p>
         </div>
       )}
@@ -1188,62 +1314,83 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           </div>
         </Card>
 
-        {/* Card Tombol Cetak */}
+        {/* Card Tombol */}
         <Card className="px-2 py-2 shadow-none rounded-lg">
-          <div className="flex gap-2 justify-center sm:justify-end">
-            <Button
-              onClick={handlePrintUnprinted}
-              className="px-2 sm:px-3 py-2 text-xs font-medium bg-green-600 hover:bg-green-700 text-white whitespace-nowrap h-[32px] min-h-0 dark:bg-green-700 dark:hover:bg-green-800"
-              disabled={getUnprintedDocuments() === 0}
-              title="Cetak Dokumen Belum Print"
-            >
-              <Printer size={14} className="sm:mr-1" />
-              <span className="hidden sm:inline">
-                Belum Print ({getUnprintedDocuments()})
-              </span>
-              <span className="sm:hidden ml-1">
-                ({getUnprintedDocuments()})
-              </span>
-            </Button>
+          <div className="flex justify-between">
+            {/* Grup Tombol Pesanan - Sebelah Kiri */}
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setIsProcessAllConfirmOpen(true)}
+                className="px-2 sm:px-3 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap h-[32px] min-h-0 dark:bg-blue-700 dark:hover:bg-blue-800"
+                disabled={getReadyToShipCount() === 0}
+                title="Proses Semua Pesanan"
+              >
+                <Send size={14} className="sm:mr-1" />
+                <span className="hidden sm:inline">
+                  Proses Semua ({getReadyToShipCount()})
+                </span>
+                <span className="sm:hidden ml-1">
+                  ({getReadyToShipCount()})
+                </span>
+              </Button>
 
-            <Button
-              onClick={handleBulkPrintClick}
-              className={`px-2 sm:px-3 py-2 text-xs font-medium text-white whitespace-nowrap h-[32px] min-h-0
-                ${selectedOrders.length > 0 
-                  ? 'bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700' 
-                  : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800'
-                }`}
-              title={selectedOrders.length > 0 
-                ? `Cetak ${selectedOrders.length} Dokumen`
-                : `Cetak Semua (${getTotalPrintableDocuments()})`
-              }
-            >
-              <PrinterCheck size={14} className="sm:mr-1" />
-              <span className="hidden sm:inline">
-                {selectedOrders.length > 0 
+              <Button
+                onClick={() => setIsRejectAllConfirmOpen(true)}
+                className="px-2 sm:px-3 py-2 text-xs font-medium bg-red-600 hover:bg-red-700 text-white whitespace-nowrap h-[32px] min-h-0 dark:bg-red-700 dark:hover:bg-red-800"
+                disabled={getCancelRequestCount() === 0}
+                title="Tolak Semua Pembatalan"
+              >
+                <XCircle size={14} className="sm:mr-1" />
+                <span className="hidden sm:inline">
+                  Tolak Pembatalan ({getCancelRequestCount()})
+                </span>
+                <span className="sm:hidden ml-1">
+                  ({getCancelRequestCount()})
+                </span>
+              </Button>
+            </div>
+
+            {/* Grup Tombol Cetak - Sebelah Kanan */}
+            <div className="flex gap-2">
+              <Button
+                onClick={handlePrintUnprinted}
+                className="px-2 sm:px-3 py-2 text-xs font-medium bg-green-600 hover:bg-green-700 text-white whitespace-nowrap h-[32px] min-h-0 dark:bg-green-700 dark:hover:bg-green-800"
+                disabled={getUnprintedDocuments() === 0}
+                title="Cetak Dokumen Belum Print"
+              >
+                <Printer size={14} className="sm:mr-1" />
+                <span className="hidden sm:inline">
+                  Belum Print ({getUnprintedDocuments()})
+                </span>
+                <span className="sm:hidden ml-1">
+                  ({getUnprintedDocuments()})
+                </span>
+              </Button>
+
+              <Button
+                onClick={handleBulkPrintClick}
+                className={`px-2 sm:px-3 py-2 text-xs font-medium text-white whitespace-nowrap h-[32px] min-h-0
+                  ${selectedOrders.length > 0 
+                    ? 'bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700' 
+                    : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800'
+                  }`}
+                title={selectedOrders.length > 0 
                   ? `Cetak ${selectedOrders.length} Dokumen`
                   : `Cetak Semua (${getTotalPrintableDocuments()})`
                 }
-              </span>
-              <span className="sm:hidden ml-1">
-                ({selectedOrders.length || getTotalPrintableDocuments()})
-              </span>
-            </Button>
-
-            <Button
-              onClick={() => setIsProcessAllConfirmOpen(true)}
-              className="px-2 sm:px-3 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap h-[32px] min-h-0 dark:bg-blue-700 dark:hover:bg-blue-800"
-              disabled={getReadyToShipCount() === 0}
-              title="Proses Semua Pesanan"
-            >
-              <Send size={14} className="sm:mr-1" />
-              <span className="hidden sm:inline">
-                Proses Semua ({getReadyToShipCount()})
-              </span>
-              <span className="sm:hidden ml-1">
-                ({getReadyToShipCount()})
-              </span>
-            </Button>
+              >
+                <PrinterCheck size={14} className="sm:mr-1" />
+                <span className="hidden sm:inline">
+                  {selectedOrders.length > 0 
+                    ? `Cetak ${selectedOrders.length} Dokumen`
+                    : `Cetak Semua (${getTotalPrintableDocuments()})`
+                  }
+                </span>
+                <span className="sm:hidden ml-1">
+                  ({selectedOrders.length || getTotalPrintableDocuments()})
+                </span>
+              </Button>
+            </div>
           </div>
         </Card>
       </div>
@@ -1486,6 +1633,35 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800"
             >
               Proses Semua
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Tambahkan Dialog Konfirmasi Reject All */}
+      <AlertDialog open={isRejectAllConfirmOpen} onOpenChange={setIsRejectAllConfirmOpen}>
+        <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="dark:text-white">
+              Konfirmasi Tolak Semua Pembatalan
+            </AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-300">
+              Anda akan menolak {getCancelRequestCount()} permintaan pembatalan pesanan. 
+              Pembeli tidak akan dapat mengajukan pembatalan lagi untuk pesanan-pesanan ini. Lanjutkan?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 dark:border-gray-600">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setIsRejectAllConfirmOpen(false);
+                handleRejectAllCancellations();
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-800"
+            >
+              Tolak Semua
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
