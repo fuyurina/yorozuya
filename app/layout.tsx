@@ -12,7 +12,16 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
   title: 'Dashboard',
-  description: 'Aplikasi dashboard modular',
+  description: 'Yorozuya Management System',
+  icons: {
+    icon: [
+      { url: '/logol.ico', sizes: '32x32' },
+      { url: '/logol.png', sizes: '180x180' },
+    ],
+    apple: [
+      { url: '/logol.png', sizes: '180x180' },
+    ],
+  },
 }
 
 export const viewport: Viewport = {
@@ -39,6 +48,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           enableSystem
           disableTransitionOnChange
         >
+          <Providers>
           <div className="flex flex-1 overflow-hidden">
             <Sidebar />
             <div className="flex flex-col flex-1 overflow-hidden md:pl-[56px]">
@@ -46,8 +56,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
               <main className="flex-1 overflow-auto">
                 <Providers>{children}</Providers>
               </main>
+              </div>
             </div>
-          </div>
+          </Providers>
         </ThemeProvider>
         <Toaster />
       </body>

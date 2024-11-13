@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useTheme } from "next-themes" // Import useTheme
 import { CircleUser, Search, Menu, Sun, Moon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { signOut } from "next-auth/react" // Tambahkan import ini
+import { signOut, useSession } from "next-auth/react" // Tambahkan import ini
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MobileSidebar } from "./mobile-sidebar"
@@ -14,6 +14,7 @@ import logoTerang from "@/app/fonts/logoterang.png"
 import Link from "next/link" // Import Link dari next/link
 
 export function Header() {
+  const { status } = useSession() // Tambahkan hook useSession
   const [isMobile, setIsMobile] = useState(false)
   const { theme, setTheme } = useTheme() // Gunakan useTheme
 
@@ -41,6 +42,11 @@ export function Header() {
     } catch (error) {
       console.error('Logout error:', error)
     }
+  }
+
+  // Jika user belum login, jangan tampilkan header
+  if (status !== "authenticated") {
+    return null
   }
 
   return (
@@ -79,8 +85,9 @@ export function Header() {
             )}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Pengaturan</DropdownMenuItem>
-          <DropdownMenuItem>Dukungan</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/pengaturan">Pengaturan</Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem 
             onClick={handleLogout}

@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/tooltip"
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSession } from "next-auth/react"
 
 export const navItems = [
   { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -35,10 +36,13 @@ export const navItems = [
 ]
 export function Sidebar() {
   const pathname = usePathname()
+  const { status } = useSession()
 
   const isActive = (path: string) => pathname === path
 
-  
+  if (status !== "authenticated") {
+    return null
+  }
 
   return (
     <TooltipProvider>

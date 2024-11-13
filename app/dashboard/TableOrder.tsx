@@ -22,6 +22,8 @@ import { mergePDFs } from '@/app/utils/pdfUtils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { OrderHistory } from '@/app/dashboard/OrderHistory';
+import { Input } from "@/components/ui/input"
+import { Progress } from "@/components/ui/progress"
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleString('id-ID', {
@@ -139,141 +141,132 @@ interface ShippingDocumentParams {
   shipping_carrier?: string;
 }
 
+// 1. Pindahkan definisi Category dan categories ke atas
+interface Category {
+  name: string;
+  status: OrderStatus;
+  count?: number;
+}
+
+// 2. Definisikan categories di luar komponen sebagai konstanta
+const CATEGORY_LIST: Category[] = [
+  { name: "Semua", status: "READY_TO_SHIP" },
+  { name: "Siap Kirim", status: "READY_TO_SHIP" },
+  { name: "Diproses", status: "PROCESSED" },
+  { name: "Dikirim", status: "SHIPPED" },
+  { name: "Dibatalkan", status: "CANCELLED" },
+  { name: "Permintaan Batal", status: "IN_CANCEL" },
+  { name: "Retur", status: "TO_RETURN" }
+];
+
+// 1. Buat interface untuk state tabel
+interface TableState {
+  searchTerm: string;
+  selectedShops: string[];
+  activeCategory: string;
+  showCheckbox: boolean;
+  selectedOrders: string[];
+}
+
+// 2. Buat interface untuk metrics
+interface TableMetrics {
+  readyToShipCount: number;
+  cancelRequestCount: number;
+  unprintedCount: number;
+  totalPrintableDocuments: number;
+}
+
 export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTableProps) {
-  const categories = useMemo(() => [
-    { name: "Semua", count: 0, status: "" },
-    { name: "Siap Kirim", count: 0, status: "READY_TO_SHIP" },
-    { name: "Diproses", count: 0, status: "PROCESSED" },
-    { name: "Dikirim", count: 0, status: "SHIPPED" },
-    { name: "Dibatalkan", count: 0, status: "CANCELLED" },
-    { name: "Permintaan Batal", count: 0, status: "IN_CANCEL" },
-    { name: "Pengembalian", count: 0, status: "TO_RETURN" },
-  ], [])
+  // 3. Gabungkan state yang berkaitan
+  const [tableState, setTableState] = useState<TableState>({
+    searchTerm: "",
+    selectedShops: [],
+    activeCategory: "Semua",
+    showCheckbox: false,
+    selectedOrders: []
+  });
 
-  const [filteredOrders, setFilteredOrders] = useState(orders)
-  const [activeCategory, setActiveCategory] = useState("Semua")
-  const [searchTerm, setSearchTerm] = useState("")
-  const [shops, setShops] = useState<string[]>([])
-  const [selectedShops, setSelectedShops] = useState<string[]>([])
-  const [isShopFilterOpen, setIsShopFilterOpen] = useState(false)
-  const [selectedOrderSn, setSelectedOrderSn] = useState<string>("")
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
-  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
-  const { downloadDocument, isLoadingForOrder } = useShippingDocument();
+  // 4. Gunakan useMemo untuk metrics
+  const metrics = useMemo<TableMetrics>(() => ({
+    readyToShipCount: orders.filter(order => order.order_status === 'READY_TO_SHIP').length,
+    cancelRequestCount: orders.filter(order => order.order_status === 'IN_CANCEL').length,
+    unprintedCount: orders.filter(order => 
+      !order.is_printed && 
+      order.document_status === 'READY' &&
+      (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL')
+    ).length,
+    totalPrintableDocuments: orders.filter(order => 
+      order.document_status === 'READY' &&
+      (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL')
+    ).length
+  }), [orders]);
 
-  // Tambahkan state untuk toggle checkbox
-  const [showCheckbox, setShowCheckbox] = useState(false);
-
-  const updatedCategories = useMemo(() => {
-    return categories.map(category => ({
-      ...category,
-      count: category.status
-        ? orders.filter(order => order.order_status === category.status).length
-        : orders.length
-    }))
-  }, [categories, orders])
-
-  const handleCategoryChange = useCallback((categoryName: string) => {
-    setActiveCategory(categoryName)
-  }, [])
-
-  const handleSearch = useCallback((term: string) => {
-    setSearchTerm(term)
-  }, [])
-
-  const handleShopFilter = useCallback((shopName: string) => {
-    setSelectedShops(prev =>
-      prev.includes(shopName)
-        ? prev.filter(shop => shop !== shopName)
-        : [...prev, shopName]
-    )
-  }, [])
-
-  const filterOrders = useMemo(() => {
+  // 5. Optimasi filter orders dengan useMemo
+  const filteredOrders = useMemo(() => {
     return orders.filter(order => {
-      const categoryMatch = activeCategory === "Semua" || order.order_status === categories.find(cat => cat.name === activeCategory)?.status;
-      const searchMatch = !searchTerm || 
-        order.buyer_username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.shipping_carrier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.order_sn.toLowerCase().includes(searchTerm.toLowerCase());
-      const shopMatch = selectedShops.length === 0 || selectedShops.includes(order.shop_name);
+      const categoryMatch = tableState.activeCategory === "Semua" || 
+        order.order_status === CATEGORY_LIST.find(cat => cat.name === tableState.activeCategory)?.status;
+      
+      const searchMatch = !tableState.searchTerm || 
+        order.buyer_username?.toLowerCase().includes(tableState.searchTerm.toLowerCase()) ||
+        order.shipping_carrier?.toLowerCase().includes(tableState.searchTerm.toLowerCase()) ||
+        order.order_sn.toLowerCase().includes(tableState.searchTerm.toLowerCase());
+      
+      const shopMatch = tableState.selectedShops.length === 0 || 
+        tableState.selectedShops.includes(order.shop_name);
       
       return categoryMatch && searchMatch && shopMatch;
     });
-  }, [orders, activeCategory, searchTerm, selectedShops, categories]);
+  }, [orders, tableState.activeCategory, tableState.searchTerm, tableState.selectedShops]);
 
-  useEffect(() => {
-    setFilteredOrders(filterOrders)
-    
-    const uniqueShops = Array.from(new Set(orders.map(order => order.shop_name)))
-    setShops(uniqueShops)
-  }, [filterOrders, orders])
+  // 6. Update handlers menggunakan tableState
+  const handleCategoryChange = useCallback((categoryName: string) => {
+    setTableState(prev => ({ ...prev, activeCategory: categoryName }));
+  }, []);
 
-  // Update fungsi handleDownloadDocument
-  const handleDownloadDocument = async (order: OrderItem) => {
-    try {
-      const orderParams: ShippingDocumentParams[] = [{
-        order_sn: order.order_sn,
-        package_number: order.package_number,
-        shipping_document_type: "THERMAL_AIR_WAYBILL" as const,
-        shipping_carrier: order.shipping_carrier
-      }];
+  const handleSearch = useCallback((term: string) => {
+    setTableState(prev => ({ ...prev, searchTerm: term }));
+  }, []);
 
-      const blob = await downloadDocument(order.shop_id, orderParams);
-      const pdfUrl = URL.createObjectURL(blob);
-      
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>${order.shop_name}</title>
-            </head>
-            <body style="margin:0;padding:0;height:100vh;">
-              <embed src="${pdfUrl}" type="application/pdf" width="100%" height="100%">
-            </body>
-          </html>
-        `);
-        newWindow.document.close();
-        window.focus();
-      }
+  const handleShopFilter = useCallback((shopName: string) => {
+    setTableState(prev => ({
+      ...prev,
+      selectedShops: prev.selectedShops.includes(shopName)
+        ? prev.selectedShops.filter(shop => shop !== shopName)
+        : [...prev.selectedShops, shopName]
+    }));
+  }, []);
 
-      setTimeout(() => {
-        URL.revokeObjectURL(pdfUrl);
-      }, 1000);
-    } catch (err) {
-      console.error('Gagal mengunduh dokumen:', err);
-      toast.error('Gagal mengunduh dokumen');
-    }
-  };
+  const handleToggleCheckbox = useCallback(() => {
+    setTableState(prev => {
+      const newShowCheckbox = !prev.showCheckbox;
+      return {
+        ...prev,
+        showCheckbox: newShowCheckbox,
+        selectedOrders: newShowCheckbox ? prev.selectedOrders : []
+      };
+    });
+  }, []);
 
-  // Update fungsi isOrderCheckable untuk lebih spesifik
-  const isOrderCheckable = (order: OrderItem) => {
-    return order.document_status === 'READY' &&
-           (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL');
-  };
+  const handleSelectOrder = useCallback((orderSn: string, checked: boolean) => {
+    setTableState(prev => ({
+      ...prev,
+      selectedOrders: checked 
+        ? [...prev.selectedOrders, orderSn]
+        : prev.selectedOrders.filter(sn => sn !== orderSn)
+    }));
+  }, []);
 
-  // Handler untuk checkbox utama
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      const printableOrders = filteredOrders
-        .filter(order => isOrderCheckable(order))
-        .map(order => order.order_sn);
-      setSelectedOrders(printableOrders);
-    } else {
-      setSelectedOrders([]);
-    }
-  };
-
-  // Handler untuk checkbox individual
-  const handleSelectOrder = (orderSn: string, checked: boolean) => {
-    if (checked) {
-      setSelectedOrders(prev => [...prev, orderSn]);
-    } else {
-      setSelectedOrders(prev => prev.filter(sn => sn !== orderSn));
-    }
-  };
+  const handleSelectAll = useCallback((checked: boolean) => {
+    setTableState(prev => ({
+      ...prev,
+      selectedOrders: checked
+        ? filteredOrders
+            .filter(order => isOrderCheckable(order))
+            .map(order => order.order_sn)
+        : []
+    }));
+  }, [filteredOrders]);
 
   // Tambahkan state untuk tracking progress
   const [bulkProgress, setBulkProgress] = useState<{
@@ -292,9 +285,9 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
   const handleBulkPrint = async () => {
     // Jika ada selectedOrders, gunakan itu
     // Jika tidak, filter semua order yang bisa dicetak
-    const ordersToPrint = selectedOrders.length > 0 
+    const ordersToPrint = tableState.selectedOrders.length > 0 
       ? orders
-          .filter(order => selectedOrders.includes(order.order_sn))
+          .filter(order => tableState.selectedOrders.includes(order.order_sn))
           .map(order => order.order_sn)
       : orders
           .filter(order => isOrderCheckable(order))
@@ -455,7 +448,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       }
 
       // Reset selectedOrders setelah selesai
-      setSelectedOrders([]);
+      setTableState(prev => ({ ...prev, selectedOrders: [] }));
       toast.success('Proses pencetakan selesai');
 
     } catch (error) {
@@ -479,285 +472,14 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
   // Update useEffect untuk menghandle indeterminate state
   useEffect(() => {
     const checkableOrders = filteredOrders.filter(order => isOrderCheckable(order));
-    const selectedCheckableOrders = selectedOrders.length;
+    const selectedCheckableOrders = tableState.selectedOrders.length;
     const allCheckableOrders = checkableOrders.length;
     
     if (checkboxRef.current) {
       const isIndeterminate = selectedCheckableOrders > 0 && selectedCheckableOrders < allCheckableOrders;
       (checkboxRef.current as any).indeterminate = isIndeterminate;
     }
-  }, [selectedOrders, filteredOrders]);
-
-  // Update fungsi untuk menghitung total dokumen yang dapat dicetak (global)
-  const getTotalPrintableDocuments = () => {
-    return orders.filter(order => isOrderCheckable(order)).length;
-  };
-
-  // Update fungsi getUnprintedDocuments untuk menggunakan filter yang sama
-  const getUnprintedDocuments = () => {
-    return orders.filter(order => 
-      // Cek dokumen yang:
-      !order.is_printed && // belum dicetak
-      order.document_status === 'READY' && // dokumen siap cetak
-      (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL') // status sesuai
-    ).length;
-  };
-
-  // Update fungsi handlePrintUnprinted
-  const handlePrintUnprinted = () => {
-    const unprintedCount = orders.filter(order => 
-      !order.is_printed && 
-      order.document_status === 'READY' &&
-      (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL')
-    ).length;
-    
-    if (unprintedCount === 0) {
-      toast.info('Tidak ada dokumen yang belum dicetak');
-      return;
-    }
-    
-    // Hanya buka dialog konfirmasi, tanpa mengubah selectedOrders
-    setIsUnprintedConfirmOpen(true);
-  };
-
-  // Update fungsi handleConfirmUnprinted
-  const handleConfirmUnprinted = async () => {
-    setIsUnprintedConfirmOpen(false);
-    
-    // Mengambil pesanan yang belum dicetak saat konfirmasi
-    const unprintedOrders = orders.filter(order => 
-      !order.is_printed && 
-      order.document_status === 'READY' &&
-      (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL')
-    );
-    
-    if (unprintedOrders.length === 0) {
-      toast.info('Tidak ada dokumen yang belum dicetak');
-      return;
-    }
-    
-    try {
-      // Inisialisasi progress bar dengan total dokumen
-      setBulkProgress({
-        processed: 0,
-        total: unprintedOrders.length,
-        currentCarrier: '',
-        currentShop: ''
-      });
-
-      // Kelompokkan berdasarkan shop_id
-      const ordersByShop = unprintedOrders.reduce((groups: { [key: number]: OrderItem[] }, order) => {
-        const shopId = order.shop_id;
-        if (!groups[shopId]) {
-          groups[shopId] = [];
-        }
-        groups[shopId].push(order);
-        return groups;
-      }, {});
-
-      // Log untuk debugging
-      console.log('Pengelompokan pesanan:', {
-        total_unprinted: unprintedOrders.length,
-        shops: Object.entries(ordersByShop).map(([shopId, orders]) => ({
-          shop_id: shopId,
-          shop_name: orders[0].shop_name,
-          order_count: orders.length
-        }))
-      });
-
-      // Proses setiap toko
-      for (const [shopId, shopOrders] of Object.entries(ordersByShop)) {
-        const shopName = shopOrders[0].shop_name;
-        const blobs: Blob[] = [];
-
-        // Update progress dengan nama toko
-        setBulkProgress(prev => ({
-          ...prev,
-          currentShop: shopName
-        }));
-
-        // Kelompokkan orders berdasarkan kurir
-        const ordersByCarrier = shopOrders.reduce((groups: { 
-          [key: string]: OrderItem[] 
-        }, order) => {
-          const carrier = order.shipping_carrier || 'unknown';
-          if (!groups[carrier]) {
-            groups[carrier] = [];
-          }
-          groups[carrier].push(order);
-          return groups;
-        }, {});
-
-        // Log untuk debugging
-        console.log(`Processing shop ${shopName}:`, {
-          carriers: Object.entries(ordersByCarrier).map(([carrier, orders]) => ({
-            carrier,
-            order_count: orders.length
-          }))
-        });
-
-        // Proses setiap kurir
-        for (const [carrier, carrierOrders] of Object.entries(ordersByCarrier)) {
-          console.log(`Processing carrier ${carrier} for shop ${shopName}:`, {
-            order_count: carrierOrders.length,
-            orders: carrierOrders.map(o => o.order_sn)
-          });
-
-          setBulkProgress(prev => ({
-            ...prev,
-            currentCarrier: carrier || 'Unknown',
-            currentShop: shopName
-          }));
-
-          const orderParams: ShippingDocumentParams[] = carrierOrders.map(order => ({
-            order_sn: order.order_sn,
-            package_number: order.package_number,
-            shipping_document_type: "THERMAL_AIR_WAYBILL",
-            shipping_carrier: order.shipping_carrier
-          }));
-
-          try {
-            const blob = await downloadDocument(parseInt(shopId), orderParams);
-            blobs.push(blob);
-
-            // Update progress setelah berhasil mengunduh
-            setBulkProgress(prev => ({
-              ...prev,
-              processed: prev.processed + carrierOrders.length,
-              currentCarrier: carrier || 'Unknown',
-              currentShop: shopName
-            }));
-
-            // Log untuk debugging
-            console.log(`Successfully downloaded documents for carrier ${carrier}:`, {
-              processed: carrierOrders.length,
-              total_processed: carrierOrders.length
-            });
-
-          } catch (error) {
-            console.error(`Error downloading documents for carrier ${carrier}:`, error);
-            toast.error(`Gagal mengunduh dokumen untuk ${carrier}`);
-          }
-
-          // Delay kecil antara setiap kurir
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-
-        // Proses PDF untuk toko ini
-        if (blobs.length > 0) {
-          try {
-            const mergedPDF = await mergePDFs(blobs);
-            const pdfUrl = URL.createObjectURL(mergedPDF);
-            
-            const newWindow = window.open('', '_blank');
-            if (newWindow) {
-              newWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                  <head>
-                    <title>${shopName}</title>
-                  </head>
-                  <body style="margin:0;padding:0;height:100vh;">
-                    <embed src="${pdfUrl}" type="application/pdf" width="100%" height="100%">
-                  </body>
-                </html>
-              `);
-              newWindow.document.close();
-            }
-
-            setTimeout(() => {
-              URL.revokeObjectURL(pdfUrl);
-            }, 1000);
-
-          } catch (error) {
-            console.error(`Error merging PDFs for shop ${shopName}:`, error);
-            toast.error(`Gagal menggabungkan PDF untuk ${shopName}`);
-          }
-        }
-      }
-      
-      // Update status cetak
-      if (onOrderUpdate) {
-        unprintedOrders.forEach(order => {
-          onOrderUpdate(order.order_sn, { is_printed: true });
-        });
-      }
-      
-      toast.success('Proses pencetakan selesai');
-
-    } catch (error) {
-      console.error('Gagal mencetak dokumen:', error);
-      toast.error('Gagal mencetak dokumen');
-    } finally {
-      // Reset progress bar setelah selesai
-      setTimeout(() => {
-        setBulkProgress({
-          processed: 0,
-          total: 0,
-          currentCarrier: '',
-          currentShop: ''
-        });
-      }, 2000);
-    }
-  };
-
-  // Update fungsi toggle checkbox
-  const handleToggleCheckbox = () => {
-    const newShowCheckbox = !showCheckbox;
-    setShowCheckbox(newShowCheckbox);
-    
-    // Jika checkbox disembunyikan, hapus semua seleksi
-    if (!newShowCheckbox) {
-      setSelectedOrders([]);
-    }
-  };
-
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [selectedAction, setSelectedAction] = useState<{ orderSn: string, action: 'ACCEPT' | 'REJECT' }>({ orderSn: '', action: 'ACCEPT' });
-
-  const handleCancellationAction = async (orderSn: string, action: 'ACCEPT' | 'REJECT') => {
-    setSelectedAction({ orderSn, action });
-    setIsConfirmOpen(true);
-  };
-
-  const handleConfirmAction = async () => {
-    const { orderSn, action } = selectedAction;
-    const order = orders.find(o => o.order_sn === orderSn);
-    
-    if (!order) return;
-
-    try {
-      const response = await fetch('/api/orders/handle-cancellation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          shopId: order.shop_id,
-          orderSn: orderSn,
-          operation: action
-        })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success(`Berhasil ${action === 'ACCEPT' ? 'menerima' : 'menolak'} pembatalan`);
-        // Update local state jika ada callback
-        if (onOrderUpdate) {
-          onOrderUpdate(orderSn, {
-            order_status: action === 'ACCEPT' ? 'CANCELLED' : 'READY_TO_SHIP'
-          });
-        }
-      } else {
-        toast.error(result.message || 'Gagal memproses pembatalan');
-      }
-    } catch (error) {
-      toast.error('Terjadi kesalahan saat memproses pembatalan');
-    } finally {
-      setIsConfirmOpen(false);
-    }
-  };
+  }, [tableState.selectedOrders, filteredOrders]);
 
   // Tambahkan state untuk OrderHistory
   const [isOrderHistoryOpen, setIsOrderHistoryOpen] = useState(false)
@@ -788,9 +510,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       document.title = 'Dashboard Pesanan';
     };
   }, [orders]);
-
-  // Tambahkan state ini
-  const [isUnprintedConfirmOpen, setIsUnprintedConfirmOpen] = useState(false);
 
   // Tambahkan state untuk dialog konfirmasi print semua
   const [isPrintAllConfirmOpen, setIsPrintAllConfirmOpen] = useState(false);
@@ -948,11 +667,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     }
   };
 
-  // Tambahkan fungsi untuk mendapatkan jumlah pesanan yang meminta pembatalan
-  const getCancelRequestCount = () => {
-    return orders.filter(order => order.order_status === 'IN_CANCEL').length;
-  };
-
   // Tambahkan state untuk dialog konfirmasi reject all
   const [isRejectAllConfirmOpen, setIsRejectAllConfirmOpen] = useState(false);
 
@@ -1046,6 +760,142 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       }, 2000);
     }
   };
+
+  // Tambahkan state yang diperlukan
+  const [selectedOrderSn, setSelectedOrderSn] = useState<string>('');
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isUnprintedConfirmOpen, setIsUnprintedConfirmOpen] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<{
+    orderSn: string;
+    action: 'ACCEPT' | 'REJECT';
+  }>({ orderSn: '', action: 'ACCEPT' });
+  const [isLoadingMap, setIsLoadingMap] = useState<Record<string, boolean>>({});
+
+  // 3. Gunakan CATEGORY_LIST untuk membuat categories dengan useMemo
+  const categories = useMemo(() => CATEGORY_LIST, []);
+
+  // Update categories dengan count
+  const updatedCategories = useMemo(() => {
+    return categories.map(category => ({
+      ...category,
+      count: category.name === "Semua" 
+        ? orders.length 
+        : orders.filter(order => order.order_status === category.status).length
+    }));
+  }, [categories, orders]);
+
+  // Fungsi helper
+  const isOrderCheckable = useCallback((order: OrderItem): boolean => {
+    return order.document_status === 'READY' &&
+      (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL');
+  }, []);
+
+  const isLoadingForOrder = useCallback((orderSn: string): boolean => {
+    return isLoadingMap[orderSn] || false;
+  }, [isLoadingMap]);
+
+  // Fungsi untuk menangani download dokumen
+  const handleDownloadDocument = useCallback(async (order: OrderItem) => {
+    setIsLoadingMap(prev => ({ ...prev, [order.order_sn]: true }));
+    try {
+      const params: ShippingDocumentParams = {
+        order_sn: order.order_sn,
+        package_number: order.package_number,
+        shipping_document_type: "THERMAL_AIR_WAYBILL",
+        shipping_carrier: order.shipping_carrier
+      };
+
+      const blob = await downloadDocument(order.shop_id, [params]);
+      const url = URL.createObjectURL(blob);
+      
+      window.open(url, '_blank');
+      
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+
+      if (onOrderUpdate) {
+        onOrderUpdate(order.order_sn, { is_printed: true });
+      }
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast.error('Gagal mengunduh dokumen');
+    } finally {
+      setIsLoadingMap(prev => ({ ...prev, [order.order_sn]: false }));
+    }
+  }, [onOrderUpdate]);
+
+  // Fungsi untuk menangani print dokumen yang belum dicetak
+  const handlePrintUnprinted = useCallback(async () => {
+    const unprintedOrders = orders.filter(order => 
+      !order.is_printed && 
+      order.document_status === 'READY' &&
+      (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL')
+    );
+
+    if (unprintedOrders.length === 0) {
+      toast.info('Tidak ada dokumen yang belum dicetak');
+      return;
+    }
+
+    setIsUnprintedConfirmOpen(true);
+  }, [orders]);
+
+  // Fungsi untuk konfirmasi print dokumen yang belum dicetak
+  const handleConfirmUnprinted = useCallback(async () => {
+    setIsUnprintedConfirmOpen(false);
+    // Implementasi logika print dokumen yang belum dicetak
+    // ...
+  }, []);
+
+  // Fungsi untuk menangani aksi pembatalan
+  const handleCancellationAction = useCallback(async (orderSn: string, action: 'ACCEPT' | 'REJECT') => {
+    setSelectedAction({ orderSn, action });
+    setIsConfirmOpen(true);
+  }, []);
+
+  // Fungsi untuk konfirmasi aksi pembatalan
+  const handleConfirmAction = useCallback(async () => {
+    setIsConfirmOpen(false);
+    // Implementasi logika konfirmasi pembatalan
+    // ...
+  }, []);
+
+  // Update fungsi downloadDocument
+  const downloadDocument = useCallback(async (shopId: number, params: ShippingDocumentParams[]) => {
+    try {
+      const response = await fetch('/api/shipping-document', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          shopId,
+          params: params.map(param => ({
+            order_sn: param.order_sn,
+            package_number: param.package_number || undefined,
+            shipping_document_type: "THERMAL_AIR_WAYBILL",
+            shipping_carrier: param.shipping_carrier || undefined
+          }))
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download document');
+      }
+
+      return response.blob();
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      throw error;
+    }
+  }, []);
+
+  // Tambahkan state untuk daftar toko
+  const shops = useMemo(() => {
+    return Array.from(new Set(orders.map(order => order.shop_name))).sort();
+  }, [orders]);
 
   return (
     <div className="w-full">
@@ -1161,75 +1011,85 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         <Card className="px-2 py-2 shadow-none rounded-lg">
           {/* Mobile Layout */}
           <div className="flex flex-col gap-2 sm:hidden">
-            {/* Baris 1: Kategori */}
-            <div className="w-full">
-              <Select value={activeCategory} onValueChange={handleCategoryChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih kategori" />
-                </SelectTrigger>
-                <SelectContent>
-                  {updatedCategories.map(category => (
-                    <SelectItem key={category.name} value={category.name}>
-                      {category.name} ({category.count})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Dropdown Kategori untuk Mobile */}
+            <Select
+              value={tableState.activeCategory}
+              onValueChange={handleCategoryChange}
+            >
+              <SelectTrigger className="h-8 text-xs w-full text-center flex justify-center">
+                <SelectValue>
+                  {tableState.activeCategory} ({updatedCategories.find(c => c.name === tableState.activeCategory)?.count})
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="w-full left-1/2 -translate-x-1/2">
+                {updatedCategories.map((category) => (
+                  <SelectItem 
+                    key={category.name} 
+                    value={category.name}
+                    className="text-center"
+                  >
+                    {category.name} ({category.count})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            {/* Baris 2: Checkbox, Pencarian dan Filter */}
+            {/* Baris Pencarian dengan Filter Toko dan Checkbox */}
             <div className="flex items-center gap-2">
-              {/* Tombol checkbox */}
+              {/* Tombol Toggle Checkbox untuk Mobile */}
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={handleToggleCheckbox}
-                className="h-8 w-8 p-0 shrink-0"
+                className={`h-8 w-8 p-0 ${tableState.showCheckbox ? 'bg-blue-100 dark:bg-blue-900' : ''}`}
               >
-                <CheckSquare 
-                  size={18}
-                  className={showCheckbox ? "text-primary" : "text-gray-500"}
-                />
+                <CheckSquare size={14} />
               </Button>
 
-              {/* Input Pencarian */}
-              <div className="relative flex-1">
-                <input
+              {/* Input Pencarian untuk Mobile */}
+              <div className="relative flex-1 min-w-[200px]">
+                <Input
                   type="text"
                   placeholder="Cari username, kurir, atau no. pesanan"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="px-2 py-1 pl-8 border rounded-md w-full text-xs h-8 dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                  value={tableState.searchTerm}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="h-8 text-xs pl-8 pr-8"
                 />
                 <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
               </div>
 
-              {/* Filter Popover */}
+              {/* Tombol Filter untuk Mobile */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 p-0"
-                    >
-                      <Filter size={18} className="text-gray-500 dark:text-gray-400" />
-                    </Button>
-                  </div>
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                    <Filter size={14} />
+                  </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-56 dark:bg-gray-800 dark:border-gray-700" align="end" side="bottom" sideOffset={5}>
-                  <div className="space-y-2">
-                    <h3 className="font-semibold dark:text-white">Filter Toko</h3>
-                    {shops.map(shop => (
-                      <div key={shop} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={shop}
-                          checked={selectedShops.includes(shop)}
-                          onCheckedChange={() => handleShopFilter(shop)}
-                        />
-                        <label htmlFor={shop} className="text-sm dark:text-gray-300">{shop}</label>
-                      </div>
-                    ))}
+                <PopoverContent className="w-72" align="end">
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <h4 className="font-medium leading-none">Pilih Toko</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Pilih toko yang ingin ditampilkan
+                      </p>
+                    </div>
+                    <div className="grid gap-2">
+                      {shops.map((shop) => (
+                        <div key={shop} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`mobile-shop-${shop}`}
+                            checked={tableState.selectedShops.includes(shop)}
+                            onCheckedChange={(checked) => handleShopFilter(shop)}
+                          />
+                          <label
+                            htmlFor={`mobile-shop-${shop}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {shop}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </PopoverContent>
               </Popover>
@@ -1237,80 +1097,86 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           </div>
 
           {/* Desktop Layout */}
-          <div className="hidden sm:flex items-center justify-between gap-2">
-            {/* Bagian Kiri: Checkbox dan Kategori */}
-            <div className="flex items-center gap-2 overflow-x-auto">
-              {/* Tombol checkbox */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleToggleCheckbox}
-                className="h-6 w-6 p-0 shrink-0"
-              >
-                <CheckSquare 
-                  size={16} 
-                  className={showCheckbox ? "text-primary" : "text-gray-500"}
-                />
-              </Button>
+          <div className="hidden sm:flex items-center gap-2">
+            {/* Tombol Toggle Checkbox - Kiri */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleToggleCheckbox}
+              className={`h-8 ${tableState.showCheckbox ? 'bg-blue-100 dark:bg-blue-900' : ''}`}
+            >
+              <CheckSquare size={14} />
+              {tableState.showCheckbox}
+            </Button>
 
-              {/* Desktop buttons */}
-              <div className="flex space-x-2">
-                {updatedCategories.map(category => (
-                  <button
-                    key={category.name}
-                    onClick={() => handleCategoryChange(category.name)}
-                    className={`px-3 py-2 text-xs font-medium rounded-md transition-all whitespace-nowrap
-                      ${activeCategory === category.name
-                        ? 'bg-primary text-white dark:bg-primary-foreground dark:text-primary'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-                      }`}
-                  >
-                    {category.name} <span className="ml-1 text-xs font-normal">({category.count})</span>
-                  </button>
-                ))}
-              </div>
+            {/* Kategori - Tengah */}
+            <div className="flex gap-2 flex-1">
+              {updatedCategories.map((category) => (
+                <Button
+                  key={category.name}
+                  onClick={() => handleCategoryChange(category.name)}
+                  variant={tableState.activeCategory === category.name ? "default" : "outline"}
+                  size="sm"
+                  className={`h-8 px-3 text-xs whitespace-nowrap
+                    ${tableState.activeCategory === category.name
+                      ? 'bg-primary hover:bg-primary/90 text-white dark:bg-primary-foreground'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                >
+                  {category.name} ({category.count})
+                </Button>
+              ))}
             </div>
 
-            {/* Bagian Kanan: Pencarian dan Filter */}
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Input Pencarian */}
+            {/* Pencarian dan Filter - Kanan */}
+            <div className="flex items-center gap-2">
               <div className="relative w-[300px]">
-                <input
+                <Input
                   type="text"
-                  placeholder="Cari username, kurir, atau no. pesanan"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="px-2 py-1 pl-8 border rounded-md w-full text-xs h-[32px] dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                  placeholder="Cari username pesanan atau no resi..."
+                  value={tableState.searchTerm}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="h-8 text-xs pl-8"
                 />
                 <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
               </div>
-
-              {/* Filter Popover */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 p-0"
-                    >
-                      <Filter size={18} className="text-gray-500 dark:text-gray-400" />
-                    </Button>
-                  </div>
+                  <Button variant="outline" size="sm" className="h-8">
+                    <Filter size={14}/>
+                   
+                  </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-56 dark:bg-gray-800 dark:border-gray-700" align="end" side="bottom" sideOffset={5}>
-                  <div className="space-y-2">
-                    <h3 className="font-semibold dark:text-white">Filter Toko</h3>
-                    {shops.map(shop => (
-                      <div key={shop} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={shop}
-                          checked={selectedShops.includes(shop)}
-                          onCheckedChange={() => handleShopFilter(shop)}
-                        />
-                        <label htmlFor={shop} className="text-sm dark:text-gray-300">{shop}</label>
-                      </div>
-                    ))}
+                <PopoverContent 
+                  className="w-80" 
+                  align="end" 
+                  alignOffset={-10}
+                  sideOffset={5}
+                >
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <h4 className="font-medium leading-none">Pilih Toko</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Pilih toko yang ingin ditampilkan
+                      </p>
+                    </div>
+                    <div className="grid gap-2">
+                      {shops.map((shop) => (
+                        <div key={shop} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`shop-${shop}`}
+                            checked={tableState.selectedShops.includes(shop)}
+                            onCheckedChange={(checked) => handleShopFilter(shop)}
+                          />
+                          <label
+                            htmlFor={`shop-${shop}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {shop}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </PopoverContent>
               </Popover>
@@ -1326,30 +1192,30 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               <Button
                 onClick={() => setIsProcessAllConfirmOpen(true)}
                 className="px-2 sm:px-3 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap h-[32px] min-h-0 dark:bg-blue-700 dark:hover:bg-blue-800"
-                disabled={getReadyToShipCount() === 0}
+                disabled={metrics.readyToShipCount === 0}
                 title="Proses Semua Pesanan"
               >
                 <Send size={14} className="sm:mr-1" />
                 <span className="hidden sm:inline">
-                  Proses Semua ({getReadyToShipCount()})
+                  Proses Semua ({metrics.readyToShipCount})
                 </span>
                 <span className="sm:hidden ml-1">
-                  ({getReadyToShipCount()})
+                  ({metrics.readyToShipCount})
                 </span>
               </Button>
 
               <Button
                 onClick={() => setIsRejectAllConfirmOpen(true)}
                 className="px-2 sm:px-3 py-2 text-xs font-medium bg-red-600 hover:bg-red-700 text-white whitespace-nowrap h-[32px] min-h-0 dark:bg-red-700 dark:hover:bg-red-800"
-                disabled={getCancelRequestCount() === 0}
+                disabled={metrics.cancelRequestCount === 0}
                 title="Tolak Semua Pembatalan"
               >
                 <XCircle size={14} className="sm:mr-1" />
                 <span className="hidden sm:inline">
-                  Tolak Pembatalan ({getCancelRequestCount()})
+                  Tolak Pembatalan ({metrics.cancelRequestCount})
                 </span>
                 <span className="sm:hidden ml-1">
-                  ({getCancelRequestCount()})
+                  ({metrics.cancelRequestCount})
                 </span>
               </Button>
             </div>
@@ -1359,39 +1225,39 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               <Button
                 onClick={handlePrintUnprinted}
                 className="px-2 sm:px-3 py-2 text-xs font-medium bg-green-600 hover:bg-green-700 text-white whitespace-nowrap h-[32px] min-h-0 dark:bg-green-700 dark:hover:bg-green-800"
-                disabled={getUnprintedDocuments() === 0}
+                disabled={metrics.unprintedCount === 0}
                 title="Cetak Dokumen Belum Print"
               >
                 <Printer size={14} className="sm:mr-1" />
                 <span className="hidden sm:inline">
-                  Belum Print ({getUnprintedDocuments()})
+                  Belum Print ({metrics.unprintedCount})
                 </span>
                 <span className="sm:hidden ml-1">
-                  ({getUnprintedDocuments()})
+                  ({metrics.unprintedCount})
                 </span>
               </Button>
 
               <Button
                 onClick={handleBulkPrintClick}
                 className={`px-2 sm:px-3 py-2 text-xs font-medium text-white whitespace-nowrap h-[32px] min-h-0
-                  ${selectedOrders.length > 0 
+                  ${tableState.selectedOrders.length > 0 
                     ? 'bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700' 
                     : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800'
                   }`}
-                title={selectedOrders.length > 0 
-                  ? `Cetak ${selectedOrders.length} Dokumen`
-                  : `Cetak Semua (${getTotalPrintableDocuments()})`
+                title={tableState.selectedOrders.length > 0 
+                  ? `Cetak ${tableState.selectedOrders.length} Dokumen`
+                  : `Cetak Semua (${metrics.totalPrintableDocuments})`
                 }
               >
                 <PrinterCheck size={14} className="sm:mr-1" />
                 <span className="hidden sm:inline">
-                  {selectedOrders.length > 0 
-                    ? `Cetak ${selectedOrders.length} Dokumen`
-                    : `Cetak Semua (${getTotalPrintableDocuments()})`
+                  {tableState.selectedOrders.length > 0 
+                    ? `Cetak ${tableState.selectedOrders.length} Dokumen`
+                    : `Cetak Semua (${metrics.totalPrintableDocuments})`
                   }
                 </span>
                 <span className="sm:hidden ml-1">
-                  ({selectedOrders.length || getTotalPrintableDocuments()})
+                  ({tableState.selectedOrders.length || metrics.totalPrintableDocuments})
                 </span>
               </Button>
             </div>
@@ -1404,7 +1270,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           <TableHeader>
             <TableRow className="dark:border-gray-700">
               {/* Update tampilan checkbox header */}
-              <TableHead className={`w-10 p-1 h-[32px] align-middle ${!showCheckbox && 'hidden'}`}>
+              <TableHead className={`w-10 p-1 h-[32px] align-middle ${!tableState.showCheckbox && 'hidden'}`}>
                 <div className="flex justify-center">
                   <Checkbox
                     ref={checkboxRef}
@@ -1412,7 +1278,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                       filteredOrders.filter(order => isOrderCheckable(order)).length > 0 && 
                       filteredOrders
                         .filter(order => isOrderCheckable(order))
-                        .every(order => selectedOrders.includes(order.order_sn))
+                        .every(order => tableState.selectedOrders.includes(order.order_sn))
                     }
                     onCheckedChange={handleSelectAll}
                     className="h-4 w-4"
@@ -1446,10 +1312,10 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                           : 'bg-gray-100/20 dark:bg-gray-900'
                   }
                 >
-                  <TableCell className={`p-1 h-[32px] align-middle ${!showCheckbox && 'hidden'}`}>
+                  <TableCell className={`p-1 h-[32px] align-middle ${!tableState.showCheckbox && 'hidden'}`}>
                     <div className="flex justify-center">
                       <Checkbox
-                        checked={selectedOrders.includes(order.order_sn)}
+                        checked={tableState.selectedOrders.includes(order.order_sn)}
                         disabled={!isOrderCheckable(order)}
                         onCheckedChange={(checked) => 
                           handleSelectOrder(order.order_sn, checked as boolean)
@@ -1563,7 +1429,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               Konfirmasi Cetak Dokumen Belum Print
             </AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-300">
-              Anda akan mencetak {getUnprintedDocuments()} dokumen yang belum pernah dicetak sebelumnya. 
+              Anda akan mencetak {metrics.unprintedCount} dokumen yang belum pernah dicetak sebelumnya. 
               Setelah dicetak, dokumen akan ditandai sebagai sudah dicetak. Lanjutkan?
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1588,9 +1454,9 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               Konfirmasi Cetak Dokumen
             </AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-300">
-              Anda akan mencetak {selectedOrders.length > 0 
-                ? selectedOrders.length 
-                : getTotalPrintableDocuments()} dokumen yang siap cetak. Lanjutkan?
+              Anda akan mencetak {tableState.selectedOrders.length > 0 
+                ? tableState.selectedOrders.length 
+                : metrics.totalPrintableDocuments} dokumen yang siap cetak. Lanjutkan?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1621,7 +1487,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               Konfirmasi Proses Pesanan
             </AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-300">
-              Anda akan memproses {getReadyToShipCount()} pesanan yang siap kirim. 
+              Anda akan memproses {metrics.readyToShipCount} pesanan yang siap kirim. 
               Proses ini tidak dapat dibatalkan. Lanjutkan?
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1650,7 +1516,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               Konfirmasi Tolak Semua Pembatalan
             </AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-300">
-              Anda akan menolak {getCancelRequestCount()} permintaan pembatalan pesanan. 
+              Anda akan menolak {metrics.cancelRequestCount} permintaan pembatalan pesanan. 
               Pembeli tidak akan dapat mengajukan pembatalan lagi untuk pesanan-pesanan ini. Lanjutkan?
             </AlertDialogDescription>
           </AlertDialogHeader>
