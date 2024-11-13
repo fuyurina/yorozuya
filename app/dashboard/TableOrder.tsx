@@ -176,6 +176,43 @@ interface TableMetrics {
   totalPrintableDocuments: number;
 }
 
+// 1. Pisahkan MobileSelect menjadi komponen terpisah untuk mengurangi re-render
+const MobileSelect = React.memo(({ 
+  activeCategory, 
+  categories, 
+  onCategoryChange 
+}: {
+  activeCategory: string;
+  categories: Category[];
+  onCategoryChange: (value: string) => void;
+}) => (
+  <Select value={activeCategory} onValueChange={onCategoryChange}>
+    <SelectTrigger className="h-8 text-xs w-full text-center flex justify-center">
+      <SelectValue>
+        {activeCategory} ({categories.find(c => c.name === activeCategory)?.count})
+      </SelectValue>
+    </SelectTrigger>
+    <SelectContent 
+      className="w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]"
+      position="popper"
+      align="center"
+      sideOffset={5}
+    >
+      {categories.map((category) => (
+        <SelectItem 
+          key={category.name} 
+          value={category.name}
+          className="text-center justify-center"
+        >
+          {category.name} ({category.count})
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+));
+
+MobileSelect.displayName = 'MobileSelect';
+
 export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTableProps) {
   // 3. Gabungkan state yang berkaitan
   const [tableState, setTableState] = useState<TableState>({
@@ -897,6 +934,11 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     return Array.from(new Set(orders.map(order => order.shop_name))).sort();
   }, [orders]);
 
+  // 2. Optimasi handler dengan useCallback
+  const handleMobileCategoryChange = useCallback((value: string) => {
+    handleCategoryChange(value);
+  }, [handleCategoryChange]);
+
   return (
     <div className="w-full">
       {bulkProgress.total > 0 && (
@@ -1011,29 +1053,11 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         <Card className="px-2 py-2 shadow-none rounded-lg">
           {/* Mobile Layout */}
           <div className="flex flex-col gap-2 sm:hidden">
-            {/* Dropdown Kategori untuk Mobile */}
-            <Select
-              value={tableState.activeCategory}
-              onValueChange={handleCategoryChange}
-            >
-              <SelectTrigger className="h-8 text-xs w-full text-center flex justify-center">
-                <SelectValue>
-                  {tableState.activeCategory} ({updatedCategories.find(c => c.name === tableState.activeCategory)?.count})
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="w-full left-1/2 -translate-x-1/2">
-                {updatedCategories.map((category) => (
-                  <SelectItem 
-                    key={category.name} 
-                    value={category.name}
-                    className="text-center"
-                  >
-                    {category.name} ({category.count})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
+            <MobileSelect 
+              activeCategory={tableState.activeCategory}
+              categories={updatedCategories}
+              onCategoryChange={handleMobileCategoryChange}
+            />
             {/* Baris Pencarian dengan Filter Toko dan Checkbox */}
             <div className="flex items-center gap-2">
               {/* Tombol Toggle Checkbox untuk Mobile */}
@@ -1054,6 +1078,11 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                   value={tableState.searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="h-8 text-xs pl-8 pr-8"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                  data-form-type="other"
                 />
                 <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
               </div>
@@ -1137,6 +1166,11 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                   value={tableState.searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="h-8 text-xs pl-8"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                  data-form-type="other"
                 />
                 <Search size={16} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
               </div>

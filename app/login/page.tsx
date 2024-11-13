@@ -68,21 +68,22 @@ export default function StylishLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[conic-gradient(at_top_right,_var(--tw-gradient-stops))] from-indigo-200 via-slate-600 to-indigo-200 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900 p-4">
-      <Card className="w-full max-w-md shadow-2xl backdrop-blur-sm bg-white/50 dark:bg-black/50">
+    <div className="h-[100dvh] flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 via-white to-gray-100 dark:from-gray-900 dark:via-blue-950 dark:to-gray-900 p-4">
+      <div className="mb-8">
+        <Image
+          src={theme === 'dark' ? loginlight : logindark}
+          alt="Logo"
+          width={100}
+          height={100}
+          priority
+          className="h-auto w-auto"
+        />
+      </div>
+      
+      <Card className="w-full max-w-md shadow-2xl backdrop-blur-sm bg-gray-50/90 dark:bg-black/50">
         <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-4">
-            <Image
-              src={theme === 'dark' ? loginlight : logindark}
-              alt="Logo"
-              width={100}
-              height={100}
-              priority
-              className="h-auto w-auto"
-            />
-          </div>
-          <h2 className="text-3xl font-bold text-center">System Login</h2>
-          <p className="text-sm text-muted-foreground text-center">Masukkan username dan password </p>
+          <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white">Login System</h2>
+          <p className="text-sm text-gray-700 dark:text-muted-foreground text-center">Masukkan username dan password </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

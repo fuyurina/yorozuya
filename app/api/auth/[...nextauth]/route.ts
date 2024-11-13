@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { headers } from 'next/headers'
 
 const handler = NextAuth({
   providers: [
@@ -24,8 +25,20 @@ const handler = NextAuth({
       }
     })
   ],
+  callbacks: {
+    redirect({ url, baseUrl }) {
+      const requestHost = headers().get("host") || "";
+      const dynamicBaseUrl = `${headers().get("x-forwarded-proto") || "https"}://${requestHost}`;
+      
+      if (url.startsWith("http")) return url;
+      if (url.startsWith("/")) return `${dynamicBaseUrl}${url}`;
+      return dynamicBaseUrl;
+    },
+  },
   pages: {
     signIn: '/login',
+    signOut: '/login',
+    error: '/login',
   },
   session: {
     strategy: "jwt",

@@ -14,14 +14,9 @@ export const metadata = {
   title: 'Dashboard',
   description: 'Yorozuya Management System',
   icons: {
-    icon: [
-      { url: '/logol.ico', sizes: '32x32' },
-      { url: '/logol.png', sizes: '180x180' },
-    ],
-    apple: [
-      { url: '/logol.png', sizes: '180x180' },
-    ],
-  },
+    icon: '/app/logol.png',
+    apple: '/app/logol.png',
+  }
 }
 
 export const viewport: Viewport = {
@@ -41,6 +36,11 @@ const ThemeProvider = dynamic(() => import('@/components/layout/theme-provider')
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" className="h-full overflow-hidden">
+      <head>
+        <link rel="icon" href="/app/logol.png" sizes="32x32" />
+        <link rel="icon" href="/app/logol.png" sizes="180x180" />
+        <link rel="apple-touch-icon" href="/app/logol.png" sizes="180x180" />
+      </head>
       <body className={`h-full ${inter.className} flex flex-col overflow-hidden`}>
         <ThemeProvider
           attribute="class"

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -80,6 +80,26 @@ const fetchAdsData = async () => {
     return null;
   }
 };
+
+// Tambahkan konfigurasi CORS saat menginisialisasi klien Supabase
+const supabaseOptions = {
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    },
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+    }
+  }
+};
+
+// Perbarui inisialisasi klien Supabase
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  supabaseOptions
+);
 
 export const useDashboard = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData>({
@@ -202,7 +222,7 @@ export const useDashboard = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'logistic',
-          filter: `logistics_status=eq.LOGISTICS_REQUEST_CREATED`
+          
         },
         (payload) => {
           const logisticData = payload.new;
@@ -210,16 +230,15 @@ export const useDashboard = () => {
           setDashboardData(prevData => {
             const updatedOrders = prevData.orders.map(order => {
               if (order.order_sn === logisticData.order_sn) {
-                // Jika order_sn cocok, perbarui tracking_number
                 return {
                   ...order,
-                  tracking_number: logisticData.tracking_number
+                  tracking_number: logisticData.tracking_number,
+                  document_status: logisticData.document_status
                 };
               }
               return order;
             });
 
-            // Jika ada perubahan pada orders, kembalikan data yang diperbarui
             if (JSON.stringify(updatedOrders) !== JSON.stringify(prevData.orders)) {
               return {
                 ...prevData,
@@ -227,7 +246,6 @@ export const useDashboard = () => {
               };
             }
 
-            // Jika tidak ada perubahan, kembalikan data yang sama
             return prevData;
           });
         }
