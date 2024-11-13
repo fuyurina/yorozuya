@@ -3,13 +3,16 @@ import axios from 'axios'
 import { useToast } from "@/components/ui/use-toast"
 
 interface ActiveOrderItem {
-  id: string
-  status: string
+  order_id: string
+  operator: string
   number: string
-  otp: string
+  serviceName: string
+  price: string
   sms: string
-  service_name: string
-  remain_time: string
+  status_sms: string
+  second_sms: boolean
+  created_at: string
+  expired_time: string
 }
 
 interface ActiveOrderResponse {
@@ -46,22 +49,31 @@ export default function useOtpOrder() {
 
   const processActiveOrders = async () => {
     const { data } = await axios.get('/api/otp?action=active_order')
-    if (data.status === "false") {
+    
+    if (!data.status) {
       setActiveOrders([])
       stopChecking()
       console.log('Tidak ada orderan aktif')
       return false
     }
 
-    const modifiedData = data.data.map((order: ActiveOrderItem) => ({
-      ...order,
-      remain_time: order.remain_time || "20"
+    const modifiedData = data.data.map((order: any) => ({
+      order_id: order.order_id,
+      operator: order.operator,
+      number: order.number,
+      serviceName: order.serviceName,
+      price: order.price,
+      sms: order.sms,
+      status_sms: order.status_sms,
+      second_sms: order.second_sms,
+      created_at: order.created_at,
+      expired_time: order.expired_time
     }))
     
     setActiveOrders(modifiedData)
     
-    const hasPendingOrder = modifiedData.some((order: ActiveOrderItem) => 
-      order.status.toLowerCase() === "ready"
+    const hasPendingOrder = modifiedData.some((order: { status_sms: string }) => 
+      order.status_sms.toLowerCase() === "waiting"
     )
     
     if (!hasPendingOrder) {
@@ -80,27 +92,21 @@ export default function useOtpOrder() {
     }
   }
 
-  const formatExpiredTime = (remainTime: string) => {
-    const minutes = parseInt(remainTime)
-    if (minutes <= 0) {
-      return 'Kadaluarsa'
-    }
-    return `${minutes} menit`
-  }
+
 
   const orderOtp = async () => {
     setLoading(true)
     setError('')
     
     try {
-      const response = await fetch('/api/otp?action=order')
+      const response = await fetch('/api/otp?action=order&operator_id=random')
       const data = await response.json()
       
       if (data.status) {
-        startChecking() // Mulai pengecekan ketika order baru berhasil
+        startChecking()
         await checkActiveOrders()
       } else {
-        setError(data.msg || 'Terjadi kesalahan saat memesan nomor')
+        setError(data.message || 'Terjadi kesalahan saat memesan nomor')
       }
     } catch (err) {
       setError('Terjadi kesalahan pada jaringan')
@@ -111,7 +117,7 @@ export default function useOtpOrder() {
 
   const cancelOrder = async (id: string, status: number = 2) => {
     try {
-      const response = await axios.get(`/api/otp?action=set_status&id=${id}&status=${status}`)
+      const response = await axios.get(`/api/otp?action=set_status&order_id=${id}&status=${status}`)
       if (response.data.status) {
         toast({
           description: "Pesanan berhasil dibatalkan",
@@ -146,7 +152,8 @@ export default function useOtpOrder() {
   }
 
   const canCancelOrder = (order: ActiveOrderItem) => {
-    return order.remain_time && order.remain_time !== ""
+    const minutes = parseInt(order.expired_time.split(' ')[0])
+    return !isNaN(minutes) && minutes > 0 && minutes <= 17
   }
 
   useEffect(() => {

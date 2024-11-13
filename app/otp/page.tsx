@@ -11,17 +11,12 @@ import { motion } from "framer-motion"
 
 export default function OtpPage() {
   const { loading, error, orderOtp, activeOrders, cancelOrder, copyToClipboard, copiedState, canCancelOrder } = useOtpOrder()
-  const [cancelLoadingIds, setCancelLoadingIds] = useState<Set<number>>(new Set())
+  const [cancelLoadingIds, setCancelLoadingIds] = useState<Set<string | number>>(new Set())
 
-  const formatExpiredTime = (remainTime: string) => {
-    const minutes = parseInt(remainTime)
-    if (minutes <= 0) {
-      return 'Kadaluarsa'
-    }
-    return `${minutes} menit`
-  }
+  
 
-  const handleSetStatus = async (id: number, status: number) => {
+  const handleSetStatus = async (id: string | number, status: number) => {
+    console.log('Order ID yang akan dikirim:', id)
     setCancelLoadingIds(prev => new Set(prev).add(id))
     try {
       await cancelOrder(id.toString(), status)
@@ -61,12 +56,11 @@ export default function OtpPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="hidden md:table-cell w-[80px] font-semibold">ID</TableHead>
                     <TableHead className="w-[180px] font-semibold">Nomor</TableHead>
                     <TableHead className="hidden md:table-cell w-[150px] font-semibold">Layanan</TableHead>
                     <TableHead className="hidden md:table-cell w-[120px] font-semibold">Status</TableHead>
                     <TableHead className="text-center w-[180px] font-semibold">OTP</TableHead>
-                    <TableHead className="hidden md:table-cell w-[120px] font-semibold">Kadaluarsa</TableHead>
+                    <TableHead className="hidden md:table-cell w-[120px] font-semibold">Sisa Waktu</TableHead>
                     <TableHead className="w-[150px] font-semibold">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -74,19 +68,18 @@ export default function OtpPage() {
                   {activeOrders.length > 0 ? (
                     activeOrders.map((order) => (
                       <TableRow 
-                        key={order.id}
+                        key={order.order_id}
                         className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors"
                       >
-                        <TableCell className="hidden md:table-cell">{order.id}</TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             <span className="font-medium">{order.number}</span>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => copyToClipboard(order.number, order.id, 'nomor')}
+                              onClick={() => copyToClipboard(order.number, order.order_id, 'nomor')}
                             >
-                              {copiedState?.id === order.id && copiedState?.type === 'nomor' ? (
+                              {copiedState?.id === order.order_id && copiedState?.type === 'nomor' ? (
                                 <CheckCircle className="h-4 w-4 text-green-600" />
                               ) : (
                                 <Copy className="h-4 w-4" />
@@ -100,18 +93,18 @@ export default function OtpPage() {
                               transition={{ type: "spring", stiffness: 200, damping: 10 }}
                             >
                               <Badge variant={
-                                order.status.toLowerCase() === 'otp diterima' ? 'success' :
-                                order.status.toLowerCase() === 'expired' ? 'destructive' :
-                                order.status.toLowerCase() === 'canceled' ? 'secondary' :
-                                order.status.toLowerCase() === 'ready' ? 'warning' :
+                                order.status_sms.toLowerCase() === 'success' ? 'success' :
+                                order.status_sms.toLowerCase() === 'expired' ? 'destructive' :
+                                order.status_sms.toLowerCase() === 'canceled' ? 'secondary' :
+                                order.status_sms.toLowerCase() === 'waiting' ? 'warning' :
                                 'warning'
                               }>
-                                {order.status.toLowerCase() === 'otp diterima' ? 'Success' : order.status}
+                                {order.status_sms.toLowerCase() === 'success' ? 'Success' : order.status_sms}
                               </Badge>
                             </motion.div>
                           </div>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">{order.service_name}</TableCell>
+                        <TableCell className="hidden md:table-cell">{order.serviceName}</TableCell>
                         <TableCell className="hidden md:table-cell">
                           <motion.div
                             initial={{ scale: 0.8 }}
@@ -119,18 +112,18 @@ export default function OtpPage() {
                             transition={{ type: "spring", stiffness: 200, damping: 10 }}
                           >
                             <Badge variant={
-                              order.status.toLowerCase() === 'otp diterima' ? 'success' :
-                              order.status.toLowerCase() === 'expired' ? 'destructive' :
-                              order.status.toLowerCase() === 'canceled' ? 'secondary' :
-                              order.status.toLowerCase() === 'ready' ? 'warning' :
+                              order.status_sms.toLowerCase() === 'success' ? 'success' :
+                              order.status_sms.toLowerCase() === 'expired' ? 'destructive' :
+                              order.status_sms.toLowerCase() === 'canceled' ? 'secondary' :
+                              order.status_sms.toLowerCase() === 'waiting' ? 'warning' :
                               'warning'
                             }>
-                              {order.status.toLowerCase() === 'otp diterima' ? 'Success' : order.status}
+                              {order.status_sms.toLowerCase() === 'success' ? 'Success' : order.status_sms}
                             </Badge>
                           </motion.div>
                         </TableCell>
                         <TableCell className="text-center">
-                          {order.status.toLowerCase() === 'ready' ? (
+                          {order.status_sms.toLowerCase() === 'waiting' ? (
                             <motion.div 
                               className="flex justify-center space-x-1"
                               initial={{ opacity: 0.5 }}
@@ -154,43 +147,38 @@ export default function OtpPage() {
                             </motion.div>
                           ) : (
                             <div className="flex items-center justify-center gap-2">
-                              <span className="font-bold text-green-600">{order.otp}</span>
+                              <span className="font-bold text-green-600">{order.sms}</span>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => copyToClipboard(order.otp, order.id, 'otp')}
+                                onClick={() => copyToClipboard(order.sms, order.order_id, 'otp')}
                               >
-                                {copiedState?.id === order.id && copiedState?.type === 'otp' ? (
+                                {copiedState?.id === order.order_id && copiedState?.type === 'otp' ? (
                                   <CheckCircle className="h-4 w-4 text-green-600" />
-                                ) : order.status.toLowerCase() === 'otp diterima' && (
+                                ) : order.status_sms.toLowerCase() === 'success' && (
                                   <Copy className="h-4 w-4" />
                                 )}
                               </Button>
                             </div>
                           )}
-                          <div className="md:hidden mt-1 text-sm text-muted-foreground">
-                            {formatExpiredTime(order.remain_time)}
-                          </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          <span className={parseInt(order.remain_time) <= 0 ? 'text-destructive' : ''}>
-                            {formatExpiredTime(order.remain_time)}
-                          </span>
+                          {order.expired_time}
                         </TableCell>
                         <TableCell>
-                          {order.status.toLowerCase() !== 'canceled' && 
-                           order.status.toLowerCase() !== 'expired' && (
+                          {order.status_sms.toLowerCase() !== 'canceled' && 
+                           order.status_sms.toLowerCase() !== 'expired' && (
                             <div className="flex flex-col md:flex-row gap-2">
-                              {order.status.toLowerCase() === 'otp diterima' ? (
+                              {order.status_sms.toLowerCase() === 'received' ? (
                                 <>
                                   <Button
                                     size="sm"
                                     variant="outline"
                                     className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                    onClick={() => handleSetStatus(parseInt(order.id), 4)}
-                                    disabled={cancelLoadingIds.has(parseInt(order.id))}
+                                    onClick={() => handleSetStatus(order.order_id, 4)}
+                                    disabled={cancelLoadingIds.has(order.order_id)}
                                   >
-                                    {cancelLoadingIds.has(parseInt(order.id)) && (
+                                    {cancelLoadingIds.has(order.order_id) && (
                                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     )}
                                     Selesai
@@ -199,10 +187,10 @@ export default function OtpPage() {
                                     size="sm"
                                     variant="outline"
                                     className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
-                                    onClick={() => handleSetStatus(parseInt(order.id), 3)}
-                                    disabled={cancelLoadingIds.has(parseInt(order.id))}
+                                    onClick={() => handleSetStatus(order.order_id, 3)}
+                                    disabled={cancelLoadingIds.has(order.order_id)}
                                   >
-                                    {cancelLoadingIds.has(parseInt(order.id)) && (
+                                    {cancelLoadingIds.has(order.order_id) && (
                                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     )}
                                     Resend
@@ -212,10 +200,13 @@ export default function OtpPage() {
                                 <Button
                                   size="sm"
                                   variant="destructive"
-                                  onClick={() => handleSetStatus(parseInt(order.id), 2)}
-                                  disabled={cancelLoadingIds.has(parseInt(order.id)) || parseInt(order.remain_time) > 17}
+                                  onClick={() => handleSetStatus(order.order_id, 2)}
+                                  disabled={
+                                    cancelLoadingIds.has(order.order_id) || 
+                                    parseInt(order.expired_time.split(' ')[0]) > 17
+                                  }
                                 >
-                                  {cancelLoadingIds.has(parseInt(order.id)) && (
+                                  {cancelLoadingIds.has(order.order_id) && (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                   )}
                                   Batalkan
