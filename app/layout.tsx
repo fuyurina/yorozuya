@@ -8,15 +8,23 @@ import Providers from "./services/Providers"
 
 import type { Viewport } from 'next'
 
+
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
   title: 'Dashboard',
   description: 'Yorozuya Management System',
   icons: {
-    icon: '/app/logol.png',
-    apple: '/app/logol.png',
-  }
+    icon: [
+      { url: '/favicon-16x16.png?v=1', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png?v=1', sizes: '32x32', type: 'image/png' },
+      { url: '/android-chrome-192x192.png?v=1', sizes: '192x192', type: 'image/png' },
+      { url: '/android-chrome-512x512.png?v=1', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png?v=1', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 }
 
 export const viewport: Viewport = {
@@ -36,11 +44,6 @@ const ThemeProvider = dynamic(() => import('@/components/layout/theme-provider')
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" className="h-full overflow-hidden">
-      <head>
-        <link rel="icon" href="/app/logol.png" sizes="32x32" />
-        <link rel="icon" href="/app/logol.png" sizes="180x180" />
-        <link rel="apple-touch-icon" href="/app/logol.png" sizes="180x180" />
-      </head>
       <body className={`h-full ${inter.className} flex flex-col overflow-hidden`}>
         <ThemeProvider
           attribute="class"
