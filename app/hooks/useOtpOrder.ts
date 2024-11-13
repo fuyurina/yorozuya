@@ -35,7 +35,7 @@ export default function useOtpOrder() {
 
   const startChecking = () => {
     if (!checkInterval) {
-      const interval = setInterval(checkActiveOrders, 5000)
+      const interval = setInterval(checkActiveOrders, 7000)
       setCheckInterval(interval)
     }
   }

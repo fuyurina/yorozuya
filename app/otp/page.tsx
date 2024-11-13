@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import useOtpOrder from '@/app/hooks/useOtpOrder'
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Copy, CheckCircle, InboxIcon } from 'lucide-react'
@@ -93,13 +93,15 @@ export default function OtpPage() {
                               transition={{ type: "spring", stiffness: 200, damping: 10 }}
                             >
                               <Badge variant={
-                                order.status_sms.toLowerCase() === 'success' ? 'success' :
+                                order.status_sms.toLowerCase() === 'success' || 
+                                order.status_sms.toLowerCase() === 'sms recieved' ? 'success' :
                                 order.status_sms.toLowerCase() === 'expired' ? 'destructive' :
                                 order.status_sms.toLowerCase() === 'canceled' ? 'secondary' :
                                 order.status_sms.toLowerCase() === 'waiting' ? 'warning' :
                                 'warning'
                               }>
-                                {order.status_sms.toLowerCase() === 'success' ? 'Success' : order.status_sms}
+                                {order.status_sms.toLowerCase() === 'success' || 
+                                 order.status_sms.toLowerCase() === 'sms recieved' ? 'Success' : order.status_sms}
                               </Badge>
                             </motion.div>
                           </div>
@@ -112,13 +114,15 @@ export default function OtpPage() {
                             transition={{ type: "spring", stiffness: 200, damping: 10 }}
                           >
                             <Badge variant={
-                              order.status_sms.toLowerCase() === 'success' ? 'success' :
+                              order.status_sms.toLowerCase() === 'success' || 
+                              order.status_sms.toLowerCase() === 'sms recieved' ? 'success' :
                               order.status_sms.toLowerCase() === 'expired' ? 'destructive' :
                               order.status_sms.toLowerCase() === 'canceled' ? 'secondary' :
                               order.status_sms.toLowerCase() === 'waiting' ? 'warning' :
                               'warning'
                             }>
-                              {order.status_sms.toLowerCase() === 'success' ? 'Success' : order.status_sms}
+                              {order.status_sms.toLowerCase() === 'success' || 
+                               order.status_sms.toLowerCase() === 'sms recieved' ? 'Success' : order.status_sms}
                             </Badge>
                           </motion.div>
                         </TableCell>
@@ -146,7 +150,7 @@ export default function OtpPage() {
                               ))}
                             </motion.div>
                           ) : (
-                            <div className="flex items-center justify-center gap-2">
+                            <div className="flex items-center justify-center">
                               <span className="font-bold text-green-600">{order.sms}</span>
                               <Button
                                 variant="ghost"
@@ -155,7 +159,8 @@ export default function OtpPage() {
                               >
                                 {copiedState?.id === order.order_id && copiedState?.type === 'otp' ? (
                                   <CheckCircle className="h-4 w-4 text-green-600" />
-                                ) : order.status_sms.toLowerCase() === 'success' && (
+                                ) : (order.status_sms.toLowerCase() === 'success' || 
+                                    order.status_sms.toLowerCase() === 'sms recieved') && (
                                   <Copy className="h-4 w-4" />
                                 )}
                               </Button>
@@ -169,7 +174,7 @@ export default function OtpPage() {
                           {order.status_sms.toLowerCase() !== 'canceled' && 
                            order.status_sms.toLowerCase() !== 'expired' && (
                             <div className="flex flex-col md:flex-row gap-2">
-                              {order.status_sms.toLowerCase() === 'received' ? (
+                              {(order.status_sms.toLowerCase() === 'sms recieved') ? (
                                 <>
                                   <Button
                                     size="sm"
