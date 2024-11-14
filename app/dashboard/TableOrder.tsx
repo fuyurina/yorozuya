@@ -305,32 +305,48 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     }));
   }, [filteredOrders]);
 
-  // Tambahkan state untuk tracking progress
-  const [bulkProgress, setBulkProgress] = useState<{
-    processed: number;
-    total: number;
-    currentCarrier: string;
-    currentShop: string;
-  }>({
-    processed: 0,
-    total: 0,
-    currentCarrier: '',
-    currentShop: ''
-  });
+  // Tambahkan hook useShippingDocument
+  const { 
+    downloadDocument, 
+    isLoadingForOrder, 
+    bulkProgress: documentBulkProgress,
+    setBulkProgress: setDocumentBulkProgress,
+    error: documentError 
+  } = useShippingDocument();
 
-  // Update fungsi handleBulkPrint
+  // Ganti fungsi handleDownloadDocument yang lama
+  const handleDownloadDocument = useCallback(async (order: OrderItem) => {
+    try {
+      const params = {
+        order_sn: order.order_sn,
+        package_number: order.package_number,
+        shipping_document_type: "THERMAL_AIR_WAYBILL" as const,
+        shipping_carrier: order.shipping_carrier
+      };
+
+      const blob = await downloadDocument(order.shop_id, [params]);
+      const url = URL.createObjectURL(blob);
+      
+      window.open(url, '_blank');
+      
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+
+      if (onOrderUpdate) {
+        onOrderUpdate(order.order_sn, { is_printed: true });
+      }
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast.error('Gagal mengunduh dokumen');
+    }
+  }, [downloadDocument, onOrderUpdate]);
+
+  // Update fungsi handleBulkPrint untuk menggunakan hook
   const handleBulkPrint = async () => {
-    // Jika ada selectedOrders, gunakan itu
-    // Jika tidak, filter semua order yang bisa dicetak
     const ordersToPrint = tableState.selectedOrders.length > 0 
-      ? orders
-          .filter(order => tableState.selectedOrders.includes(order.order_sn))
-          .map(order => order.order_sn)
-      : orders
-          .filter(order => isOrderCheckable(order))
-          .map(order => order.order_sn);
-
-    console.log('Orders yang akan dicetak:', ordersToPrint.length, 'dokumen');
+      ? orders.filter(order => tableState.selectedOrders.includes(order.order_sn))
+      : orders.filter(order => isOrderCheckable(order));
 
     if (ordersToPrint.length === 0) {
       toast.info('Tidak ada dokumen yang dapat dicetak');
@@ -338,50 +354,27 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     }
 
     try {
-      // Set selectedOrders dan inisialisasi progress
-      setBulkProgress({
-        processed: 0,
-        total: ordersToPrint.length,
-        currentCarrier: '',
-        currentShop: ''
-      });
-
       // Kelompokkan berdasarkan shop_id
-      const ordersByShop = orders
-        .filter(order => ordersToPrint.includes(order.order_sn))
-        .reduce((groups: { [key: number]: OrderItem[] }, order) => {
-          const shopId = order.shop_id;
-          if (!groups[shopId]) {
-            groups[shopId] = [];
-          }
-          groups[shopId].push(order);
-          return groups;
-        }, {});
+      const ordersByShop = ordersToPrint.reduce((groups: { [key: number]: OrderItem[] }, order) => {
+        const shopId = order.shop_id;
+        if (!groups[shopId]) {
+          groups[shopId] = [];
+        }
+        groups[shopId].push(order);
+        return groups;
+      }, {});
 
-      // Log pengelompokan
-      console.log('Pengelompokan pesanan:', {
-        total_orders: ordersToPrint.length,
-        shops: Object.entries(ordersByShop).map(([shopId, orders]) => ({
-          shop_id: shopId,
-          shop_name: orders[0].shop_name,
-          order_count: orders.length
-        }))
-      });
-
-      // Proses setiap toko
       for (const [shopId, shopOrders] of Object.entries(ordersByShop)) {
         const shopName = shopOrders[0].shop_name;
         const blobs: Blob[] = [];
 
-        setBulkProgress(prev => ({
+        // Update progress dengan nama toko
+        setDocumentBulkProgress(prev => ({
           ...prev,
           currentShop: shopName
         }));
 
-        // Kelompokkan orders berdasarkan kurir
-        const ordersByCarrier = shopOrders.reduce((groups: { 
-          [key: string]: OrderItem[] 
-        }, order) => {
+        const ordersByCarrier = shopOrders.reduce((groups: { [key: string]: OrderItem[] }, order) => {
           const carrier = order.shipping_carrier || 'unknown';
           if (!groups[carrier]) {
             groups[carrier] = [];
@@ -390,59 +383,36 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           return groups;
         }, {});
 
-        // Log untuk debugging
-        console.log(`Processing shop ${shopName}:`, {
-          carriers: Object.entries(ordersByCarrier).map(([carrier, orders]) => ({
-            carrier,
-            order_count: orders.length
-          }))
-        });
-
-        // Proses setiap kurir
         for (const [carrier, carrierOrders] of Object.entries(ordersByCarrier)) {
-          console.log(`Processing carrier ${carrier} for shop ${shopName}:`, {
-            order_count: carrierOrders.length,
-            orders: carrierOrders.map(o => o.order_sn)
-          });
-
-          setBulkProgress(prev => ({
+          setDocumentBulkProgress(prev => ({
             ...prev,
-            currentCarrier: carrier || 'Unknown',
-            currentShop: shopName
+            currentCarrier: carrier,
+            currentShop: shopName,  // Pastikan nama toko tetap ada saat update carrier
+            total: ordersToPrint.length
           }));
 
-          const orderParams: ShippingDocumentParams[] = carrierOrders.map(order => ({
+          const orderParams = carrierOrders.map(order => ({
             order_sn: order.order_sn,
             package_number: order.package_number,
-            shipping_document_type: "THERMAL_AIR_WAYBILL",
+            shipping_document_type: "THERMAL_AIR_WAYBILL" as const,
             shipping_carrier: order.shipping_carrier
           }));
 
           try {
-            const blob = await downloadDocument(parseInt(shopId), orderParams);
+            const blob = await downloadDocument(parseInt(shopId.toString()), orderParams);
             blobs.push(blob);
 
-            setBulkProgress(prev => ({
+            setDocumentBulkProgress(prev => ({
               ...prev,
-              processed: prev.processed + carrierOrders.length,
-              currentCarrier: carrier || 'Unknown',
-              currentShop: shopName
+              processed: prev.processed + carrierOrders.length
             }));
-
-            console.log(`Successfully downloaded documents for carrier ${carrier}:`, {
-              processed: carrierOrders.length,
-              total_processed: carrierOrders.length
-            });
 
           } catch (error) {
             console.error(`Error downloading documents for carrier ${carrier}:`, error);
             toast.error(`Gagal mengunduh dokumen untuk ${carrier}`);
           }
-
-          await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        // Proses PDF untuk toko ini
         if (blobs.length > 0) {
           try {
             const mergedPDF = await mergePDFs(blobs);
@@ -453,9 +423,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               newWindow.document.write(`
                 <!DOCTYPE html>
                 <html>
-                  <head>
-                    <title>${shopName}</title>
-                  </head>
+                  <head><title>${shopName}</title></head>
                   <body style="margin:0;padding:0;height:100vh;">
                     <embed src="${pdfUrl}" type="application/pdf" width="100%" height="100%">
                   </body>
@@ -464,10 +432,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               newWindow.document.close();
             }
 
-            setTimeout(() => {
-              URL.revokeObjectURL(pdfUrl);
-            }, 1000);
-
+            setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
           } catch (error) {
             console.error(`Error merging PDFs for shop ${shopName}:`, error);
             toast.error(`Gagal menggabungkan PDF untuk ${shopName}`);
@@ -475,16 +440,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         }
       }
 
-      // Update status cetak
-      if (onOrderUpdate) {
-        orders
-          .filter(order => ordersToPrint.includes(order.order_sn))
-          .forEach(order => {
-            onOrderUpdate(order.order_sn, { is_printed: true });
-          });
-      }
-
-      // Reset selectedOrders setelah selesai
       setTableState(prev => ({ ...prev, selectedOrders: [] }));
       toast.success('Proses pencetakan selesai');
 
@@ -492,15 +447,12 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       console.error('Gagal mencetak dokumen:', error);
       toast.error('Gagal mencetak dokumen');
     } finally {
-      // Reset progress bar setelah selesai
-      setTimeout(() => {
-        setBulkProgress({
-          processed: 0,
-          total: 0,
-          currentCarrier: '',
-          currentShop: ''
-        });
-      }, 2000);
+      setDocumentBulkProgress({
+        processed: 0,
+        total: 0,
+        currentCarrier: '',
+        currentShop: ''  // Reset nama toko
+      });
     }
   };
 
@@ -807,7 +759,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     orderSn: string;
     action: 'ACCEPT' | 'REJECT';
   }>({ orderSn: '', action: 'ACCEPT' });
-  const [isLoadingMap, setIsLoadingMap] = useState<Record<string, boolean>>({});
 
   // 3. Gunakan CATEGORY_LIST untuk membuat categories dengan useMemo
   const categories = useMemo(() => CATEGORY_LIST, []);
@@ -828,41 +779,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL');
   }, []);
 
-  const isLoadingForOrder = useCallback((orderSn: string): boolean => {
-    return isLoadingMap[orderSn] || false;
-  }, [isLoadingMap]);
-
-  // Fungsi untuk menangani download dokumen
-  const handleDownloadDocument = useCallback(async (order: OrderItem) => {
-    setIsLoadingMap(prev => ({ ...prev, [order.order_sn]: true }));
-    try {
-      const params: ShippingDocumentParams = {
-        order_sn: order.order_sn,
-        package_number: order.package_number,
-        shipping_document_type: "THERMAL_AIR_WAYBILL",
-        shipping_carrier: order.shipping_carrier
-      };
-
-      const blob = await downloadDocument(order.shop_id, [params]);
-      const url = URL.createObjectURL(blob);
-      
-      window.open(url, '_blank');
-      
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 1000);
-
-      if (onOrderUpdate) {
-        onOrderUpdate(order.order_sn, { is_printed: true });
-      }
-    } catch (error) {
-      console.error('Error downloading document:', error);
-      toast.error('Gagal mengunduh dokumen');
-    } finally {
-      setIsLoadingMap(prev => ({ ...prev, [order.order_sn]: false }));
-    }
-  }, [onOrderUpdate]);
-
   // Fungsi untuk menangani print dokumen yang belum dicetak
   const handlePrintUnprinted = useCallback(async () => {
     const unprintedOrders = orders.filter(order => 
@@ -882,9 +798,119 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
   // Fungsi untuk konfirmasi print dokumen yang belum dicetak
   const handleConfirmUnprinted = useCallback(async () => {
     setIsUnprintedConfirmOpen(false);
-    // Implementasi logika print dokumen yang belum dicetak
-    // ...
-  }, []);
+    
+    const unprintedOrders = orders.filter(order => 
+      !order.is_printed && 
+      order.document_status === 'READY' &&
+      (order.order_status === 'PROCESSED' || order.order_status === 'IN_CANCEL')
+    );
+
+    if (unprintedOrders.length === 0) {
+      toast.info('Tidak ada dokumen yang belum dicetak');
+      return;
+    }
+
+    try {
+      // Kelompokkan berdasarkan shop_id
+      const ordersByShop = unprintedOrders.reduce((groups: { [key: number]: OrderItem[] }, order) => {
+        const shopId = order.shop_id;
+        if (!groups[shopId]) {
+          groups[shopId] = [];
+        }
+        groups[shopId].push(order);
+        return groups;
+      }, {});
+
+      for (const [shopId, shopOrders] of Object.entries(ordersByShop)) {
+        const shopName = shopOrders[0].shop_name;
+        const blobs: Blob[] = [];
+
+        // Update progress dengan nama toko
+        setDocumentBulkProgress(prev => ({
+          ...prev,
+          currentShop: shopName
+        }));
+
+        const ordersByCarrier = shopOrders.reduce((groups: { [key: string]: OrderItem[] }, order) => {
+          const carrier = order.shipping_carrier || 'unknown';
+          if (!groups[carrier]) {
+            groups[carrier] = [];
+          }
+          groups[carrier].push(order);
+          return groups;
+        }, {});
+
+        for (const [carrier, carrierOrders] of Object.entries(ordersByCarrier)) {
+          setDocumentBulkProgress(prev => ({
+            ...prev,
+            currentCarrier: carrier,
+            currentShop: shopName,
+            total: unprintedOrders.length
+          }));
+
+          const orderParams = carrierOrders.map(order => ({
+            order_sn: order.order_sn,
+            package_number: order.package_number,
+            shipping_document_type: "THERMAL_AIR_WAYBILL" as const,
+            shipping_carrier: order.shipping_carrier
+          }));
+
+          try {
+            const blob = await downloadDocument(parseInt(shopId.toString()), orderParams);
+            blobs.push(blob);
+
+            setDocumentBulkProgress(prev => ({
+              ...prev,
+              processed: prev.processed + carrierOrders.length
+            }));
+
+          } catch (error) {
+            console.error(`Error downloading documents for carrier ${carrier}:`, error);
+            toast.error(`Gagal mengunduh dokumen untuk ${carrier}`);
+          }
+        }
+
+        if (blobs.length > 0) {
+          try {
+            const mergedPDF = await mergePDFs(blobs);
+            const pdfUrl = URL.createObjectURL(mergedPDF);
+            
+            const newWindow = window.open('', '_blank');
+            if (newWindow) {
+              newWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                  <head><title>${shopName} - Belum Print</title></head>
+                  <body style="margin:0;padding:0;height:100vh;">
+                    <embed src="${pdfUrl}" type="application/pdf" width="100%" height="100%">
+                  </body>
+                </html>
+              `);
+              newWindow.document.close();
+            }
+
+            setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
+          } catch (error) {
+            console.error(`Error merging PDFs for shop ${shopName}:`, error);
+            toast.error(`Gagal menggabungkan PDF untuk ${shopName}`);
+          }
+        }
+      }
+
+      toast.success('Proses pencetakan selesai');
+
+    } catch (error) {
+      console.error('Gagal mencetak dokumen:', error);
+      toast.error('Gagal mencetak dokumen');
+    } finally {
+      setDocumentBulkProgress({
+        processed: 0,
+        total: 0,
+        currentCarrier: '',
+        currentShop: ''
+      });
+    }
+  }, [orders, downloadDocument]);
 
   // Fungsi untuk menangani aksi pembatalan
   const handleCancellationAction = useCallback(async (orderSn: string, action: 'ACCEPT' | 'REJECT') => {
@@ -899,36 +925,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     // ...
   }, []);
 
-  // Update fungsi downloadDocument
-  const downloadDocument = useCallback(async (shopId: number, params: ShippingDocumentParams[]) => {
-    try {
-      const response = await fetch('/api/shipping-document', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          shopId,
-          params: params.map(param => ({
-            order_sn: param.order_sn,
-            package_number: param.package_number || undefined,
-            shipping_document_type: "THERMAL_AIR_WAYBILL",
-            shipping_carrier: param.shipping_carrier || undefined
-          }))
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to download document');
-      }
-
-      return response.blob();
-    } catch (error) {
-      console.error('Error downloading document:', error);
-      throw error;
-    }
-  }, []);
-
   // Tambahkan state untuk daftar toko
   const shops = useMemo(() => {
     return Array.from(new Set(orders.map(order => order.shop_name))).sort();
@@ -941,110 +937,33 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
   return (
     <div className="w-full">
-      {bulkProgress.total > 0 && (
-        <div className="mb-4 p-3 sm:p-4 bg-white dark:bg-gray-800 border rounded-lg shadow-sm">
-          {/* Main Container */}
-          <div className="flex items-center justify-between gap-2 mb-2">
-            {/* Left Section: Progress & Shop */}
-            <div className="flex items-center gap-2 min-w-0">
-              {/* Progress Counter */}
+      {documentBulkProgress.total > 0 && (
+        <div className="mt-2 mb-2 p-2 bg-white dark:bg-gray-800 border rounded-lg shadow-sm">
+          <div className="flex flex-col gap-1.5">
+            {/* Progress Info - Single Line */}
+            <div className="flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2">
-                <Printer size={16} className="text-primary dark:text-white animate-pulse shrink-0" />
-                <span className="text-xs sm:text-sm font-medium dark:text-white whitespace-nowrap">
-                  {bulkProgress.processed}/{bulkProgress.total}
+                <Printer size={14} className="text-primary dark:text-white animate-pulse" />
+                <span className="font-medium dark:text-white">
+                  {documentBulkProgress.currentShop}
+                  {documentBulkProgress.currentCarrier && 
+                    <span className="text-gray-500 dark:text-gray-400">
+                      {' • '}{documentBulkProgress.currentCarrier}
+                    </span>
+                  }
                 </span>
               </div>
-
-              {/* Shop Info */}
-              {bulkProgress.currentShop && (
-                <span className="flex items-center gap-1 shrink-0">
-                  <Package size={14} className="dark:text-white shrink-0" />
-                  <span className="truncate max-w-[100px] sm:max-w-[200px] text-xs text-gray-600 dark:text-gray-300">
-                    {bulkProgress.currentShop}
-                  </span>
-                </span>
-              )}
-            </div>
-
-            {/* Right Section: Carrier */}
-            {bulkProgress.currentCarrier && (
-              <span className="flex items-center gap-1 shrink-0">
-                <Truck size={14} className="dark:text-white shrink-0" />
-                <span className="text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                  {bulkProgress.currentCarrier}
-                </span>
+              <span className="text-gray-600 dark:text-gray-400">
+                {documentBulkProgress.processed}/{documentBulkProgress.total}
               </span>
-            )}
-          </div>
-
-          {/* Progress Bar */}
-          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
-            <div 
-              className="bg-primary dark:bg-primary-foreground h-1.5 rounded-full transition-all duration-500 ease-in-out"
-              style={{ 
-                width: `${(bulkProgress.processed / bulkProgress.total) * 100}%` 
-              }}
-            />
-          </div>
-
-          {/* Progress Message */}
-          <p className="mt-1.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-            Mohon tunggu hingga proses selesai...
-          </p>
-        </div>
-      )}
-
-      {/* Progress Bar untuk Bulk Process */}
-      {bulkProcessProgress.total > 0 && (
-        <div className="mb-4 p-3 sm:p-4 bg-white dark:bg-gray-800 border rounded-lg shadow-sm">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="flex items-center gap-2">
-                <Send size={16} className="text-primary dark:text-white animate-pulse" />
-                <span className="text-xs sm:text-sm font-medium dark:text-white">
-                  {bulkProcessProgress.processed}/{bulkProcessProgress.total}
-                </span>
-              </div>
             </div>
-          </div>
-          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
-            <div 
-              className="bg-primary dark:bg-primary-foreground h-1.5 rounded-full transition-all duration-500 ease-in-out"
-              style={{ 
-                width: `${(bulkProcessProgress.processed / bulkProcessProgress.total) * 100}%` 
-              }}
-            />
-          </div>
-          <p className="mt-1.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-            Memproses pesanan... {bulkProcessProgress.currentOrder}
-          </p>
-        </div>
-      )}
 
-      {/* Progress Bar untuk Bulk Reject */}
-      {bulkRejectProgress.total > 0 && (
-        <div className="mb-4 p-3 sm:p-4 bg-white dark:bg-gray-800 border rounded-lg shadow-sm">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="flex items-center gap-2">
-                <XCircle size={16} className="text-red-500 dark:text-red-400 animate-pulse" />
-                <span className="text-xs sm:text-sm font-medium dark:text-white">
-                  {bulkRejectProgress.processed}/{bulkRejectProgress.total}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
-            <div 
-              className="bg-red-500 dark:bg-red-400 h-1.5 rounded-full transition-all duration-500 ease-in-out"
-              style={{ 
-                width: `${(bulkRejectProgress.processed / bulkRejectProgress.total) * 100}%` 
-              }}
+            {/* Progress Bar */}
+            <Progress 
+              value={(documentBulkProgress.processed / documentBulkProgress.total) * 100} 
+              className="h-1"
             />
           </div>
-          <p className="mt-1.5 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-            Menolak pembatalan... {bulkRejectProgress.currentOrder}
-          </p>
         </div>
       )}
 

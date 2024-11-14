@@ -858,6 +858,419 @@ export class ShopeeAPI {
       throw error;
     }
   }
+
+  async addDiscount(shopId: number, accessToken: string, discountData: {
+    discount_name: string,  // Title of the discount
+    start_time: number,     // Timestamp when discount starts
+    end_time: number       // Timestamp when discount ends
+  }): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/discount/add_discount';
+    const path = '/api/v2/discount/add_discount';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    // Validasi input
+    if (!discountData.discount_name || discountData.discount_name.trim().length === 0) {
+      throw new Error('Nama diskon tidak boleh kosong');
+    }
+
+    // Validasi waktu
+    const currentTime = Math.floor(Date.now() / 1000);
+    const oneHourInSeconds = 3600;
+    const maxDurationInSeconds = 180 * 24 * 3600; // 180 days in seconds
+
+    if (discountData.start_time <= currentTime + oneHourInSeconds) {
+      throw new Error('Waktu mulai harus minimal 1 jam dari waktu sekarang');
+    }
+
+    if (discountData.end_time <= discountData.start_time + oneHourInSeconds) {
+      throw new Error('Waktu selesai harus minimal 1 jam dari waktu mulai');
+    }
+
+    if (discountData.end_time - discountData.start_time > maxDurationInSeconds) {
+      throw new Error('Periode diskon tidak boleh lebih dari 180 hari');
+    }
+
+    const body = {
+      discount_name: discountData.discount_name,
+      start_time: discountData.start_time,
+      end_time: discountData.end_time
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk menambah diskon: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+    try {
+      const response = await axios.post(fullUrl, body, { headers });
+      console.info(`Kode status respons: ${response.status}, Konten respons: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat menambah diskon:', error);
+      throw error;
+    }
+  }
+
+  async addDiscountItem(
+    shopId: number, 
+    accessToken: string, 
+    discountId: number,
+    items: Array<{
+        item_id: number,
+        model_id?: number,
+        promotion_price: number,
+        stock: number
+    }>
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/discount/add_discount_item';
+    const path = '/api/v2/discount/add_discount_item';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+        partner_id: this.partnerId.toString(),
+        timestamp: timest.toString(),
+        sign,
+        shop_id: shopId.toString(),
+        access_token: accessToken
+    });
+
+    // Validasi input
+    if (!discountId || discountId <= 0) {
+        throw new Error('discount_id tidak valid');
+    }
+
+    if (!items || items.length === 0) {
+        throw new Error('Harus menyertakan minimal satu item');
+    }
+
+    // Validasi setiap item
+    items.forEach((item, index) => {
+        if (!item.item_id || item.item_id <= 0) {
+            throw new Error(`item_id tidak valid pada item index ${index}`);
+        }
+        if (item.promotion_price < 0) {
+            throw new Error(`promotion_price tidak valid pada item index ${index}`);
+        }
+        if (item.stock <= 0) {
+            throw new Error(`stock harus lebih dari 0 pada item index ${index}`);
+        }
+    });
+
+    const body = {
+        discount_id: discountId,
+        items: items
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk menambah item diskon: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+    try {
+        const response = await axios.post(fullUrl, body, { headers });
+        console.info(`Kode status respons: ${response.status}, Konten respons: ${JSON.stringify(response.data)}`);
+        return response.data;
+    } catch (error) {
+        console.error('Kesalahan saat menambah item diskon:', error);
+        throw error;
+    }
+  }
+
+  async deleteDiscount(
+    shopId: number,
+    accessToken: string,
+    discountId: number
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/discount/delete_discount';
+    const path = '/api/v2/discount/delete_discount';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+        partner_id: this.partnerId.toString(),
+        timestamp: timest.toString(),
+        sign,
+        shop_id: shopId.toString(),
+        access_token: accessToken
+    });
+
+    // Validasi input
+    if (!discountId || discountId <= 0) {
+        throw new Error('discount_id tidak valid');
+    }
+
+    const body = {
+        discount_id: discountId
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk menghapus diskon: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+    try {
+        const response = await axios.post(fullUrl, body, { headers });
+        console.info(`Kode status respons: ${response.status}, Konten respons: ${JSON.stringify(response.data)}`);
+        return response.data;
+    } catch (error) {
+        console.error('Kesalahan saat menghapus diskon:', error);
+        throw error;
+    }
+  }
+
+  // Method untuk menghapus item dari diskon
+  async deleteDiscountItem(
+    shopId: number,
+    accessToken: string,
+    discountId: number,
+    itemIds: Array<{
+        item_id: number,
+        model_id?: number
+    }>
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/discount/delete_discount_item';
+    const path = '/api/v2/discount/delete_discount_item';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+        partner_id: this.partnerId.toString(),
+        timestamp: timest.toString(),
+        sign,
+        shop_id: shopId.toString(),
+        access_token: accessToken
+    });
+
+    // Validasi input
+    if (!discountId || discountId <= 0) {
+        throw new Error('discount_id tidak valid');
+    }
+
+    if (!itemIds || itemIds.length === 0) {
+        throw new Error('Harus menyertakan minimal satu item');
+    }
+
+    const body = {
+        discount_id: discountId,
+        item_list: itemIds
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk menghapus item diskon: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+    try {
+        const response = await axios.post(fullUrl, body, { headers });
+        console.info(`Kode status respons: ${response.status}, Konten respons: ${JSON.stringify(response.data)}`);
+        return response.data;
+    } catch (error) {
+        console.error('Kesalahan saat menghapus item diskon:', error);
+        throw error;
+    }
+  }
+
+  // Method untuk mendapatkan detail diskon
+  async getDiscount(
+    shopId: number,
+    accessToken: string,
+    discountId: number
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/discount/get_discount';
+    const path = '/api/v2/discount/get_discount';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+        partner_id: this.partnerId.toString(),
+        timestamp: timest.toString(),
+        sign,
+        shop_id: shopId.toString(),
+        access_token: accessToken,
+        discount_id: discountId.toString()
+    });
+
+    // Validasi input
+    if (!discountId || discountId <= 0) {
+        throw new Error('discount_id tidak valid');
+    }
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk mendapatkan detail diskon: URL=${fullUrl}`);
+
+    try {
+        const response = await axios.get(fullUrl, { headers });
+        console.info(`Kode status respons: ${response.status}, Konten respons: ${JSON.stringify(response.data)}`);
+        return response.data;
+    } catch (error) {
+        console.error('Kesalahan saat mendapatkan detail diskon:', error);
+        throw error;
+    }
+  }
+
+  // Method untuk mendapatkan daftar diskon
+  async getDiscountList(
+    shopId: number,
+    accessToken: string,
+    options: {
+        discount_status: 'UPCOMING' | 'ONGOING' | 'EXPIRED',
+        page_size?: number,
+        cursor?: string
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/discount/get_discount_list';
+    const path = '/api/v2/discount/get_discount_list';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+        partner_id: this.partnerId.toString(),
+        timestamp: timest.toString(),
+        sign,
+        shop_id: shopId.toString(),
+        access_token: accessToken,
+        discount_status: options.discount_status
+    });
+
+    if (options.page_size) {
+        params.append('page_size', options.page_size.toString());
+    }
+    if (options.cursor) {
+        params.append('cursor', options.cursor);
+    }
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    try {
+        const response = await axios.get(fullUrl, { headers });
+        return response.data;
+    } catch (error) {
+        console.error('Kesalahan saat mengambil daftar diskon:', error);
+        throw error;
+    }
+  }
+
+  // Method untuk mengupdate diskon
+  async updateDiscount(
+    shopId: number,
+    accessToken: string,
+    discountId: number,
+    updateData: {
+        discount_name?: string,
+        start_time?: number,
+        end_time?: number
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/discount/update_discount';
+    const path = '/api/v2/discount/update_discount';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+        partner_id: this.partnerId.toString(),
+        timestamp: timest.toString(),
+        sign,
+        shop_id: shopId.toString(),
+        access_token: accessToken
+    });
+
+    const body = {
+        discount_id: discountId,
+        ...updateData
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    try {
+        const response = await axios.post(fullUrl, body, { headers });
+        return response.data;
+    } catch (error) {
+        console.error('Kesalahan saat mengupdate diskon:', error);
+        throw error;
+    }
+  }
+
+  // Method untuk mengupdate item diskon
+  async updateDiscountItem(
+    shopId: number,
+    accessToken: string,
+    discountId: number,
+    items: Array<{
+        item_id: number,
+        model_id?: number,
+        promotion_price: number,
+        stock: number
+    }>
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/discount/update_discount_item';
+    const path = '/api/v2/discount/update_discount_item';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+        partner_id: this.partnerId.toString(),
+        timestamp: timest.toString(),
+        sign,
+        shop_id: shopId.toString(),
+        access_token: accessToken
+    });
+
+    const body = {
+        discount_id: discountId,
+        items
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    try {
+        const response = await axios.post(fullUrl, body, { headers });
+        return response.data;
+    } catch (error) {
+        console.error('Kesalahan saat mengupdate item diskon:', error);
+        throw error;
+    }
+  }
+
+  // Method untuk mengakhiri diskon
+  async endDiscount(
+    shopId: number,
+    accessToken: string,
+    discountId: number
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/discount/end_discount';
+    const path = '/api/v2/discount/end_discount';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+        partner_id: this.partnerId.toString(),
+        timestamp: timest.toString(),
+        sign,
+        shop_id: shopId.toString(),
+        access_token: accessToken
+    });
+
+    const body = {
+        discount_id: discountId
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    try {
+        const response = await axios.post(fullUrl, body, { headers });
+        return response.data;
+    } catch (error) {
+        console.error('Kesalahan saat mengakhiri diskon:', error);
+        throw error;
+    }
+  }
 }
 
 export default ShopeeAPI;

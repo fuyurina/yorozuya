@@ -8,17 +8,21 @@ interface ShippingDocumentParams {
   shipping_carrier?: string;
 }
 
+interface BulkProgress {
+  processed: number;
+  total: number;
+  currentCarrier: string;
+  currentShop: string;
+}
+
 export function useShippingDocument() {
   const [isLoading, setIsLoading] = useState<{ [key: string]: boolean }>({});
   const [error, setError] = useState<string | null>(null);
-  const [bulkProgress, setBulkProgress] = useState<{
-    processed: number;
-    total: number;
-    currentCarrier: string;
-  }>({
+  const [bulkProgress, setBulkProgress] = useState<BulkProgress>({
     processed: 0,
     total: 0,
-    currentCarrier: ''
+    currentCarrier: '',
+    currentShop: ''
   });
 
   const downloadDocument = async (
