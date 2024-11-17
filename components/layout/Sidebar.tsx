@@ -10,7 +10,8 @@ import {
   Settings,
   CodeXml,
   AlertCircle,
-  KeyRound
+  KeyRound,
+  Percent
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -32,6 +33,7 @@ export const navItems = [
   { href: '/shops', icon: Store, label: 'Shops' },
   { href: '/keluhan', icon: AlertCircle, label: 'Keluhan' },
   { href: '/otp', icon: KeyRound, label: 'OTP' },
+  { href: '/discounts', icon: Percent, label: 'Diskon' },
   { href: '/pengaturan', icon: Settings, label: 'Pengaturan' },
 ]
 export function Sidebar() {

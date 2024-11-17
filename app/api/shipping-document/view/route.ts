@@ -1,8 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { downloadShippingDocument } from '@/app/services/shopeeService';
+import { downloadShippingDocument, createShippingDocument, getTrackingNumber as getShopeeTrackingNumber } from '@/app/services/shopeeService';
 import { mergePDFs } from '@/app/utils/pdfUtils';
 
 const BATCH_SIZE = 50; // Batasan dari Shopee API
+
+// Definisikan interface untuk order list
+interface OrderItem {
+  order_sn: string;
+  shipping_document_type: string;
+  shipping_carrier: string | null;
+}
+
+interface CreateDocumentItem {
+  order_sn: string;
+  tracking_number?: string;
+}
+
+// Fungsi helper untuk mendapatkan tracking number
+async function getOrderTrackingNumber(shopId: number, orderSn: string): Promise<string | null> {
+  const response = await getShopeeTrackingNumber(shopId, orderSn);
+  
+  if (response?.response?.tracking_number) {
+    return response.response.tracking_number;
+  }
+  return null;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -27,7 +49,7 @@ export async function GET(req: NextRequest) {
     const pdfBlobs: Buffer[] = [];
     
     for (const batch of batches) {
-      const orderList = batch.map(orderSn => ({
+      const orderList: OrderItem[] = batch.map(orderSn => ({
         order_sn: orderSn,
         shipping_document_type: "THERMAL_AIR_WAYBILL",
         shipping_carrier: carrier
@@ -36,9 +58,45 @@ export async function GET(req: NextRequest) {
       console.log(`Memproses batch dengan ${batch.length} pesanan`);
 
       try {
+        // Coba download dokumen
         const response = await downloadShippingDocument(shopId, orderList);
         
-        if (response instanceof Buffer) {
+        // Jika terjadi error dokumen belum dibuat
+        if (response.error === 'logistics.shipping_document_should_print_first') {
+          console.log('Dokumen belum dibuat, mencoba membuat dokumen...');
+          
+          for (const order of orderList) {
+            try {
+              // Dapatkan tracking number menggunakan fungsi helper yang baru
+              const trackingNumber = await getOrderTrackingNumber(shopId, order.order_sn);
+              
+              if (!trackingNumber) {
+                throw new Error(`Tracking number tidak ditemukan untuk order ${order.order_sn}`);
+              }
+
+              console.log(`Creating document for order ${order.order_sn} with tracking number ${trackingNumber}`);
+
+              await createShippingDocument(shopId, [{
+                order_sn: order.order_sn,
+                tracking_number: trackingNumber
+              }]);
+
+            } catch (error) {
+              console.error(`Error saat memproses order ${order.order_sn}:`, error);
+              throw error;
+            }
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const retryResponse = await downloadShippingDocument(shopId, orderList);
+          
+          if (retryResponse instanceof Buffer) {
+            pdfBlobs.push(retryResponse);
+          } else {
+            throw new Error('Masih gagal setelah membuat dokumen');
+          }
+        } else if (response instanceof Buffer) {
           pdfBlobs.push(response);
         } else {
           console.error('Response bukan Buffer:', response);

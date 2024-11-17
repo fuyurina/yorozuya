@@ -1120,7 +1120,7 @@ export class ShopeeAPI {
     shopId: number,
     accessToken: string,
     options: {
-        discount_status: 'UPCOMING' | 'ONGOING' | 'EXPIRED',
+        discount_status: 'upcoming' | 'ongoing' | 'expired' | 'all',
         page_size?: number,
         cursor?: string
     }
@@ -1203,10 +1203,12 @@ export class ShopeeAPI {
     accessToken: string,
     discountId: number,
     items: Array<{
-        item_id: number,
-        model_id?: number,
-        promotion_price: number,
-        stock: number
+      item_id: number,
+      purchase_limit?: number,
+      model_list: Array<{
+        model_id: number,
+        model_promotion_price: number
+      }>
     }>
   ): Promise<any> {
     const url = 'https://partner.shopeemobile.com/api/v2/discount/update_discount_item';
@@ -1223,17 +1225,34 @@ export class ShopeeAPI {
 
     const body = {
         discount_id: discountId,
-        items
+        item_list: items
     };
 
     const fullUrl = `${url}?${params.toString()}`;
     const headers = { 'Content-Type': 'application/json' };
 
+    // Menambahkan logging untuk request
+    console.info('Request ke Shopee API:');
+    console.info('URL:', fullUrl);
+    console.info('Headers:', JSON.stringify(headers, null, 2));
+    console.info('Body:', JSON.stringify(body, null, 2));
+
     try {
         const response = await axios.post(fullUrl, body, { headers });
+        // Menambahkan logging untuk response
+        console.info('Response dari Shopee API:');
+        console.info('Status:', response.status);
+        console.info('Data:', JSON.stringify(response.data, null, 2));
         return response.data;
     } catch (error) {
         console.error('Kesalahan saat mengupdate item diskon:', error);
+        // Menambahkan logging untuk error response jika ada
+        if (axios.isAxiosError(error) && error.response) {
+            console.error('Error Response:', {
+                status: error.response.status,
+                data: error.response.data
+            });
+        }
         throw error;
     }
   }
@@ -1269,6 +1288,261 @@ export class ShopeeAPI {
     } catch (error) {
         console.error('Kesalahan saat mengakhiri diskon:', error);
         throw error;
+    }
+  }
+
+  async getItemList(
+    shopId: number,
+    accessToken: string,
+    options: {
+      offset?: number,
+      page_size?: number,
+      item_status?: ('NORMAL' | 'BANNED' | 'DELETED' | 'UNLIST')[],
+      update_time_from?: number,
+      update_time_to?: number,
+      item_id_list?: number[],
+      need_complaint_policy?: boolean,
+      need_tax_info?: boolean
+    } = {}
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/product/get_item_list';
+    const path = '/api/v2/product/get_item_list';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken,
+      offset: (options.offset || 0).toString(),
+      page_size: (options.page_size || 20).toString()
+    });
+
+    if (options.item_status?.length) {
+      params.append('item_status', options.item_status.join(','));
+    }
+    
+    if (options.update_time_from) {
+      params.append('update_time_from', options.update_time_from.toString());
+    }
+    
+    if (options.update_time_to) {
+      params.append('update_time_to', options.update_time_to.toString());
+    }
+
+    if (options.item_id_list?.length) {
+      params.append('item_id_list', options.item_id_list.join(','));
+    }
+    if (options.need_complaint_policy !== undefined) {
+      params.append('need_complaint_policy', options.need_complaint_policy.toString());
+    }
+    if (options.need_tax_info !== undefined) {
+      params.append('need_tax_info', options.need_tax_info.toString());
+    }
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    try {
+      const response = await axios.get(fullUrl, { headers });
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat mengambil daftar produk:', error);
+      throw error;
+    }
+  }
+
+  async getItemBaseInfo(
+    shopId: number,
+    accessToken: string,
+    itemIdList: number[]
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/product/get_item_base_info';
+    const path = '/api/v2/product/get_item_base_info';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken,
+      item_id_list: itemIdList.join(',')
+    });
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    try {
+      const response = await axios.get(fullUrl, { headers });
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat mengambil informasi dasar produk:', error);
+      throw error;
+    }
+  }
+
+  async updateItem(
+    shopId: number,
+    accessToken: string,
+    itemId: number,
+    updateData: {
+      name?: string,
+      description?: string,
+      item_status?: 'NORMAL' | 'UNLIST',
+      category_id?: number,
+      brand?: {
+        brand_id?: number,
+        original_brand_name?: string
+      }
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/product/update_item';
+    const path = '/api/v2/product/update_item';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    const body = {
+      item_id: itemId,
+      ...updateData
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    try {
+      const response = await axios.post(fullUrl, body, { headers });
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat mengupdate produk:', error);
+      throw error;
+    }
+  }
+
+  async addItem(
+    shopId: number,
+    accessToken: string,
+    itemData: {
+      original_price: number,
+      description: string,
+      weight: number,
+      item_name: string,
+      category_id: number,
+      brand?: {
+        brand_id?: number,
+        original_brand_name?: string
+      },
+      dimension?: {
+        package_length: number,
+        package_width: number,
+        package_height: number
+      },
+      logistic_info?: Array<{
+        enabled?: boolean,
+        shipping_fee?: number,
+        size_id?: number,
+        logistic_id: number
+      }>,
+      condition?: string,
+      item_status?: "NORMAL" | "UNLIST",
+      item_sku?: string,
+      image?: {
+        image_id_list?: string[]
+      }
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/product/add_item';
+    const path = '/api/v2/product/add_item';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    try {
+      const response = await axios.post(fullUrl, itemData, { headers });
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat menambah produk:', error);
+      throw error;
+    }
+  }
+
+  async deleteItem(
+    shopId: number,
+    accessToken: string,
+    itemId: number
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/product/delete_item';
+    const path = '/api/v2/product/delete_item';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken,
+      item_id: itemId.toString()
+    });
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    try {
+      const response = await axios.post(fullUrl, {}, { headers });
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat menghapus produk:', error);
+      throw error;
+    }
+  }
+
+  async getModelList(
+    shopId: number,
+    accessToken: string,
+    itemId: number
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/product/get_model_list';
+    const path = '/api/v2/product/get_model_list';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken,
+      item_id: itemId.toString()
+    });
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk mendapatkan daftar model: URL=${fullUrl}`);
+
+    try {
+      const response = await axios.get(fullUrl, { headers });
+      console.info(`Response status: ${response.status}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat mengambil daftar model:', error);
+      throw error;
     }
   }
 }

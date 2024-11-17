@@ -401,50 +401,35 @@ def tangani_keluhan(id_pengguna: str, nama_toko: str, jenis_keluhan: str, deskri
 
 
 def cek_keluhan_dan_perubahan(nomor_invoice: str):
+    ada_keluhan = False
+    ada_perubahan = False
+    
+    # Cek keluhan
     try:
-        # Konfigurasi retry
-        max_retries = 3
-        retry_delay = 2  # detik
-        timeout = 10  # detik
-        
-        for attempt in range(max_retries):
-            try:
-                # Memeriksa keluhan dengan timeout
-                keluhan_result = supabase.table('keluhan') \
-                    .select('*') \
-                    .eq('nomor_invoice', nomor_invoice) \
-                    .timeout(timeout) \
-                    .execute()
-                
-                # Memeriksa perubahan pesanan dengan timeout
-                perubahan_result = supabase.table('perubahan_pesanan') \
-                    .select('*') \
-                    .eq('nomor_invoice', nomor_invoice) \
-                    .timeout(timeout) \
-                    .execute()
-                
-                logging.info(f"Berhasil memeriksa keluhan dan perubahan untuk invoice {nomor_invoice}")
-                return {
-                    "ada_keluhan": len(keluhan_result.data) > 0,
-                    "ada_perubahan": len(perubahan_result.data) > 0
-                }
-                
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    logging.warning(f"Percobaan {attempt + 1} gagal: {str(e)}. Mencoba lagi dalam {retry_delay} detik...")
-                    time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
-                    continue
-                else:
-                    logging.error(f"Gagal setelah {max_retries} percobaan: {str(e)}")
-                    raise
-                    
+        keluhan_result = supabase.table('keluhan') \
+            .select('*') \
+            .eq('nomor_invoice', nomor_invoice) \
+            .execute()
+        ada_keluhan = len(keluhan_result.data) > 0
+        logging.info(f"Berhasil memeriksa keluhan untuk invoice {nomor_invoice}")
     except Exception as e:
-        logging.error(f"Terjadi kesalahan fatal saat memeriksa keluhan dan perubahan pesanan: {str(e)}")
-        # Return default values jika terjadi error
-        return {
-            "ada_keluhan": False,
-            "ada_perubahan": False
-        }
+        logging.error(f"Gagal memeriksa keluhan: {str(e)}")
+        
+    # Cek perubahan pesanan secara terpisah
+    try:
+        perubahan_result = supabase.table('perubahan_pesanan') \
+            .select('*') \
+            .eq('nomor_invoice', nomor_invoice) \
+            .execute()
+        ada_perubahan = len(perubahan_result.data) > 0
+        logging.info(f"Berhasil memeriksa perubahan untuk invoice {nomor_invoice}")
+    except Exception as e:
+        logging.error(f"Gagal memeriksa perubahan pesanan: {str(e)}")
+
+    return {
+        "ada_keluhan": ada_keluhan,
+        "ada_perubahan": ada_perubahan
+    }
 
 def ubah_detail_pesanan(id_pengguna: str, nama_toko: str, nomor_invoice: str, detail_perubahan: str, perubahan: dict, status_pesanan: str,store_id:str, msg_id:str, user_id:int):
     try:
