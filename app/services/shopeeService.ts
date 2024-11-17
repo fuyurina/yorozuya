@@ -760,3 +760,236 @@ export async function endDiscount(
     };
   }
 }
+
+export async function getItemList(
+  shopId: number,
+  options: {
+    offset?: number,
+    page_size?: number,
+    item_status?: ('NORMAL' | 'BANNED' | 'DELETED' | 'UNLIST')[],
+    update_time_from?: number,
+    update_time_to?: number,
+    item_id_list?: number[],
+    need_complaint_policy?: boolean,
+    need_tax_info?: boolean
+  } = {}
+): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    const result = await shopeeApi.getItemList(shopId, accessToken, options);
+
+    if (result.error) {
+      console.error(`Error saat mengambil daftar produk: ${JSON.stringify(result)}`);
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal mengambil daftar produk'
+      };
+    }
+
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+  } catch (error) {
+    console.error('Kesalahan saat mengambil daftar produk:', error);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
+
+export async function getItemBaseInfo(
+  shopId: number,
+  itemIdList: number[]
+): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    const result = await shopeeApi.getItemBaseInfo(shopId, accessToken, itemIdList);
+
+    if (result.error) {
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal mengambil informasi dasar produk'
+      };
+    }
+
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+  } catch (error) {
+    console.error('Kesalahan saat mengambil informasi dasar produk:', error);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
+
+export async function updateItem(
+  shopId: number,
+  itemId: number,
+  updateData: {
+    name?: string,
+    description?: string,
+    item_status?: 'NORMAL' | 'UNLIST',
+    category_id?: number,
+    brand?: {
+      brand_id?: number,
+      original_brand_name?: string
+    }
+  }
+): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    const result = await shopeeApi.updateItem(shopId, accessToken, itemId, updateData);
+
+    if (result.error) {
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal mengupdate produk'
+      };
+    }
+
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+  } catch (error) {
+    console.error('Kesalahan saat mengupdate produk:', error);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
+
+export async function addItem(
+  shopId: number,
+  itemData: {
+    original_price: number,
+    description: string,
+    weight: number,
+    item_name: string,
+    category_id: number,
+    brand?: {
+      brand_id?: number,
+      original_brand_name?: string
+    },
+    dimension?: {
+      package_length: number,
+      package_width: number,
+      package_height: number
+    },
+    logistic_info?: Array<{
+      enabled?: boolean,
+      shipping_fee?: number,
+      size_id?: number,
+      logistic_id: number
+    }>,
+    condition?: string,
+    item_status?: "NORMAL" | "UNLIST",
+    item_sku?: string,
+    image?: {
+      image_id_list?: string[]
+    }
+  }
+): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    const result = await shopeeApi.addItem(shopId, accessToken, itemData);
+
+    if (result.error) {
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal menambah produk'
+      };
+    }
+
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+  } catch (error) {
+    console.error('Kesalahan saat menambah produk:', error);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
+
+export async function deleteItem(
+  shopId: number,
+  itemId: number
+): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    const result = await shopeeApi.deleteItem(shopId, accessToken, itemId);
+
+    if (result.error) {
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal menghapus produk'
+      };
+    }
+
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+  } catch (error) {
+    console.error('Kesalahan saat menghapus produk:', error);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
+
+export async function getModelList(
+  shopId: number,
+  itemId: number
+): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    const result = await shopeeApi.getModelList(shopId, accessToken, itemId);
+
+    if (result.error) {
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal mengambil daftar model'
+      };
+    }
+
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+  } catch (error) {
+    console.error('Kesalahan saat mengambil daftar model:', error);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
