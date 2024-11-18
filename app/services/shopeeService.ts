@@ -993,3 +993,71 @@ export async function getModelList(
     };
   }
 }
+
+export async function getItemLimit(shopId: number): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    const result = await shopeeApi.getItemLimit(shopId, accessToken);
+
+    if (result.error) {
+      console.error(`Error saat mengambil limit produk: ${JSON.stringify(result)}`);
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal mengambil limit produk'
+      };
+    }
+
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+  } catch (error) {
+    console.error('Kesalahan saat mengambil limit produk:', error);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
+
+export async function updateStock(
+  shopId: number,
+  itemId: number,
+  stockInfo: {
+    stock_list: Array<{
+      model_id?: number,
+      seller_stock: number
+    }>
+  }
+): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    const result = await shopeeApi.updateStock(shopId, accessToken, itemId, stockInfo);
+
+    if (result.error) {
+      console.error(`Error saat mengupdate stok: ${JSON.stringify(result)}`);
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal mengupdate stok produk'
+      };
+    }
+
+    console.info(`Berhasil mengupdate stok untuk produk ${itemId}`);
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+  } catch (error) {
+    console.error('Kesalahan saat mengupdate stok:', error);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}

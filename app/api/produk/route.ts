@@ -35,6 +35,7 @@ export async function GET(request: Request) {
     const itemDetailsResult = await getItemBaseInfo(shopId, itemIds);
 
     if (!itemDetailsResult.success) {
+      
       return NextResponse.json(
         { error: itemDetailsResult.message },
         { status: 400 }
@@ -46,12 +47,19 @@ export async function GET(request: Request) {
       itemDetailsResult.data.item_list.map(async (item: any) => {
         const modelListResult = await getModelList(shopId, item.item_id);
         
+        // Menambahkan console.log untuk model list
+        console.log('Model List untuk item_id:', item.item_id);
+        console.log('Respon getModelList:', JSON.stringify(modelListResult, null, 2));
+        
         // Mengambil informasi yang diperlukan dari setiap model
         const models = modelListResult.success ? modelListResult.data.model.map((model: any) => ({
           model_id: model.model_id,
           model_name: model.model_name,
           price_info: model.price_info[0],
-          stock_info: model.stock_info_v2.summary_info,
+          stock_info: {
+            ...model.stock_info_v2.summary_info,
+            stock: model.stock_info_v2.seller_stock[0]?.stock || 0
+          },
           model_status: model.model_status
         })) : [];
 

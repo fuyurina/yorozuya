@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useToast } from '@/components/ui/use-toast'
 import { getAllShops } from '../services/shopeeService'
 import { supabase } from '@/lib/supabase'
@@ -36,6 +36,7 @@ interface Product {
     model_name: string
     price_info: {
       current_price: number
+      original_price: number
     }
     stock_info: {
       stock_type: number
@@ -68,6 +69,12 @@ interface Product {
   }
   deboost: string
   authorised_brand_id: number
+  shopee_tokens: {
+    shop_id: number
+    shop_name: string
+  }[]
+  image_id_list: string[]
+  image_url_list: string[]
 }
 
 interface SyncResponse {
@@ -86,124 +93,14 @@ interface Shop {
   shop_name: string
 }
 
-interface SaveProductsResponse {
-  success: boolean;
-  error?: string;
-}
 
-async function saveProducts(data: any): Promise<SaveProductsResponse> {
-  try {
-    // Simpan data items
-    const items = data.data.items.map((item: any) => ({
-      item_id: item.item_id,
-      shop_id: data.data.shop_id,
-      category_id: item.category_id,
-      item_name: item.item_name,
-      description: item.description,
-      item_sku: item.item_sku,
-      create_time: item.create_time,
-      update_time: item.update_time,
-      weight: parseFloat(item.weight),
-      image: item.image,
-      logistic_info: item.logistic_info,
-      pre_order: item.pre_order,
-      condition: item.condition,
-      item_status: item.item_status,
-      has_model: item.has_model,
-      brand: item.brand,
-      item_dangerous: item.item_dangerous,
-      description_type: item.description_type,
-      size_chart_id: item.size_chart_id,
-      promotion_image: item.promotion_image,
-      deboost: item.deboost === 'FALSE' ? false : true,
-      authorised_brand_id: item.authorised_brand_id
-    }));
-
-    // Simpan items menggunakan batch insert
-    const { data: savedItems, error: itemsError } = await supabase
-      .from('items')
-      .upsert(items, { onConflict: 'item_id' })
-      .select();
-
-    if (itemsError) throw itemsError;
-
-    // Simpan variations dan models untuk setiap item
-    for (const item of data.data.items) {
-      // Simpan variations
-      if (item.variations && item.variations.length > 0) {
-        console.log('Processing variations for item:', item.item_id);
-        
-        // Loop melalui setiap variasi
-        for (const variation of item.variations) {
-          console.log('Processing variation:', variation);
-          
-          try {
-            // Simpan data variasi utama
-            const variationData = {
-              item_id: item.item_id,
-              variation_id: variation.variation_id || 0,
-              variation_name: variation.variation_name,
-              variation_option: {
-                options: variation.variation_option_list.map((opt: any) => ({
-                  id: opt.variation_option_id,
-                  name: opt.variation_option_name,
-                  image: opt.image_url || null
-                }))
-              },
-              variation_group_id: variation.variation_group_id || null
-            };
-
-            console.log('Saving variation data:', variationData);
-
-            const { error: variationError } = await supabase
-              .from('item_variations')
-              .upsert(variationData, {
-                onConflict: 'item_id,variation_id'
-              })
-
-            if (variationError) {
-              console.error('Error saving variation:', variationError);
-              throw variationError;
-            }
-
-            console.log('Variation saved successfully');
-          } catch (error) {
-            console.error('Error in variation processing:', error);
-            throw error;
-          }
-        }
-      } else {
-        console.log('No variations found for item:', item.item_id);
-      }
-
-      // Simpan models
-      if (item.models) {
-        const models = item.models.map((model: any) => ({
-          item_id: item.item_id,
-          model_id: model.model_id,
-          model_name: model.model_name,
-          current_price: model.price_info.current_price,
-          original_price: model.price_info.original_price,
-          stock_info: model.stock_info,
-          model_status: model.model_status
-        }));
-
-        const { error: modelsError } = await supabase
-          .from('item_models')
-          .upsert(models, { onConflict: 'item_id,model_id' });
-
-        if (modelsError) throw modelsError;
-      }
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error saving products:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    };
-  }
+interface StockPrice {
+  model_id: number;
+  model_name: string;
+  current_price: number;
+  original_price: number;
+  stock: number;
+  model_status: string;
 }
 
 export function useProducts() {
@@ -211,7 +108,10 @@ export function useProducts() {
   const [products, setProducts] = useState<Product[]>([])
   const [shops, setShops] = useState<Shop[]>([])
   const [isLoadingShops, setIsLoadingShops] = useState(false)
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const { toast } = useToast()
+  const [stockPrices, setStockPrices] = useState<StockPrice[]>([]);
+  const [isLoadingStockPrices, setIsLoadingStockPrices] = useState(false);
 
   const loadShops = async () => {
     try {
@@ -228,6 +128,50 @@ export function useProducts() {
       setIsLoadingShops(false)
     }
   }
+
+  const loadProducts = async () => {
+    try {
+      setIsLoadingProducts(true)
+      
+      // Ambil data token shop yang aktif
+      const { data: shopTokens, error: shopError } = await supabase
+        .from('shopee_tokens')
+        .select('shop_id, shop_name')
+        .eq('is_active', true)
+      
+      if (shopError) throw shopError
+
+      // Ambil items
+      const { data: items, error: itemsError } = await supabase
+        .from('items')
+        .select('*')
+        .in('shop_id', shopTokens?.map(token => token.shop_id) || [])
+      
+      if (itemsError) throw itemsError
+
+      // Transform data untuk menyesuaikan dengan interface Product
+      const productsWithShops = items?.map(item => ({
+        ...item,
+        image_id_list: item.image.image_id_list || [],
+        image_url_list: item.image.image_url_list || [],
+        shopee_tokens: shopTokens?.filter(token => token.shop_id === item.shop_id) || []
+      })) || []
+
+      setProducts(productsWithShops)
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Gagal Memuat Produk',
+        description: error instanceof Error ? error.message : 'Terjadi kesalahan saat memuat daftar produk',
+      })
+    } finally {
+      setIsLoadingProducts(false)
+    }
+  }
+
+  useEffect(() => {
+    loadProducts()
+  }, [])
 
   const syncProducts = async (shopId: number) => {
     try {
@@ -307,7 +251,7 @@ export function useProducts() {
                   model_id: model.model_id,
                   model_name: model.model_name,
                   current_price: model.price_info.current_price,
-                  original_price: model.price_info.current_price,
+                  original_price: model.price_info.original_price,
                   stock_info: model.stock_info,
                   model_status: model.model_status
                 }, { onConflict: 'item_id,model_id' })
@@ -338,12 +282,59 @@ export function useProducts() {
     }
   }
 
+  const getStockPrices = async (itemId: number) => {
+    try {
+      setIsLoadingStockPrices(true);
+      
+      const { data, error } = await supabase
+        .from('item_models')
+        .select(`
+          model_id,
+          model_name,
+          current_price,
+          original_price,
+          stock_info,
+          model_status
+        `)
+        .eq('item_id', itemId);
+
+      if (error) throw error;
+
+      const formattedData: StockPrice[] = data.map(item => ({
+        model_id: item.model_id,
+        model_name: item.model_name,
+        current_price: Number(item.current_price),
+        original_price: Number(item.original_price),
+        stock: item.stock_info.stock,
+        model_status: item.model_status
+      }));
+
+      setStockPrices(formattedData);
+      return formattedData;
+      
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Gagal Memuat Data Stok dan Harga',
+        description: error instanceof Error ? error.message : 'Terjadi kesalahan saat memuat data stok dan harga',
+      });
+      return [];
+    } finally {
+      setIsLoadingStockPrices(false);
+    }
+  };
+
   return {
     products,
     isSyncing,
     syncProducts,
     shops,
     loadShops,
-    isLoadingShops
+    isLoadingShops,
+    isLoadingProducts,
+    loadProducts,
+    stockPrices,
+    isLoadingStockPrices,
+    getStockPrices
   }
 }

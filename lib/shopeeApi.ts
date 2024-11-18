@@ -1545,6 +1545,77 @@ export class ShopeeAPI {
       throw error;
     }
   }
+
+  async getItemLimit(shopId: number, accessToken: string): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/product/get_item_limit';
+    const path = '/api/v2/product/get_item_limit';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk mendapatkan limit produk: URL=${fullUrl}`);
+
+    try {
+      const response = await axios.get(fullUrl, { headers });
+      console.info(`Response status: ${response.status}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat mengambil limit produk:', error);
+      throw error;
+    }
+  }
+
+  async updateStock(
+    shopId: number,
+    accessToken: string,
+    itemId: number,
+    stockInfo: {
+      stock_list: Array<{
+        model_id?: number,
+        seller_stock: number
+      }>
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/product/update_stock';
+    const path = '/api/v2/product/update_stock';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    const body = {
+      item_id: itemId,
+      ...stockInfo
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk mengupdate stok: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+    try {
+      const response = await axios.post(fullUrl, body, { headers });
+      console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat mengupdate stok:', error);
+      throw error;
+    }
+  }
 }
 
 export default ShopeeAPI;

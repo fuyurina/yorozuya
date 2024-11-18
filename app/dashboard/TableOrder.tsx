@@ -918,12 +918,50 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     setIsConfirmOpen(true);
   }, []);
 
-  // Fungsi untuk konfirmasi aksi pembatalan
+  // Update fungsi handleConfirmAction
   const handleConfirmAction = useCallback(async () => {
     setIsConfirmOpen(false);
-    // Implementasi logika konfirmasi pembatalan
-    // ...
-  }, []);
+    
+    try {
+      toast.promise(
+        async () => {
+          const response = await fetch('/api/orders/handle-cancellation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              shopId: orders.find(o => o.order_sn === selectedAction.orderSn)?.shop_id,
+              orderSn: selectedAction.orderSn,
+              operation: selectedAction.action
+            })
+          });
+
+          const result = await response.json();
+          
+          if (!result.success) {
+            throw new Error(result.message || 'Gagal memproses pembatalan');
+          }
+
+          // Update local state jika berhasil
+          if (onOrderUpdate) {
+            onOrderUpdate(selectedAction.orderSn, {
+              order_status: selectedAction.action === 'ACCEPT' ? 'CANCELLED' : 'READY_TO_SHIP'
+            });
+          }
+
+          return result;
+        },
+        {
+          loading: 'Memproses pembatalan...',
+          success: `Berhasil ${selectedAction.action === 'ACCEPT' ? 'menerima' : 'menolak'} pembatalan`,
+          error: (err) => `${err.message}`
+        }
+      );
+    } catch (error) {
+      console.error('Gagal memproses pembatalan:', error);
+    }
+  }, [selectedAction, orders, onOrderUpdate]);
 
   // Tambahkan state untuk daftar toko
   const shops = useMemo(() => {
