@@ -58,7 +58,11 @@ export async function GET(request: Request) {
           price_info: model.price_info[0],
           stock_info: {
             ...model.stock_info_v2.summary_info,
-            stock: model.stock_info_v2.seller_stock[0]?.stock || 0
+            seller_stock: model.stock_info_v2.seller_stock[0]?.stock || 0,
+            shopee_stock: model.stock_info_v2.shopee_stock.map((stock: any) => ({
+              location_id: stock.location_id || '',
+              stock: stock.stock || 0
+            }))
           },
           model_status: model.model_status
         })) : [];

@@ -31,6 +31,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { formatRupiah } from "@/lib/utils"
+import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 interface Shop {
   shop_id: number;
@@ -50,7 +52,15 @@ interface StockPrice {
   model_name: string;
   current_price: number;
   original_price: number;
-  stock: number;
+  stock_info: {
+    seller_stock: number;
+    shopee_stock: Array<{
+      stock: number;
+      location_id: string;
+    }>;
+    total_reserved_stock: number;
+    total_available_stock: number;
+  };
   model_status: string;
 }
 
@@ -72,6 +82,10 @@ export default function ProdukPage() {
   const [selectedItemStocks, setSelectedItemStocks] = useState<StockPrice[]>([])
   const [isStockDialogOpen, setIsStockDialogOpen] = useState(false)
   const [isLoadingStocks, setIsLoadingStocks] = useState(false)
+  const [editedStocks, setEditedStocks] = useState<{ [key: number]: number }>({})
+  const [isSavingStocks, setIsSavingStocks] = useState(false)
+  const [invalidStocks, setInvalidStocks] = useState<{ [key: number]: boolean }>({});
+  const [massUpdateStock, setMassUpdateStock] = useState<number | ''>('');
 
   const filteredProducts = products.filter((product) => {
     if (selectedShopId === 'all') return true
@@ -85,13 +99,56 @@ export default function ProdukPage() {
   const handleViewStockDetail = async (itemId: number) => {
     setIsLoadingStocks(true)
     try {
-      const stocks = await getStockPrices(itemId)
+      const response = await getStockPrices(itemId)
+      const stocks = response as StockPrice[]
       setSelectedItemStocks(stocks)
       setIsStockDialogOpen(true)
     } finally {
       setIsLoadingStocks(false)
     }
   }
+
+  const validateStock = (modelId: number, value: number): { isValid: boolean; minRequired: number } => {
+    const stock = selectedItemStocks.find(s => s.model_id === modelId);
+    if (!stock) return { isValid: true, minRequired: 0 };
+
+    const totalShopeeStock = stock.stock_info.shopee_stock.reduce((total, loc) => total + loc.stock, 0);
+    const minRequiredStock = stock.stock_info.total_reserved_stock - totalShopeeStock;
+
+    return {
+      isValid: value >= minRequiredStock,
+      minRequired: minRequiredStock
+    };
+  };
+
+  const handleStockChange = (modelId: number, newValue: number) => {
+    setEditedStocks(prev => ({
+      ...prev,
+      [modelId]: newValue
+    }));
+  };
+
+  const handleBlur = (modelId: number, value: number) => {
+    const minStock = selectedItemStocks.find(s => s.model_id === modelId)?.stock_info.total_reserved_stock || 0;
+    if (value < minStock) {
+      handleStockChange(modelId, minStock);
+      toast.warning("Stok disesuaikan dengan stok minimum yang dikunci");
+    }
+  };
+
+  const handleMassUpdate = () => {
+    if (massUpdateStock === '') return;
+    
+    const newStocks = { ...editedStocks };
+    selectedItemStocks.forEach(stock => {
+      const minStock = stock.stock_info.total_reserved_stock;
+      newStocks[stock.model_id] = massUpdateStock < minStock ? minStock : massUpdateStock;
+    });
+    
+    setEditedStocks(newStocks);
+    setMassUpdateStock('');
+    toast.success("Stok berhasil diperbarui untuk semua varian");
+  };
 
   return (
     <div className="container mx-auto p-6">
@@ -326,52 +383,138 @@ export default function ProdukPage() {
       </div>
 
       <Dialog open={isStockDialogOpen} onOpenChange={setIsStockDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[800px] h-[80vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Detail Stok dan Harga</DialogTitle>
           </DialogHeader>
           
-          <div className="relative">
+          <div className="flex-1 overflow-hidden">
             {isLoadingStocks ? (
               <div className="flex items-center justify-center p-4">
                 <Loader2 className="h-6 w-6 animate-spin" />
                 <span className="ml-2">Memuat data stok...</span>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Varian</TableHead>
-                    <TableHead>Harga</TableHead>
-                    <TableHead>Harga Asli</TableHead>
-                    <TableHead>Stok</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedItemStocks.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center">
-                        Tidak ada data varian
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    selectedItemStocks.map((stock) => (
-                      <TableRow key={stock.model_id}>
-                        <TableCell>{stock.model_name}</TableCell>
-                        <TableCell>{formatRupiah(stock.current_price)}</TableCell>
-                        <TableCell>{formatRupiah(stock.original_price)}</TableCell>
-                        <TableCell>{stock.stock}</TableCell>
-                        <TableCell>
-                          <Badge variant={stock.model_status === 'active' ? 'default' : 'secondary'}>
-                            {stock.model_status === 'active' ? 'Aktif' : 'Nonaktif'}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              <div className="flex flex-col h-full">
+                <div className="p-4 border-b space-y-3">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1 flex items-center gap-3">
+                      <span className="text-sm font-medium whitespace-nowrap">Update Semua Stok:</span>
+                      <div className="max-w-[120px]">
+                        <input
+                          type="number"
+                          className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                          value={massUpdateStock}
+                          onChange={(e) => setMassUpdateStock(e.target.value ? parseInt(e.target.value) : '')}
+                          placeholder="Jumlah stok"
+                        />
+                      </div>
+                      <Button 
+                        size="sm"
+                        onClick={handleMassUpdate}
+                        disabled={massUpdateStock === ''}
+                      >
+                        Terapkan ke Semua
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    *Stok akan otomatis disesuaikan dengan stok minimum yang dikunci untuk setiap varian
+                  </p>
+                </div>
+
+                <ScrollArea className="flex-1">
+                  <div className="p-4">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[20%]">Varian</TableHead>
+                          <TableHead className="w-[17%]">Harga</TableHead>
+                          <TableHead className="w-[17%]">Harga Asli</TableHead>
+                          <TableHead className="w-[15%] text-center">Stok Dikunci</TableHead>
+                          <TableHead className="w-[15%]">Stok</TableHead>
+                          <TableHead className="w-[16%]">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedItemStocks.map((stock) => (
+                          <TableRow key={stock.model_id}>
+                            <TableCell className="font-medium">{stock.model_name}</TableCell>
+                            <TableCell>{formatRupiah(stock.current_price)}</TableCell>
+                            <TableCell>{formatRupiah(stock.original_price)}</TableCell>
+                            <TableCell className="text-center">
+                              {stock.stock_info.total_reserved_stock}
+                            </TableCell>
+                            <TableCell>
+                              <div className="max-w-[120px]">
+                                <input
+                                  type="number"
+                                  className={cn(
+                                    "w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm",
+                                    invalidStocks[stock.model_id] && "border-red-500"
+                                  )}
+                                  value={editedStocks[stock.model_id] ?? stock.stock_info.seller_stock}
+                                  onChange={(e) => {
+                                    const value = parseInt(e.target.value) || 0;
+                                    handleStockChange(stock.model_id, value);
+                                  }}
+                                  onBlur={(e) => {
+                                    const value = parseInt(e.target.value) || 0;
+                                    handleBlur(stock.model_id, value);
+                                  }}
+                                />
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={stock.model_status === 'MODEL_NORMAL' ? 'default' : 'secondary'}>
+                                {stock.model_status === 'MODEL_NORMAL' ? 'Aktif' : 'Nonaktif'}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </ScrollArea>
+                
+                <div className="flex justify-end gap-2 mt-4 pt-4 border-t bg-background sticky bottom-0">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setEditedStocks({})
+                      setIsStockDialogOpen(false)
+                    }}
+                    disabled={isSavingStocks}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    disabled={Object.keys(editedStocks).length === 0 || isSavingStocks}
+                    onClick={async () => {
+                      setIsSavingStocks(true)
+                      try {
+                        // Implementasi fungsi untuk menyimpan perubahan stok
+                        // await updateStocks(editedStocks)
+                        setIsStockDialogOpen(false)
+                        setEditedStocks({})
+                      } catch (error) {
+                        console.error('Error updating stocks:', error)
+                      } finally {
+                        setIsSavingStocks(false)
+                      }
+                    }}
+                  >
+                    {isSavingStocks ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Menyimpan...
+                      </>
+                    ) : (
+                      'Simpan Perubahan'
+                    )}
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
         </DialogContent>

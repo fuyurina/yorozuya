@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 interface ShippingDocumentParams {
   order_sn: string;
@@ -15,6 +16,11 @@ interface BulkProgress {
   currentShop: string;
 }
 
+interface DownloadResponse {
+  blob: Blob;
+  failedOrders: string[];
+}
+
 export function useShippingDocument() {
   const [isLoading, setIsLoading] = useState<{ [key: string]: boolean }>({});
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +34,7 @@ export function useShippingDocument() {
   const downloadDocument = async (
     shopId: number, 
     orderList: ShippingDocumentParams[]
-  ) => {
+  ): Promise<DownloadResponse> => {
     try {
       setIsLoading(prev => ({
         ...prev,
@@ -43,22 +49,39 @@ export function useShippingDocument() {
       }).toString();
 
       const response = await fetch(`/api/shipping-document/view?${queryParams}`);
+      
+      const failedOrdersHeader = response.headers.get('X-Failed-Orders');
+      const failedOrders = failedOrdersHeader ? JSON.parse(failedOrdersHeader) : [];
+      
+      if (response.status === 404) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Tidak ada dokumen yang berhasil diproses');
+      }
+      
       if (!response.ok) {
-        throw new Error(`Failed to fetch documents`);
+        throw new Error(`Gagal mengambil dokumen`);
       }
       
       const blob = await response.blob();
       
+      const successfulOrders = orderList.filter(order => !failedOrders.includes(order.order_sn));
       await Promise.all(
-        orderList.map(async (order) => {
-          await supabase
-            .from('logistic')
-            .update({ is_printed: true })
-            .eq('order_sn', order.order_sn);
+        successfulOrders.map(async (order) => {
+          try {
+            await supabase
+              .from('logistic')
+              .update({ is_printed: true })
+              .eq('order_sn', order.order_sn);
+          } catch (err) {
+            console.error(`Gagal mengupdate status is_printed untuk order ${order.order_sn}:`, err);
+          }
         })
       );
 
-      return blob;
+      return {
+        blob: blob,
+        failedOrders: failedOrders
+      };
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan');

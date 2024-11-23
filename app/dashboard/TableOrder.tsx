@@ -324,8 +324,9 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         shipping_carrier: order.shipping_carrier
       };
 
-      const blob = await downloadDocument(order.shop_id, [params]);
-      const url = URL.createObjectURL(blob);
+      // Destructure response untuk mendapatkan blob
+      const { blob } = await downloadDocument(order.shop_id, [params]);
+      const url = URL.createObjectURL(blob); // Gunakan blob, bukan seluruh response
       
       window.open(url, '_blank');
       
@@ -342,7 +343,17 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     }
   }, [downloadDocument, onOrderUpdate]);
 
-  // Update fungsi handleBulkPrint untuk menggunakan hook
+  // Tambahkan state baru untuk failed orders
+  const [failedOrders, setFailedOrders] = useState<{
+    orderSn: string;
+    shopName: string;
+    carrier: string;
+  }[]>([]);
+
+  // Tambahkan state untuk dialog failed orders
+  const [isFailedOrdersDialogOpen, setIsFailedOrdersDialogOpen] = useState(false);
+
+  // Update fungsi handleBulkPrint
   const handleBulkPrint = async () => {
     const ordersToPrint = tableState.selectedOrders.length > 0 
       ? orders.filter(order => tableState.selectedOrders.includes(order.order_sn))
@@ -352,6 +363,11 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       toast.info('Tidak ada dokumen yang dapat dicetak');
       return;
     }
+
+    let totalSuccess = 0;
+    let totalFailed = 0;
+
+    const newFailedOrders: typeof failedOrders = [];
 
     try {
       // Kelompokkan berdasarkan shop_id
@@ -368,7 +384,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         const shopName = shopOrders[0].shop_name;
         const blobs: Blob[] = [];
 
-        // Update progress dengan nama toko
         setDocumentBulkProgress(prev => ({
           ...prev,
           currentShop: shopName
@@ -387,7 +402,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           setDocumentBulkProgress(prev => ({
             ...prev,
             currentCarrier: carrier,
-            currentShop: shopName,  // Pastikan nama toko tetap ada saat update carrier
+            currentShop: shopName,
             total: ordersToPrint.length
           }));
 
@@ -399,8 +414,23 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           }));
 
           try {
-            const blob = await downloadDocument(parseInt(shopId.toString()), orderParams);
-            blobs.push(blob);
+            const { blob, failedOrders } = await downloadDocument(parseInt(shopId.toString()), orderParams);
+            
+            if (blob) {
+              blobs.push(blob);
+            }
+            
+            totalSuccess += carrierOrders.length - failedOrders.length;
+            totalFailed += failedOrders.length;
+
+            // Tambahkan failed orders ke array
+            failedOrders.forEach(failedOrderSn => {
+              newFailedOrders.push({
+                orderSn: failedOrderSn,
+                shopName,
+                carrier
+              });
+            });
 
             setDocumentBulkProgress(prev => ({
               ...prev,
@@ -409,7 +439,18 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
           } catch (error) {
             console.error(`Error downloading documents for carrier ${carrier}:`, error);
-            toast.error(`Gagal mengunduh dokumen untuk ${carrier}`);
+            totalFailed += carrierOrders.length;
+            
+            // Tambahkan semua order yang gagal karena error
+            carrierOrders.forEach(order => {
+              newFailedOrders.push({
+                orderSn: order.order_sn,
+                shopName,
+                carrier
+              });
+            });
+            
+            continue;
           }
         }
 
@@ -440,8 +481,20 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         }
       }
 
-      setTableState(prev => ({ ...prev, selectedOrders: [] }));
-      toast.success('Proses pencetakan selesai');
+      // Set failed orders dan tampilkan dialog jika ada yang gagal
+      if (newFailedOrders.length > 0) {
+        setFailedOrders(newFailedOrders);
+        setIsFailedOrdersDialogOpen(true);
+      }
+
+      // Tampilkan ringkasan hasil
+      if (totalSuccess > 0 && totalFailed > 0) {
+        toast.info(`Proses selesai: ${totalSuccess} dokumen berhasil dicetak, ${totalFailed} dokumen gagal`);
+      } else if (totalSuccess > 0) {
+        toast.success(`Berhasil mencetak ${totalSuccess} dokumen`);
+      } else {
+        toast.error('Gagal mencetak semua dokumen');
+      }
 
     } catch (error) {
       console.error('Gagal mencetak dokumen:', error);
@@ -451,7 +504,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         processed: 0,
         total: 0,
         currentCarrier: '',
-        currentShop: ''  // Reset nama toko
+        currentShop: ''
       });
     }
   };
@@ -810,6 +863,9 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       return;
     }
 
+    let totalSuccess = 0;
+    let totalFailed = 0;
+
     try {
       // Kelompokkan berdasarkan shop_id
       const ordersByShop = unprintedOrders.reduce((groups: { [key: number]: OrderItem[] }, order) => {
@@ -856,8 +912,14 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           }));
 
           try {
-            const blob = await downloadDocument(parseInt(shopId.toString()), orderParams);
-            blobs.push(blob);
+            const { blob, failedOrders } = await downloadDocument(parseInt(shopId.toString()), orderParams);
+            
+            if (blob) {
+              blobs.push(blob);
+            }
+            
+            totalSuccess += carrierOrders.length - failedOrders.length;
+            totalFailed += failedOrders.length;
 
             setDocumentBulkProgress(prev => ({
               ...prev,
@@ -1327,7 +1389,14 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                       setIsDetailOpen(true)
                     }}
                   >
-                    {order.order_sn}
+                    <div className="flex items-center gap-1.5">
+                      <span>{order.order_sn}</span>
+                      {order.cod && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-600 text-white dark:bg-red-500">
+                          COD
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
                     <button
@@ -1526,6 +1595,76 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
             >
               Tolak Semua
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog Failed Orders */}
+      <AlertDialog 
+        open={isFailedOrdersDialogOpen} 
+        onOpenChange={setIsFailedOrdersDialogOpen}
+      >
+        <AlertDialogContent className="max-w-2xl dark:bg-gray-800 dark:border-gray-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="dark:text-white">
+              Daftar Pesanan Gagal Cetak ({failedOrders.length})
+            </AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-300">
+              Berikut adalah daftar pesanan yang gagal dicetak. Anda dapat mencoba mencetak ulang secara manual.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="max-h-[400px] overflow-y-auto mt-4">
+            <Table>
+              <TableHeader>
+                <TableRow className="dark:border-gray-700">
+                  <TableHead className="font-bold text-xs dark:text-white">#</TableHead>
+                  <TableHead className="font-bold text-xs dark:text-white">No. Pesanan</TableHead>
+                  <TableHead className="font-bold text-xs dark:text-white">Toko</TableHead>
+                  <TableHead className="font-bold text-xs dark:text-white">Kurir</TableHead>
+                  <TableHead className="font-bold text-xs dark:text-white w-[100px] text-center">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {failedOrders.map((order, index) => {
+                  const orderData = orders.find(o => o.order_sn === order.orderSn);
+                  return (
+                    <TableRow key={order.orderSn} className="dark:border-gray-700">
+                      <TableCell className="text-xs dark:text-gray-300">{index + 1}</TableCell>
+                      <TableCell className="text-xs dark:text-gray-300">{order.orderSn}</TableCell>
+                      <TableCell className="text-xs dark:text-gray-300">{order.shopName}</TableCell>
+                      <TableCell className="text-xs dark:text-gray-300">{order.carrier}</TableCell>
+                      <TableCell className="text-center">
+                        {orderData && (
+                          <Button
+                            onClick={() => handleDownloadDocument(orderData)}
+                            disabled={isLoadingForOrder(order.orderSn)}
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                          >
+                            {isLoadingForOrder(order.orderSn) ? (
+                              <RefreshCcw size={12} className="animate-spin" />
+                            ) : (
+                              <Printer size={12} className="text-primary hover:text-primary/80" />
+                            )}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogCancel 
+              className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 dark:border-gray-600"
+              onClick={() => setFailedOrders([])} // Clear failed orders when closing
+            >
+              Tutup
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

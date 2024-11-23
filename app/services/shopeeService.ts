@@ -999,26 +999,30 @@ export async function getItemLimit(shopId: number): Promise<any> {
     const accessToken = await getValidAccessToken(shopId);
     const result = await shopeeApi.getItemLimit(shopId, accessToken);
 
-    if (result.error) {
-      console.error(`Error saat mengambil limit produk: ${JSON.stringify(result)}`);
+    if (result.data.error) {
+      console.error(`Error saat mengambil limit produk: ${JSON.stringify(result.data)}`);
       return {
-        success: false,
-        error: result.error,
-        message: result.message || 'Gagal mengambil limit produk'
+        error: result.data.error,
+        message: result.data.message || 'Gagal mengambil limit produk',
+        request_id: result.data.request_id
       };
     }
 
+    console.info(`Berhasil mengambil limit produk untuk toko ${shopId}`);
     return {
-      success: true,
-      data: result.response,
-      request_id: result.request_id
+      error: '',
+      message: '',
+      request_id: result.data.request_id,
+      response: result.data.response
     };
+
   } catch (error) {
     console.error('Kesalahan saat mengambil limit produk:', error);
     return {
-      success: false,
       error: "internal_server_error",
-      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui',
+      request_id: '',
+      response: null
     };
   }
 }

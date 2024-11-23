@@ -37,109 +37,72 @@ export async function GET(req: NextRequest) {
       return new NextResponse('Parameter tidak valid', { status: 400 });
     }
 
-    // Bagi orderSns menjadi batch-batch
-    const batches = [];
-    for (let i = 0; i < orderSns.length; i += BATCH_SIZE) {
-      batches.push(orderSns.slice(i, i + BATCH_SIZE));
-    }
-
-    console.log(`Memproses ${orderSns.length} pesanan dalam ${batches.length} batch`);
-
-    // Proses setiap batch dan kumpulkan PDF
     const pdfBlobs: Buffer[] = [];
+    let remainingOrders = [...orderSns];
+    const failedOrders: string[] = []; // Tambahkan array untuk menyimpan order yang gagal
     
-    for (const batch of batches) {
-      const orderList: OrderItem[] = batch.map(orderSn => ({
+    while (remainingOrders.length > 0) {
+      const currentBatch = remainingOrders.slice(0, BATCH_SIZE);
+      const orderList: OrderItem[] = currentBatch.map(orderSn => ({
         order_sn: orderSn,
         shipping_document_type: "THERMAL_AIR_WAYBILL",
         shipping_carrier: carrier
       }));
 
-      console.log(`Memproses batch dengan ${batch.length} pesanan`);
-
       try {
-        // Coba download dokumen
         const response = await downloadShippingDocument(shopId, orderList);
         
-        // Jika terjadi error dokumen belum dibuat
-        if (response.error === 'logistics.shipping_document_should_print_first') {
-          console.log('Dokumen belum dibuat, mencoba membuat dokumen...');
-          
-          for (const order of orderList) {
-            try {
-              // Dapatkan tracking number menggunakan fungsi helper yang baru
-              const trackingNumber = await getOrderTrackingNumber(shopId, order.order_sn);
-              
-              if (!trackingNumber) {
-                throw new Error(`Tracking number tidak ditemukan untuk order ${order.order_sn}`);
-              }
-
-              console.log(`Creating document for order ${order.order_sn} with tracking number ${trackingNumber}`);
-
-              await createShippingDocument(shopId, [{
-                order_sn: order.order_sn,
-                tracking_number: trackingNumber
-              }]);
-
-            } catch (error) {
-              console.error(`Error saat memproses order ${order.order_sn}:`, error);
-              throw error;
+        if (response instanceof Buffer) {
+          pdfBlobs.push(response);
+          remainingOrders = remainingOrders.filter(sn => !currentBatch.includes(sn));
+        } else if (response.error === 'logistics.package_print_failed') {
+          const failedOrderMatch = response.message.match(/order_sn: (\w+) print failed/);
+          if (failedOrderMatch) {
+            const failedOrderSn = failedOrderMatch[1];
+            failedOrders.push(failedOrderSn); // Tambahkan ke array failedOrders
+            remainingOrders = remainingOrders.filter(sn => sn !== failedOrderSn);
+            
+            const remainingBatchOrders = currentBatch.filter(sn => sn !== failedOrderSn);
+            if (remainingBatchOrders.length > 0) {
+              remainingOrders = [...remainingBatchOrders, ...remainingOrders.filter(sn => !currentBatch.includes(sn))];
             }
           }
-          
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          const retryResponse = await downloadShippingDocument(shopId, orderList);
-          
-          if (retryResponse instanceof Buffer) {
-            pdfBlobs.push(retryResponse);
-          } else {
-            throw new Error('Masih gagal setelah membuat dokumen');
-          }
-        } else if (response instanceof Buffer) {
-          pdfBlobs.push(response);
-        } else {
-          console.error('Response bukan Buffer:', response);
-          throw new Error('Invalid response format');
         }
       } catch (error) {
         console.error('Error saat memproses batch:', error);
-        throw error;
+        currentBatch.forEach(sn => failedOrders.push(sn)); // Tambahkan semua order dalam batch yang error
       }
 
-      // Delay kecil antara request
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    // Jika hanya ada 1 PDF, langsung kembalikan
+    // Periksa hasil akhir
+    if (pdfBlobs.length === 0) {
+      return NextResponse.json({
+        error: "no_documents",
+        message: "Tidak ada dokumen yang berhasil diproses",
+        failedOrders // Sertakan failedOrders dalam response
+      }, { status: 404 });
+    }
+
+    // Buat response dengan header yang menyertakan informasi failedOrders
+    const headers = {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="shipping-labels-${Date.now()}.pdf"`,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'X-Failed-Orders': JSON.stringify(failedOrders) // Tambahkan failed orders ke header
+    };
+
     if (pdfBlobs.length === 1) {
-      return new NextResponse(pdfBlobs[0], {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Length': pdfBlobs[0].length.toString(),
-          'Content-Disposition': `inline; filename="shipping-labels-${Date.now()}.pdf"`,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
+      return new NextResponse(pdfBlobs[0], { status: 200, headers });
     }
 
-    // Jika ada multiple PDF, gabungkan terlebih dahulu
     const pdfBlobArray = pdfBlobs.map(buffer => new Blob([buffer], { type: 'application/pdf' }));
     const mergedPDF = await mergePDFs(pdfBlobArray);
     
-    return new NextResponse(mergedPDF, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="shipping-labels-${Date.now()}.pdf"`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    });
+    return new NextResponse(mergedPDF, { status: 200, headers });
 
   } catch (error) {
     console.error('Error saat mengambil PDF:', error);

@@ -93,13 +93,20 @@ interface Shop {
   shop_name: string
 }
 
-
 interface StockPrice {
   model_id: number;
   model_name: string;
   current_price: number;
   original_price: number;
-  stock: number;
+  stock_info: {
+    seller_stock: number;
+    shopee_stock: Array<{
+      stock: number;
+      location_id: string;
+    }>;
+    total_reserved_stock: number;
+    total_available_stock: number;
+  };
   model_status: string;
 }
 
@@ -282,7 +289,7 @@ export function useProducts() {
     }
   }
 
-  const getStockPrices = async (itemId: number) => {
+  const getStockPrices = async (itemId: number): Promise<StockPrice[]> => {
     try {
       setIsLoadingStockPrices(true);
       
@@ -300,17 +307,8 @@ export function useProducts() {
 
       if (error) throw error;
 
-      const formattedData: StockPrice[] = data.map(item => ({
-        model_id: item.model_id,
-        model_name: item.model_name,
-        current_price: Number(item.current_price),
-        original_price: Number(item.original_price),
-        stock: item.stock_info.stock,
-        model_status: item.model_status
-      }));
-
-      setStockPrices(formattedData);
-      return formattedData;
+      setStockPrices(data);
+      return data;
       
     } catch (error) {
       toast({
