@@ -56,7 +56,7 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
     };
   
     await withRetry(async () => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('orders')
         .upsert(orderInsertData);
   
@@ -64,11 +64,7 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
         throw new Error(`Gagal menyimpan data pesanan: ${error.message}`);
       }
   
-      if (!data) {
-        throw new Error('Gagal menyimpan data pesanan: Tidak ada konfirmasi dari database');
-      }
-  
-      console.log(`Data pesanan berhasil disimpan untuk order_sn: ${orderData.order_sn} status: ${orderData.order_status}`);
+      console.log(`Data pesanan berhasil disimpan untuk order_sn: ${orderData.order_sn}`);
     });
   }
   
@@ -98,16 +94,12 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
       };
   
       await withRetry(async () => {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('order_items')
           .upsert(itemData, { onConflict: 'order_sn,order_item_id,model_id' });
   
         if (error) {
           throw new Error(`Gagal menyimpan data item pesanan: ${error.message}`);
-        }
-  
-        if (!data) {
-          throw new Error(`Gagal menyimpan data item pesanan untuk item_id: ${item.item_id}`);
         }
       });
     }
@@ -133,16 +125,12 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
       };
   
       await withRetry(async () => {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('logistic')
           .upsert(logisticData);
   
         if (error) {
           throw new Error(`Gagal menyimpan data logistik: ${error.message}`);
-        }
-  
-        if (!data) {
-          throw new Error(`Gagal menyimpan data logistik untuk package_number: ${pkg.package_number}`);
         }
       });
     }

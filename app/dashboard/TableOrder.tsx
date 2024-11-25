@@ -623,11 +623,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
   // Tambahkan state untuk dialog konfirmasi
   const [isProcessAllConfirmOpen, setIsProcessAllConfirmOpen] = useState(false);
 
-  // Fungsi untuk mendapatkan jumlah pesanan yang siap kirim
-  const getReadyToShipCount = () => {
-    return orders.filter(order => order.order_status === 'READY_TO_SHIP').length;
-  };
-
   // Fungsi untuk memproses semua pesanan
   const handleProcessAllOrders = async () => {
     const readyToShipOrders = orders.filter(order => order.order_status === 'READY_TO_SHIP');
