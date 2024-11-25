@@ -623,6 +623,11 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
   // Tambahkan state untuk dialog konfirmasi
   const [isProcessAllConfirmOpen, setIsProcessAllConfirmOpen] = useState(false);
 
+  // Fungsi untuk mendapatkan jumlah pesanan yang siap kirim
+  const getReadyToShipCount = () => {
+    return orders.filter(order => order.order_status === 'READY_TO_SHIP').length;
+  };
+
   // Fungsi untuk memproses semua pesanan
   const handleProcessAllOrders = async () => {
     const readyToShipOrders = orders.filter(order => order.order_status === 'READY_TO_SHIP');
@@ -1401,9 +1406,13 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                       {order.buyer_username}
                     </button>
                   </TableCell>
-                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">Rp {order.total_amount.toLocaleString('id-ID')}</TableCell>
+                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                    Rp {(order.total_amount || 0).toLocaleString('id-ID')}
+                  </TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.sku_qty || '-'}</TableCell>
-                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.shipping_carrier || '-'} ({order.tracking_number || '-'})</TableCell>
+                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                    {order.shipping_carrier || '-'} ({order.tracking_number || '-'})
+                  </TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
                     <StatusBadge 
                       status={order.order_status as OrderStatus} 
