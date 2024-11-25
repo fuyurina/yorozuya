@@ -131,7 +131,7 @@ async function updateOrderStatus(shop_id: number, ordersn: string, status: strin
       await upsertOrderItems(orderData);
       await upsertLogisticData(orderData, shop_id);
       
-      console.log(`Status pesanan berhasil diperbarui untuk ordersn: ${ordersn}`);
+      console.log(`Status pesanan berhasil diperbarui untuk ordersn: ${ordersn} status: ${status}`);
     } else {
       throw new Error(`Data pesanan tidak ditemukan untuk ordersn: ${ordersn}`);
     }
