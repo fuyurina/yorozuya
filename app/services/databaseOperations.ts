@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { createShippingDocument } from '@/app/services/shopeeService';
 
 // Tambahkan fungsi helper untuk retry
-async function withRetry<T>(
+export async function withRetry<T>(
   operation: () => Promise<T>,
   maxRetries: number = 3,
   delayMs: number = 1000
@@ -11,15 +11,22 @@ async function withRetry<T>(
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await operation();
+      const result = await operation();
+      // Log sukses setelah retry
+      if (attempt > 1) {
+        console.log(`Berhasil setelah percobaan ke-${attempt}`);
+      }
+      return result;
     } catch (error) {
       lastError = error;
-      if (attempt === maxRetries) break;
+      if (attempt === maxRetries) {
+        console.error(`Gagal setelah ${maxRetries} percobaan:`, error);
+        break;
+      }
       
-      console.log(`Percobaan ke-${attempt} gagal, mencoba lagi dalam ${delayMs}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-      // Tambah delay untuk setiap retry berikutnya
-      delayMs *= 2;
+      const nextDelay = delayMs * Math.pow(2, attempt - 1); // Exponential backoff
+      console.log(`Percobaan ke-${attempt} gagal, mencoba lagi dalam ${nextDelay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, nextDelay));
     }
   }
   

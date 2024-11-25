@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { upsertOrderData, upsertOrderItems, upsertLogisticData, trackingUpdate, updateDocumentStatus } from '@/app/services/databaseOperations';
+import { upsertOrderData, upsertOrderItems, upsertLogisticData, trackingUpdate, updateDocumentStatus, withRetry } from '@/app/services/databaseOperations';
 import { prosesOrder } from '@/app/services/prosesOrder';
 import { getOrderDetail } from '@/app/services/shopeeService';
 
@@ -93,18 +93,27 @@ async function handleChat(data: any) {
 }
 
 async function handleOrder(data: any) {
-  console.log('Handling order', data);
+  console.log('Memulai proses order:', data);
   const orderData = data.data;
-  await updateOrderStatus(data.shop_id, orderData.ordersn, orderData.status, orderData.update_time);
   
-  // Tambahkan logika untuk memproses pesanan jika statusnya READY_TO_SHIP
-  if (orderData.status === 'READY_TO_SHIP') {
-    try {
-      await prosesOrder(data.shop_id, orderData.ordersn);
-      console.log(`Pesanan ${orderData.ordersn} berhasil diproses`);
-    } catch (error) {
-      console.error(`Gagal memproses pesanan ${orderData.ordersn}:`, error);
+  try {
+    // Tambahkan retry untuk updateOrderStatus
+    await withRetry(
+      () => updateOrderStatus(data.shop_id, orderData.ordersn, orderData.status, orderData.update_time),
+      5, // Tambah jumlah retry
+      2000 // Mulai dengan delay 2 detik
+    );
+
+    if (orderData.status === 'READY_TO_SHIP') {
+      await withRetry(
+        () => prosesOrder(data.shop_id, orderData.ordersn),
+        3,
+        2000
+      );
     }
+  } catch (error) {
+    console.error(`Gagal memproses order ${orderData.ordersn}:`, error);
+    // Tambahkan monitoring/alert di sini
   }
 }
 
@@ -114,31 +123,32 @@ async function handleTrackingUpdate(data: any): Promise<void> {
 
 // Fungsi-fungsi helper (perlu diimplementasikan)
 async function updateOrderStatus(shop_id: number, ordersn: string, status: string, updateTime: number) {
+  console.log(`Memulai updateOrderStatus untuk order ${ordersn}`);
   let orderDetail: any;
   
   try {
-    orderDetail = await getOrderDetail(shop_id, ordersn);
+    // Tambahkan retry untuk getOrderDetail
+    orderDetail = await withRetry(
+      () => getOrderDetail(shop_id, ordersn),
+      3,
+      1000
+    );
     
-    if (orderDetail?.order_list?.[0]) {
-      const orderData = orderDetail.order_list[0];
-      
-      // Tambahkan validasi data
-      if (!orderData.order_sn) {
-        throw new Error(`Data order tidak valid untuk ordersn: ${ordersn}`);
-      }
-      
-      await upsertOrderData(orderData, shop_id);
-      await upsertOrderItems(orderData);
-      await upsertLogisticData(orderData, shop_id);
-      
-      console.log(`Status pesanan berhasil diperbarui untuk ordersn: ${ordersn} status: ${status}`);
-    } else {
+    if (!orderDetail?.order_list?.[0]) {
       throw new Error(`Data pesanan tidak ditemukan untuk ordersn: ${ordersn}`);
     }
+
+    const orderData = orderDetail.order_list[0];
+    
+    // Jalankan operasi database secara berurutan dengan retry
+    await withRetry(() => upsertOrderData(orderData, shop_id), 5, 1000);
+    await withRetry(() => upsertOrderItems(orderData), 5, 1000);
+    await withRetry(() => upsertLogisticData(orderData, shop_id), 5, 1000);
+    
+    console.log(`Berhasil memperbarui semua data untuk order ${ordersn}`);
   } catch (error) {
-    console.error('Error dalam updateOrderStatus:', error);
-    // Log detail error untuk debugging
-    console.error('Detail orderDetail:', orderDetail);
+    console.error(`Error kritis dalam updateOrderStatus untuk order ${ordersn}:`, error);
+    throw error; // Re-throw untuk memicu retry di level atas
   }
 }
 

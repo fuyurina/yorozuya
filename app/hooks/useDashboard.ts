@@ -81,18 +81,7 @@ const fetchAdsData = async () => {
   }
 };
 
-// Tambahkan konfigurasi CORS saat menginisialisasi klien Supabase
-const supabaseOptions = {
-  realtime: {
-    params: {
-      eventsPerSecond: 10
-    },
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
-    }
-  }
-};
+
 
 
 export const useDashboard = () => {
