@@ -1,8 +1,30 @@
 import { supabase } from '@/lib/supabase';
 import { createShippingDocument } from '@/app/services/shopeeService';
 
-
-
+// Tambahkan fungsi helper untuk retry
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  delayMs: number = 1000
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxRetries) break;
+      
+      console.log(`Percobaan ke-${attempt} gagal, mencoba lagi dalam ${delayMs}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      // Tambah delay untuk setiap retry berikutnya
+      delayMs *= 2;
+    }
+  }
+  
+  throw lastError;
+}
 
 export async function upsertOrderData(orderData: any, shopId: number): Promise<void> {
     const orderInsertData = {
@@ -33,8 +55,8 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
       cancel_reason: orderData.cancel_reason,
     };
   
-    try {
-      const { error } = await supabase
+    await withRetry(async () => {
+      const { data, error } = await supabase
         .from('orders')
         .upsert(orderInsertData);
   
@@ -42,11 +64,12 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
         throw new Error(`Gagal menyimpan data pesanan: ${error.message}`);
       }
   
+      if (!data) {
+        throw new Error('Gagal menyimpan data pesanan: Tidak ada konfirmasi dari database');
+      }
+  
       console.log(`Data pesanan berhasil disimpan untuk order_sn: ${orderData.order_sn} status: ${orderData.order_status}`);
-    } catch (error) {
-      console.error('Error dalam upsertOrderData:', error);
-      // Tangani error sesuai kebutuhan
-    }
+    });
   }
   
   export async function upsertOrderItems(orderData: any): Promise<void> {
@@ -74,18 +97,19 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
         image_url: item.image_info.image_url
       };
   
-      try {
-        const { error } = await supabase
+      await withRetry(async () => {
+        const { data, error } = await supabase
           .from('order_items')
           .upsert(itemData, { onConflict: 'order_sn,order_item_id,model_id' });
   
         if (error) {
           throw new Error(`Gagal menyimpan data item pesanan: ${error.message}`);
         }
-      } catch (error) {
-        console.error('Error dalam upsertOrderItems:', error);
-        // Tangani error sesuai kebutuhan
-      }
+  
+        if (!data) {
+          throw new Error(`Gagal menyimpan data item pesanan untuk item_id: ${item.item_id}`);
+        }
+      });
     }
   }
   
@@ -108,18 +132,19 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
         recipient_full_address: orderData.recipient_address.full_address,
       };
   
-      try {
-        const { error } = await supabase
+      await withRetry(async () => {
+        const { data, error } = await supabase
           .from('logistic')
           .upsert(logisticData);
   
         if (error) {
           throw new Error(`Gagal menyimpan data logistik: ${error.message}`);
         }
-      } catch (error) {
-        console.error('Error dalam upsertLogisticData:', error);
-        // Tangani error sesuai kebutuhan
-      }
+  
+        if (!data) {
+          throw new Error(`Gagal menyimpan data logistik untuk package_number: ${pkg.package_number}`);
+        }
+      });
     }
   }
 
