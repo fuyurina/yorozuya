@@ -1,0 +1,124 @@
+[2024-11-26T18:04:05.409Z] Shopee API Response: {
+  "error": "",
+  "message": "",
+  "request_id": "04d08e23416e53a9f0abe8bc3d67fe21",
+  "response": {
+    "message_id": "2316589152419086705",
+    "to_id": 1029888542,
+    "message_type": "order",
+    "content": {
+      "order_sn": "2411268VYS4X72",
+      "shop_id": 1041810697
+    },
+    "conversation_id": 4423337607457162000,
+    "created_timestamp": 1732644245,
+    "source_content": {}
+  }
+}
+[2024-11-26T18:04:05.412Z] Conversation ID: 4423337607457162000
+[2024-11-26T18:10:51.583Z] Shopee API Response: {
+  "error": "",
+  "message": "",
+  "request_id": "1ff7ccec0f8f23ce3169231715e84521",
+  "response": {
+    "message_id": "2316590004053606769",
+    "to_id": 1377002486,
+    "message_type": "order",
+    "content": {
+      "order_sn": "2411268B5KF942",
+      "shop_id": 1041810697
+    },
+    "conversation_id": 4475527756860581000,
+    "created_timestamp": 1732644651,
+    "source_content": {}
+  }
+}
+[2024-11-26T18:10:51.584Z] Conversation ID (string): 4475527756860581000
+[2024-11-26T18:12:03.020Z] Shopee API Response: {
+  "error": "",
+  "message": "",
+  "request_id": "2055d45062bbebc8e355981a43df1d21",
+  "response": {
+    "message_id": "2316590154031497585",
+    "to_id": 1101069750,
+    "message_type": "order",
+    "content": {
+      "order_sn": "2411268UDCEHQP",
+      "shop_id": 974180510
+    },
+    "conversation_id": 4184677811159629300,
+    "created_timestamp": 1732644723,
+    "source_content": {}
+  }
+}
+[2024-11-26T18:12:03.021Z] Conversation ID (BigInt): 4184677811159629312
+[2024-11-26T18:32:48.856Z] Shopee API Response: {
+  "error": "",
+  "message": "",
+  "request_id": "231860025a1a36919be3abca74df5721",
+  "response": {
+    "message_id": "2316592766745182577",
+    "to_id": 1088086307,
+    "message_type": "order",
+    "content": {
+      "order_sn": "241127A0C8T5J4",
+      "shop_id": 832664993
+    },
+    "conversation_id": 3576215425024451000,
+    "created_timestamp": 1732645968,
+    "source_content": {}
+  }
+}
+[2024-11-26T18:32:50.984Z] Found conversation: {
+  "conversation_id": "3576215425024450851",
+  "to_id": 1088086307,
+  "to_name": "51jebwan5r",
+  "to_avatar": "https://cf.shopee.co.id/file/id-11134233-7r98r-lsqklaze9pae0a",
+  "shop_id": 832664993,
+  "unread_count": 0,
+  "pinned": false,
+  "last_read_message_id": "2316592766745182577",
+  "latest_message_id": "2316592766745182577",
+  "latest_message_type": "order",
+  "latest_message_content": null,
+  "latest_message_from_id": 832652539,
+  "last_message_timestamp": 1732645968893298200,
+  "last_message_option": 0,
+  "max_general_option_hide_time": "9223372036854775",
+  "mute": false
+}
+[2024-11-26T18:33:26.302Z] Shopee API Response: {
+  "error": "",
+  "message": "",
+  "request_id": "08a642fb16fdf2a6c1b58a80c51c1821",
+  "response": {
+    "message_id": "2316592845333807474",
+    "to_id": 462099218,
+    "message_type": "order",
+    "content": {
+      "order_sn": "2411279V9SMH4N",
+      "shop_id": 832664993
+    },
+    "conversation_id": 1984701029649827000,
+    "created_timestamp": 1732646006,
+    "source_content": {}
+  }
+}
+[2024-11-26T18:33:28.438Z] Found conversation: {
+  "conversation_id": "1984701029649827067",
+  "to_id": 462099218,
+  "to_name": "reno_adia_estiawan",
+  "to_avatar": "https://cf.shopee.co.id/file/64a4e159ffad857a0a4fdf817d6c89c9",
+  "shop_id": 832664993,
+  "unread_count": 0,
+  "pinned": false,
+  "last_read_message_id": "2316592845333807474",
+  "latest_message_id": "2316592845333807474",
+  "latest_message_type": "order",
+  "latest_message_content": null,
+  "latest_message_from_id": 832652539,
+  "last_message_timestamp": 1732646006367215000,
+  "last_message_option": 0,
+  "max_general_option_hide_time": "9223372036854775",
+  "mute": false
+}

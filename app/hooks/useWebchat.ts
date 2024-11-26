@@ -4,24 +4,16 @@ import axios from 'axios';
 interface Conversation {
   conversation_id: string;
   to_id: number;
-  to_shop_id: number;
   to_name: string;
   to_avatar: string;
   shop_id: number;
-  unread_count: number;
-  pinned: boolean;
-  last_read_message_id: string;
-  latest_message_id: string;
-  latest_message_type: string;
+  shop_name: string;
   latest_message_content: {
     text?: string;
   } | null;
   latest_message_from_id: number;
   last_message_timestamp: number;
-  last_message_option: number;
-  max_general_option_hide_time: string;
-  mute: boolean;
-  shop_name: string;
+  unread_count: number;
 }
 
 export const useConversationList = () => {
@@ -47,6 +39,11 @@ export const useConversationList = () => {
 
   const updateConversationList = useCallback((update: any) => {
     setConversations(prevConversations => {
+      if (update.type === 'refresh') {
+        fetchConversations();
+        return prevConversations;
+      }
+
       const updatedConversations = [...prevConversations];
 
       if (update.type === 'mark_as_read') {
@@ -72,7 +69,6 @@ export const useConversationList = () => {
           to_id: update.sender === update.shop_id ? update.receiver : update.sender,
           to_name: update.sender === update.shop_id ? update.receiver_name : update.sender_name,
           to_avatar: updatedConversations[existingConversationIndex]?.to_avatar || "",
-          to_shop_id: update.sender === update.shop_id ? update.receiver : update.sender,
           shop_id: update.shop_id,
           shop_name: update.sender === update.shop_id ? update.sender_name : update.receiver_name,
           latest_message_content: {
@@ -90,7 +86,7 @@ export const useConversationList = () => {
 
       return updatedConversations;
     });
-  }, []);
+  }, [fetchConversations]);
 
   return { conversations, updateConversationList, isLoading, error };
 };

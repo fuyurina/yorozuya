@@ -925,6 +925,7 @@ export class ShopeeAPI {
     discountId: number,
     items: Array<{
         item_id: number,
+        purchase_limit: 0,
         model_id?: number,
         promotion_price: number,
         stock: number
@@ -966,7 +967,7 @@ export class ShopeeAPI {
 
     const body = {
         discount_id: discountId,
-        items: items
+        item_list: items
     };
 
     const fullUrl = `${url}?${params.toString()}`;

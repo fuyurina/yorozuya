@@ -19,7 +19,6 @@ interface Conversation {
   to_id: number;
   to_name: string;
   to_avatar: string;
-  to_shop_id: number;
   shop_id: number;
   shop_name: string;
   latest_message_content: {
@@ -246,9 +245,17 @@ const WebChatPage: React.FC = () => {
   };
 
   const filteredConversations = useMemo(() => {
+    if (!conversations || conversations.length === 0) {
+      return [];
+    }
+
     return conversations.filter(conversation => {
+      if (!conversation || !conversation.to_name || !conversation.shop_name) {
+        return false;
+      }
+
       const matchesSearch = conversation.to_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            conversation.shop_name.toLowerCase().includes(searchQuery.toLowerCase());
+                           conversation.shop_name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesShopFilter = selectedShops.length === 0 || selectedShops.includes(conversation.shop_id);
       const matchesStatusFilter = 
         statusFilter === 'SEMUA' ? true :
@@ -260,6 +267,9 @@ const WebChatPage: React.FC = () => {
   }, [conversations, searchQuery, selectedShops, statusFilter]);
 
   const uniqueShops = useMemo(() => {
+    if (!conversations || conversations.length === 0) {
+      return [];
+    }
     const shops = new Set(conversations.map(conv => conv.shop_id));
     return Array.from(shops);
   }, [conversations]);
@@ -331,6 +341,77 @@ const WebChatPage: React.FC = () => {
       return () => scrollArea.removeEventListener('scroll', handleScroll);
     }
   }, [handleScroll]);
+
+  // Tambahkan state untuk menyimpan order_sn dari URL
+  const [pendingOrderSn, setPendingOrderSn] = useState<string | null>(null);
+
+  // Modifikasi useEffect untuk handle URL params
+  useEffect(() => {
+    const handleUrlParams = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const userId = urlParams.get('user_id');
+      const orderSn = urlParams.get('order_sn');
+      const shopId = urlParams.get('shop_id');
+      
+      if (!userId) return;
+
+      // Cari conversation yang sesuai
+      const targetConversation = conversations.find(
+        conv => conv.to_id.toString() === userId && 
+        (!shopId || conv.shop_id.toString() === shopId)
+      );
+      
+      if (targetConversation) {
+        handleConversationSelect(targetConversation);
+      } else if (orderSn) {
+        try {
+          const response = await fetch('/api/msg/initialize', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: parseInt(userId),
+              orderSn: orderSn,
+              shopId: shopId ? parseInt(shopId) : null,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Gagal memulai percakapan');
+          }
+
+          const data = await response.json();
+          
+          if (data.success) {
+            // Trigger update conversation list
+            updateConversationList({
+              type: 'refresh'
+            });
+            
+            // Tunggu sebentar untuk memastikan data sudah diupdate
+            setTimeout(() => {
+              // Cari ulang conversation berdasarkan userId
+              const newTargetConversation = conversations.find(
+                conv => conv.to_id.toString() === userId && 
+                (!shopId || conv.shop_id.toString() === shopId)
+              );
+              
+              if (newTargetConversation) {
+                handleConversationSelect(newTargetConversation);
+              }
+            }, 500);
+          }
+        } catch (error) {
+          console.error('Error memulai percakapan:', error);
+        }
+      }
+    };
+
+    if (conversations.length > 0) {
+      handleUrlParams();
+    }
+  }, [conversations]);
 
   return (
     <div className={`flex h-full w-full overflow-hidden ${isFullScreenChat ? 'fixed inset-0 z-50 bg-background' : ''}`}>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
-  getDiscountDetails, 
+  getDiscountDetails,
+  addDiscountItems,
   updateDiscount, 
   deleteDiscount,
   updateDiscountItems,
@@ -163,6 +164,38 @@ export async function POST(
       }
 
       const result = await updateDiscountItems(shopId, discountId, items);
+      
+      console.log('Response from Shopee:', result);
+
+      if (!result.success) {
+        return NextResponse.json(
+          { error: result.message },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json(result);
+    }
+
+    else if (action === 'add-items') {
+      const body = await req.json();
+      const { shopId, items } = body;
+      const discountId = parseInt(params.discountId);
+
+      console.log('Request add items:', {
+        shopId,
+        discountId,
+        items
+      });
+
+      if (!shopId || !discountId || !items) {
+        return NextResponse.json(
+          { error: 'Parameter tidak lengkap' },
+          { status: 400 }
+        );
+      }
+
+      const result = await addDiscountItems(shopId, discountId, items);
       
       console.log('Response from Shopee:', result);
 

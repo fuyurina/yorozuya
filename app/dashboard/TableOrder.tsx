@@ -12,7 +12,7 @@ import {
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 // Impor ikon-ikon yang diperlukan
-import { Package, Clock, Truck, XCircle, AlertCircle, RefreshCcw, Search, Filter, Printer, PrinterCheck, CheckSquare, CheckCircle, Send } from 'lucide-react'
+import { Package, Clock, Truck, XCircle, AlertCircle, RefreshCcw, Search, Filter, Printer, PrinterCheck, CheckSquare, CheckCircle, Send, MessageSquare } from 'lucide-react'
 import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { OrderDetails } from '@/app/dashboard/OrderDetails'
@@ -166,6 +166,9 @@ interface TableState {
   activeCategory: string;
   showCheckbox: boolean;
   selectedOrders: string[];
+  printStatus: 'all' | 'printed' | 'unprinted';
+  selectedCouriers: string[];
+  paymentType: 'all' | 'cod' | 'non_cod';
 }
 
 // 2. Buat interface untuk metrics
@@ -220,7 +223,10 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     selectedShops: [],
     activeCategory: "Semua",
     showCheckbox: false,
-    selectedOrders: []
+    selectedOrders: [],
+    printStatus: 'all',
+    selectedCouriers: [],
+    paymentType: 'all'
   });
 
   // 4. Gunakan useMemo untuk metrics
@@ -251,10 +257,21 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       
       const shopMatch = tableState.selectedShops.length === 0 || 
         tableState.selectedShops.includes(order.shop_name);
+
+      const printMatch = tableState.printStatus === 'all' || 
+        (tableState.printStatus === 'printed' && order.is_printed) ||
+        (tableState.printStatus === 'unprinted' && !order.is_printed);
+
+      const courierMatch = tableState.selectedCouriers.length === 0 ||
+        (order.shipping_carrier && tableState.selectedCouriers.includes(order.shipping_carrier));
+
+      const paymentMatch = tableState.paymentType === 'all' ||
+        (tableState.paymentType === 'cod' && order.cod) ||
+        (tableState.paymentType === 'non_cod' && !order.cod);
       
-      return categoryMatch && searchMatch && shopMatch;
+      return categoryMatch && searchMatch && shopMatch && printMatch && courierMatch && paymentMatch;
     });
-  }, [orders, tableState.activeCategory, tableState.searchTerm, tableState.selectedShops]);
+  }, [orders, tableState]);
 
   // 6. Update handlers menggunakan tableState
   const handleCategoryChange = useCallback((categoryName: string) => {
@@ -1035,6 +1052,17 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     handleCategoryChange(value);
   }, [handleCategoryChange]);
 
+  // Tambah daftar kurir yang tersedia
+  const availableCouriers = useMemo(() => {
+    return Array.from(new Set(orders.map(order => order.shipping_carrier).filter(Boolean))).sort();
+  }, [orders]);
+
+  // Update fungsi handleChatClick
+  const handleChatClick = (userId: number, shopId: number, orderSn: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Mencegah trigger handleUsernameClick
+    window.open(`/webchat?user_id=${userId}&shop_id=${shopId}&order_sn=${orderSn}`, '_blank');
+  };
+
   return (
     <div className="w-full">
       {documentBulkProgress.total > 0 && (
@@ -1210,28 +1238,108 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                 >
                   <div className="grid gap-4">
                     <div className="space-y-2">
-                      <h4 className="font-medium leading-none">Pilih Toko</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Pilih toko yang ingin ditampilkan
-                      </p>
+                      <h4 className="font-medium leading-none">Toko</h4>
+                      <div className="grid gap-2">
+                        {shops.map((shop) => (
+                          <div key={shop} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`shop-${shop}`}
+                              checked={tableState.selectedShops.includes(shop)}
+                              onCheckedChange={(checked) => handleShopFilter(shop)}
+                            />
+                            <label htmlFor={`shop-${shop}`} className="text-sm">
+                              {shop}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="grid gap-2">
-                      {shops.map((shop) => (
-                        <div key={shop} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`shop-${shop}`}
-                            checked={tableState.selectedShops.includes(shop)}
-                            onCheckedChange={(checked) => handleShopFilter(shop)}
-                          />
-                          <label
-                            htmlFor={`shop-${shop}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {shop}
-                          </label>
-                        </div>
-                      ))}
+
+                    {/* Filter Status Print */}
+                    <div className="space-y-2">
+                      <h4 className="font-medium leading-none">Status Print</h4>
+                      <div className="grid gap-2">
+                        <Select 
+                          value={tableState.printStatus}
+                          onValueChange={(value: typeof tableState.printStatus) => 
+                            setTableState(prev => ({ ...prev, printStatus: value }))
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Pilih status print" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Semua</SelectItem>
+                            <SelectItem value="printed">Sudah Print</SelectItem>
+                            <SelectItem value="unprinted">Belum Print</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
+
+                    {/* Filter Kurir */}
+                    <div className="space-y-2">
+                      <h4 className="font-medium leading-none">Kurir</h4>
+                      <div className="grid gap-2">
+                        {availableCouriers.map((courier) => (
+                          <div key={courier} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`courier-${courier}`}
+                              checked={tableState.selectedCouriers.includes(courier)}
+                              onCheckedChange={(checked) => {
+                                setTableState(prev => ({
+                                  ...prev,
+                                  selectedCouriers: checked
+                                    ? [...prev.selectedCouriers, courier]
+                                    : prev.selectedCouriers.filter(c => c !== courier)
+                                }));
+                              }}
+                            />
+                            <label htmlFor={`courier-${courier}`} className="text-sm">
+                              {courier}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Filter Jenis Pembayaran */}
+                    <div className="space-y-2">
+                      <h4 className="font-medium leading-none">Jenis Pembayaran</h4>
+                      <div className="grid gap-2">
+                        <Select 
+                          value={tableState.paymentType}
+                          onValueChange={(value: typeof tableState.paymentType) => 
+                            setTableState(prev => ({ ...prev, paymentType: value }))
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Pilih jenis pembayaran" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Semua</SelectItem>
+                            <SelectItem value="cod">COD</SelectItem>
+                            <SelectItem value="non_cod">Non-COD</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Tombol Reset Filter */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTableState(prev => ({
+                        ...prev,
+                        selectedShops: [],
+                        printStatus: 'all',
+                        selectedCouriers: [],
+                        paymentType: 'all'
+                      }))}
+                      className="mt-2"
+                    >
+                      Reset Filter
+                    </Button>
                   </div>
                 </PopoverContent>
               </Popover>
@@ -1399,12 +1507,21 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                     </div>
                   </TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
-                    <button
-                      onClick={() => handleUsernameClick(order.buyer_user_id)}
-                      className="hover:text-primary"
-                    >
-                      {order.buyer_username}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleUsernameClick(order.buyer_user_id)}
+                        className="hover:text-primary"
+                      >
+                        {order.buyer_username}
+                      </button>
+                      <button
+                        onClick={(e) => handleChatClick(order.buyer_user_id, order.shop_id, order.order_sn, e)}
+                        className="hover:text-primary"
+                        title="Chat dengan pembeli"
+                      >
+                        <MessageSquare size={14} />
+                      </button>
+                    </div>
                   </TableCell>
                   <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
                     Rp {(order.total_amount || 0).toLocaleString('id-ID')}

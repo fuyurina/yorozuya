@@ -490,6 +490,7 @@ export async function addDiscountItems(
   discountId: number,
   items: Array<{
     item_id: number,
+    purchase_limit: 0,
     model_id?: number,
     promotion_price: number,
     stock: number

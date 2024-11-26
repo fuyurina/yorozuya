@@ -59,8 +59,36 @@ export async function GET(req: NextRequest) {
           const failedOrderMatch = response.message.match(/order_sn: (\w+) print failed/);
           if (failedOrderMatch) {
             const failedOrderSn = failedOrderMatch[1];
-            failedOrders.push(failedOrderSn); // Tambahkan ke array failedOrders
-            remainingOrders = remainingOrders.filter(sn => sn !== failedOrderSn);
+            
+            try {
+              // Dapatkan tracking number terlebih dahulu
+              const trackingResponse = await getShopeeTrackingNumber(shopId, failedOrderSn);
+              const trackingNumber = trackingResponse?.response?.tracking_number;
+
+              // Buat dokumen dengan tracking number
+              const createResponse = await createShippingDocument(shopId, [{
+                order_sn: failedOrderSn,
+                tracking_number: trackingNumber || undefined
+              }]);
+              
+              // Periksa status dari result_list
+              const orderResult = createResponse.response?.result_list?.[0];
+              
+              if (createResponse.error || !orderResult || orderResult.status === "FAILED") {
+                console.error('Gagal membuat dokumen:', orderResult?.fail_message || createResponse.message);
+                failedOrders.push(failedOrderSn);
+                remainingOrders = remainingOrders.filter(sn => sn !== failedOrderSn);
+              } else if (orderResult.status === "SUCCESS") {
+                // Tunggu sebentar sebelum mencoba download ulang
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                // Tambahkan kembali order ke remainingOrders untuk dicoba download ulang
+                remainingOrders = [...remainingOrders, failedOrderSn];
+              }
+            } catch (createError) {
+              console.error('Error saat membuat dokumen baru:', createError);
+              failedOrders.push(failedOrderSn);
+              remainingOrders = remainingOrders.filter(sn => sn !== failedOrderSn);
+            }
             
             const remainingBatchOrders = currentBatch.filter(sn => sn !== failedOrderSn);
             if (remainingBatchOrders.length > 0) {
