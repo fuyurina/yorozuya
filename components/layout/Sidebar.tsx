@@ -11,7 +11,8 @@ import {
   CodeXml,
   AlertCircle,
   KeyRound,
-  Percent
+  Percent,
+  ShoppingBag
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -28,6 +29,7 @@ import { useSession } from "next-auth/react"
 export const navItems = [
   { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/webchat', icon: MessageSquare, label: 'Chat' },
+  { href: '/orders', icon: ShoppingBag, label: 'Orders' },
   { href: '/ubah_pesanan', icon: ShoppingCart, label: 'Perubahan Pesanan' },
   { href: '/ads', icon: Megaphone, label: 'Iklan' },
   { href: '/shops', icon: Store, label: 'Shops' },

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAllShops } from '@/app/services/shopeeService';
+import { getAllShops, } from '@/app/services/shopeeService';
 
 export function useShops() {
   const [shops, setShops] = useState<any[]>([]);
