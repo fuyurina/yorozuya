@@ -204,7 +204,11 @@ export default function OrdersPage() {
   const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       if (searchQuery.length < 4) {
-        // Bisa ditambahkan toast/alert disini untuk memberi tahu user
+        alert(`Minimal 4 karakter untuk melakukan pencarian ${
+          searchType === "order_sn" ? "nomor pesanan" :
+          searchType === "tracking_number" ? "nomor resi" :
+          "username"
+        }`)
         return
       }
       
@@ -216,6 +220,15 @@ export default function OrdersPage() {
         [searchType]: searchQuery
       }
       await searchOrders(searchParams)
+      
+      // Cek searchResults langsung
+      if (searchResults.length === 0) {
+        alert(`Tidak ditemukan hasil untuk pencarian "${searchQuery}" pada ${
+          searchType === "order_sn" ? "nomor pesanan" :
+          searchType === "tracking_number" ? "nomor resi" :
+          "username"
+        }`)
+      }
     }
   }
 
@@ -644,7 +657,7 @@ export default function OrdersPage() {
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
-                  if (e.target.value === "" && searchResults.length > 0) {
+                  if (e.target.value === "" && searchResults.length >= 0) {
                     setActiveFilter(null)
                     setSelectedShops([])
                     searchOrders({ [searchType]: "" })
@@ -661,7 +674,7 @@ export default function OrdersPage() {
                 <button
                   onClick={() => {
                     setSearchQuery("")
-                    if (searchResults.length > 0) {
+                    if (searchResults.length >= 0) {
                       setActiveFilter(null)
                       setSelectedShops([])
                       searchOrders({ [searchType]: "" })
