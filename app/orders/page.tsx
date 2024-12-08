@@ -1,7 +1,7 @@
 'use client'
 import { useOrders } from '@/app/hooks/useOrders'
 import type { Order } from '@/app/hooks/useOrders'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Calendar } from "@/components/ui/calendar"
 import {
   Popover,
@@ -23,11 +23,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Card } from "@/components/ui/card"
-import { Package, Clock, Truck, XCircle, ShoppingCart, XOctagon, Search } from "lucide-react"
+import { Package, Clock, Truck, XCircle, ShoppingCart, XOctagon, Search, X } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Store } from "lucide-react"
-import { useOrderSearch } from '@/app/hooks/useOrderSearch'
 import {
   Select,
   SelectContent,
@@ -35,6 +34,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useOrderSearch } from '@/app/hooks/useOrderSearch'
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleString('id-ID', {
@@ -131,6 +132,22 @@ function OrderStatusCard({ title, count, icon, onClick, isActive }: OrderStatusC
   )
 }
 
+function TableRowSkeleton() {
+  return (
+    <TableRow>
+      <TableCell className="p-1 h-[32px]"><Skeleton className="h-4 w-6" /></TableCell>
+      <TableCell className="p-1 h-[32px]"><Skeleton className="h-4 w-20" /></TableCell>
+      <TableCell className="p-1 h-[32px]"><Skeleton className="h-4 w-24" /></TableCell>
+      <TableCell className="p-1 h-[32px]"><Skeleton className="h-4 w-32" /></TableCell>
+      <TableCell className="p-1 h-[32px]"><Skeleton className="h-4 w-24" /></TableCell>
+      <TableCell className="p-1 h-[32px]"><Skeleton className="h-4 w-20" /></TableCell>
+      <TableCell className="p-1 h-[32px]"><Skeleton className="h-4 w-16" /></TableCell>
+      <TableCell className="p-1 h-[32px]"><Skeleton className="h-4 w-32" /></TableCell>
+      <TableCell className="p-1 h-[32px]"><Skeleton className="h-4 w-20" /></TableCell>
+    </TableRow>
+  )
+}
+
 export default function OrdersPage() {
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(),
@@ -139,19 +156,109 @@ export default function OrdersPage() {
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(date)
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState<string | null>(null)
- 
   const [selectedShops, setSelectedShops] = useState<string[]>([])
   const [isShopFilterOpen, setIsShopFilterOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [isSearching, setIsSearching] = useState(false)
   const [searchType, setSearchType] = useState("order_sn")
+
   const { orders, loading: ordersLoading, error: ordersError } = useOrders(selectedDateRange)
-  const { 
-    searchResults, 
-    loading: searchLoading, 
-    searchOrders, 
-    clearSearch 
-  } = useOrderSearch()
+  const [visibleOrders, setVisibleOrders] = useState<Order[]>([])
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const loadingRef = useRef<HTMLDivElement>(null)
+  const ITEMS_PER_PAGE = 20
+  const { searchOrders, searchResults, loading: searchLoading } = useOrderSearch()
+  
+  // Modifikasi logika filtering
+  const filteredOrders = searchResults.length > 0 
+    ? searchResults  // Langsung gunakan hasil pencarian jika ada
+    : orders.filter(order => {  // Gunakan filter hanya jika tidak ada hasil pencarian
+        if (!activeFilter) return true
+        
+        if (activeFilter === 'failed') {
+          return order.cancel_reason === 'Failed Delivery'
+        }
+        
+        switch (activeFilter) {
+          case 'pending':
+            return order.order_status === 'UNPAID'
+          case 'process':
+            return order.order_status === 'PROCESSED'
+          case 'shipping':
+            return order.order_status === 'SHIPPED'
+          case 'cancel':
+            return order.order_status === 'CANCELLED'
+          case 'total':
+            if (order.cancel_reason === 'Failed Delivery') return false
+            return !['CANCELLED'].includes(order.order_status)
+          default:
+            return true
+        }
+      })
+      .filter(order => {
+        if (selectedShops.length === 0) return true
+        return selectedShops.includes(order.shop_name)
+      })
+
+  // Reset filter dan shop selection ketika melakukan pencarian
+  const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (searchQuery.length < 4) {
+        // Bisa ditambahkan toast/alert disini untuk memberi tahu user
+        return
+      }
+      
+      // Reset filter
+      setActiveFilter(null)
+      setSelectedShops([])
+      
+      const searchParams = {
+        [searchType]: searchQuery
+      }
+      await searchOrders(searchParams)
+    }
+  }
+
+  // Fungsi untuk memuat data secara bertahap
+  const loadMoreOrders = useCallback(() => {
+    const startIndex = (page - 1) * ITEMS_PER_PAGE
+    const endIndex = startIndex + ITEMS_PER_PAGE
+    const newOrders = filteredOrders.slice(startIndex, endIndex)
+    
+    if (newOrders.length > 0) {
+      setVisibleOrders(prev => [...prev, ...newOrders])
+      setPage(prev => prev + 1)
+    }
+    
+    if (endIndex >= filteredOrders.length) {
+      setHasMore(false)
+    }
+  }, [page, filteredOrders])
+
+  // Setup Intersection Observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMoreOrders()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    if (loadingRef.current) {
+      observer.observe(loadingRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [loadMoreOrders, hasMore])
+
+  // Reset pagination ketika filter berubah
+  useEffect(() => {
+    setVisibleOrders([])
+    setPage(1)
+    setHasMore(true)
+  }, [activeFilter, selectedShops, selectedDateRange])
 
   const handleDateSelect = (dateRange: DateRange | undefined) => {
     setDate(dateRange)
@@ -200,7 +307,6 @@ export default function OrdersPage() {
       switch (order.order_status) {
         case 'UNPAID':
           acc.pending++
-          acc.total++
           break
         case 'PROCESSED':
           acc.process++
@@ -234,61 +340,58 @@ export default function OrdersPage() {
     failed: 0
   })
 
-  // Filter orders berdasarkan status, toko, dan pencarian
-  const filteredOrders = (searchQuery ? searchResults : orders)
-    .filter(order => {
-      if (!activeFilter) return true
-      
-      if (activeFilter === 'failed') {
-        return order.cancel_reason === 'Failed Delivery'
-      }
-      
-      switch (activeFilter) {
-        case 'pending':
-          return order.order_status === 'UNPAID'
-        case 'process':
-          return order.order_status === 'PROCESSED'
-        case 'shipping':
-          return order.order_status === 'SHIPPED'
-        case 'cancel':
-          return order.order_status === 'CANCELLED'
-        case 'total':
-          if (order.cancel_reason === 'Failed Delivery') return false
-          return !['CANCELLED'].includes(order.order_status)
-        default:
-          return true
-      }
-    })
-    .filter(order => {
-      if (selectedShops.length === 0) return true
-      return selectedShops.includes(order.shop_name)
-    })
-
   // Dapatkan daftar unik toko dari orders
   const uniqueShops = Array.from(new Set(orders.map(order => order.shop_name))).sort()
 
-  // Tambah handler untuk pencarian
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      setIsSearching(true)
-      const searchParams = {
-        [searchType]: searchQuery
-      }
-      searchOrders(searchParams)
-    } else {
-      setIsSearching(false)
-      clearSearch()
-    }
-  }
+  if (ordersLoading || searchLoading) {
+    return (
+      <div className="w-full p-4 sm:p-6 space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="shadow-sm">
+              <div className="p-4">
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-8 w-16" />
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
 
-  // Handler untuk keypress
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSearch()
-    }
-  }
+        <Card className="shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-9 w-full" />
+            ))}
+          </div>
+        </Card>
 
-  if (ordersLoading) return <div className="container mx-auto p-4">Memuat...</div>
+        <div className="rounded-lg border shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow className="dark:border-gray-700">
+                <TableHead className="font-bold uppercase text-xs">#</TableHead>
+                <TableHead className="font-bold uppercase text-xs">Toko</TableHead>
+                <TableHead className="font-bold uppercase text-xs">Tanggal</TableHead>
+                <TableHead className="font-bold uppercase text-xs">No. Pesanan</TableHead>
+                <TableHead className="font-bold uppercase text-xs">Username</TableHead>
+                <TableHead className="font-bold uppercase text-xs">Harga</TableHead>
+                <TableHead className="font-bold uppercase text-xs">SKU (Qty)</TableHead>
+                <TableHead className="font-bold uppercase text-xs">Kurir</TableHead>
+                <TableHead className="font-bold uppercase text-xs">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...Array(10)].map((_, i) => (
+                <TableRowSkeleton key={i} />
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    )
+  }
   if (ordersError) return <div className="container mx-auto p-4 text-red-500">{ordersError}</div>
 
   return (
@@ -514,55 +617,61 @@ export default function OrdersPage() {
             </Popover>
           </div>
 
-          <div>
-            <div className="flex gap-2">
-              <Select
-                value={searchType}
-                onValueChange={setSearchType}
-              >
-                <SelectTrigger className="w-[140px] h-9">
-                  <SelectValue placeholder="Pilih Tipe" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="order_sn">No. Pesanan</SelectItem>
-                  <SelectItem value="tracking_number">No. Resi</SelectItem>
-                  <SelectItem value="buyer_username">Username</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder={
-                    searchType === "order_sn" ? "Cari no pesanan..." :
-                    searchType === "tracking_number" ? "Cari no resi..." :
-                    "Cari username..."
+          <div className="flex gap-2">
+            <Select
+              value={searchType}
+              onValueChange={setSearchType}
+            >
+              <SelectTrigger className="w-[140px] h-9">
+                <SelectValue placeholder="Pilih Tipe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="order_sn">No. Pesanan</SelectItem>
+                <SelectItem value="tracking_number">No. Resi</SelectItem>
+                <SelectItem value="buyer_username">Username</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder={
+                  searchType === "order_sn" ? "Cari no pesanan (min. 4 karakter)..." :
+                  searchType === "tracking_number" ? "Cari no resi (min. 4 karakter)..." :
+                  "Cari username (min. 4 karakter)..."
+                }
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  if (e.target.value === "" && searchResults.length > 0) {
+                    setActiveFilter(null)
+                    setSelectedShops([])
+                    searchOrders({ [searchType]: "" })
                   }
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value)
-                    if (e.target.value === '') {
-                      setIsSearching(false)
-                      clearSearch()
+                }}
+                onKeyDown={handleSearch}
+                className={cn(
+                  "w-full h-9 pl-8 pr-8 rounded-md border bg-background text-sm",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  searchQuery.length > 0 && searchQuery.length < 4 && "border-red-500"
+                )}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("")
+                    if (searchResults.length > 0) {
+                      setActiveFilter(null)
+                      setSelectedShops([])
+                      searchOrders({ [searchType]: "" })
                     }
                   }}
-                  onKeyPress={handleKeyPress}
-                  className={cn(
-                    "w-full h-9 pl-8 rounded-md border bg-background text-sm",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    searchLoading && "pr-8"
-                  )}
-                />
-                {searchLoading && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <svg className="animate-spin h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  </div>
-                )}
-              </div>
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-sm hover:bg-muted"
+                >
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -584,74 +693,72 @@ export default function OrdersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(isSearching ? searchResults : orders)
-              .filter(order => {
-                if (!activeFilter) return true
-                // ... existing filter logic ...
-              })
-              .filter(order => {
-                if (selectedShops.length === 0) return true
-                return selectedShops.includes(order.shop_name)
-              })
-              .map((order, index) => (
-                <TableRow 
-                  key={order.order_sn}
-                  className={index % 2 === 0 ? 'bg-muted dark:bg-gray-800/50' : 'bg-gray-100/20 dark:bg-gray-900'}
-                >
-                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white text-center">{index + 1}</TableCell>
-                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap max-w-[80px] sm:max-w-none overflow-hidden text-ellipsis">{order.shop_name}</TableCell>
-                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{formatDate(order.create_time)}</TableCell>
-                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      <span>{order.order_sn}</span>
-                      {order.cod && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-600 text-white dark:bg-red-500">
-                          COD
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.buyer_username}</TableCell>
-                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
-                    Rp {parseInt(order.total_amount).toLocaleString('id-ID')}
-                  </TableCell>
-                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.sku_qty}</TableCell>
-                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
-                    {order.shipping_carrier || '-'} ({order.tracking_number || '-'})
-                  </TableCell>
-                  <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      order.order_status === 'READY_TO_SHIP' ? 'bg-green-600 text-white' :
-                      order.order_status === 'PROCESSED' ? 'bg-blue-600 text-white' :
-                      order.order_status === 'SHIPPED' ? 'bg-indigo-600 text-white' :
-                      order.order_status === 'CANCELLED' ? 'bg-red-600 text-white' :
-                      order.order_status === 'IN_CANCEL' ? 'bg-yellow-600 text-white' :
-                      order.order_status === 'TO_RETURN' ? 'bg-purple-600 text-white' :
-                      'bg-gray-600 text-white'
-                    }`}>
-                      {order.order_status}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
+            {visibleOrders.map((order, index) => (
+              <TableRow 
+                key={order.order_sn}
+                className={index % 2 === 0 ? 'bg-muted dark:bg-gray-800/50' : 'bg-gray-100/20 dark:bg-gray-900'}
+              >
+                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white text-center">{index + 1}</TableCell>
+                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap max-w-[80px] sm:max-w-none overflow-hidden text-ellipsis">{order.shop_name}</TableCell>
+                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{formatDate(order.create_time)}</TableCell>
+                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                  <div className="flex items-center gap-1.5">
+                    <span>{order.order_sn}</span>
+                    {order.cod && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-600 text-white dark:bg-red-500">
+                        COD
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.buyer_username}</TableCell>
+                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                  Rp {parseInt(order.total_amount).toLocaleString('id-ID')}
+                </TableCell>
+                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.sku_qty}</TableCell>
+                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                  {order.shipping_carrier || '-'} ({order.tracking_number || '-'})
+                </TableCell>
+                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    order.order_status === 'READY_TO_SHIP' ? 'bg-green-600 text-white' :
+                    order.order_status === 'PROCESSED' ? 'bg-blue-600 text-white' :
+                    order.order_status === 'SHIPPED' ? 'bg-indigo-600 text-white' :
+                    order.order_status === 'CANCELLED' ? 'bg-red-600 text-white' :
+                    order.order_status === 'IN_CANCEL' ? 'bg-yellow-600 text-white' :
+                    order.order_status === 'TO_RETURN' ? 'bg-purple-600 text-white' :
+                    'bg-gray-600 text-white'
+                  }`}>
+                    {order.order_status}
+                  </span>
+                </TableCell>
+              </TableRow>
+            ))}
+            {hasMore && (
+              <>
+                {[...Array(3)].map((_, i) => (
+                  <TableRowSkeleton key={`skeleton-${i}`} />
+                ))}
+              </>
+            )}
           </TableBody>
         </Table>
       </div>
 
-      {(ordersLoading || searchLoading) && (
-        <div className="flex justify-center items-center p-4">
-          <span className="text-sm text-muted-foreground">Memuat data...</span>
-        </div>
-      )}
-
-      {!ordersLoading && !searchLoading && 
-        ((isSearching && searchResults.length === 0) || (!isSearching && orders.length === 0)) && (
-        <div className="flex justify-center items-center p-4">
+      {/* Loading indicator */}
+      <div ref={loadingRef} className="flex justify-center items-center p-4">
+        {visibleOrders.length === 0 ? (
           <span className="text-sm text-muted-foreground">
-            {isSearching ? "Tidak ada hasil pencarian" : "Tidak ada data pesanan"}
+            {searchQuery.length >= 4 
+              ? `Tidak ditemukan hasil untuk pencarian "${searchQuery}" pada ${
+                  searchType === "order_sn" ? "nomor pesanan" :
+                  searchType === "tracking_number" ? "nomor resi" :
+                  "username"
+                }`
+              : "Tidak ada data pesanan"}
           </span>
-        </div>
-      )}
+        ) : null}
+      </div>
     </div>
   )
 }
