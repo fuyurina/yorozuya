@@ -32,6 +32,17 @@ export class ShopeeAPI {
     return `https://partner.shopeemobile.com/api/v2/shop/auth_partner?${params.toString()}`;
   }
 
+  generateDeauthUrl(redirectUrl: string): string {
+    const [timest, sign] = this._generateSign('/api/v2/shop/cancel_auth_partner');
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      redirect: redirectUrl
+    });
+    return `https://partner.shopeemobile.com/api/v2/shop/cancel_auth_partner?${params.toString()}`;
+  }
+
   async getTokens(code: string, shopId: number): Promise<any> {
     return this._callTokenApi(code, shopId);
   }
@@ -1614,6 +1625,489 @@ export class ShopeeAPI {
       return response.data;
     } catch (error) {
       console.error('Kesalahan saat mengupdate stok:', error);
+      throw error;
+    }
+  }
+
+  async getFlashSaleTimeSlotId(
+    shopId: number,
+    accessToken: string,
+    options: {
+      start_time: number,
+      end_time: number
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/shop_flash_sale/get_time_slot_id';
+    const path = '/api/v2/shop_flash_sale/get_time_slot_id';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken,
+      start_time: options.start_time.toString(),
+      end_time: options.end_time.toString()
+    });
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk mendapatkan time slot ID flash sale: URL=${fullUrl}`);
+
+    try {
+      const response = await axios.get(fullUrl, { headers });
+      console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat mengambil time slot ID flash sale:', error);
+      throw error;
+    }
+  }
+
+  async createShopFlashSale(
+    shopId: number,
+    accessToken: string,
+    data: {
+      time_slot_id: number,
+      item_list: Array<{
+        item_id: number,
+        model_list: Array<{
+          model_id: number,
+          promotion_price: number,
+          stock: number
+        }>
+      }>
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/shop_flash_sale/create_shop_flash_sale';
+    const path = '/api/v2/shop_flash_sale/create_shop_flash_sale';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    const body = {
+      time_slot_id: data.time_slot_id,
+      item_list: data.item_list
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk membuat flash sale: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+    try {
+      const response = await axios.post(fullUrl, body, { headers });
+      console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat membuat flash sale:', error);
+      throw error;
+    }
+  }
+
+  async getFlashSaleItemCriteria(
+    shopId: number,
+    accessToken: string,
+    itemIdList: number[]
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/shop_flash_sale/get_item_criteria';
+    const path = '/api/v2/shop_flash_sale/get_item_criteria';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken,
+      item_id_list: itemIdList.join(',')
+    });
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk mendapatkan kriteria item flash sale: URL=${fullUrl}`);
+
+    try {
+      const response = await axios.get(fullUrl, { headers });
+      console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat mengambil kriteria item flash sale:', error);
+      throw error;
+    }
+  }
+
+  async addShopFlashSaleItems(
+    shopId: number,
+    accessToken: string,
+    data: {
+      time_slot_id: number,
+      item_list: Array<{
+        item_id: number,
+        model_list: Array<{
+          model_id: number,
+          promotion_price: number,
+          stock: number
+        }>
+      }>
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/shop_flash_sale/add_shop_flash_sale_items';
+    const path = '/api/v2/shop_flash_sale/add_shop_flash_sale_items';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    const body = {
+      time_slot_id: data.time_slot_id,
+      item_list: data.item_list
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk menambah item flash sale: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+    try {
+      const response = await axios.post(fullUrl, body, { headers });
+      console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat menambah item flash sale:', error);
+      throw error;
+    }
+  }
+
+  async getShopFlashSaleList(
+    shopId: number,
+    accessToken: string,
+    options: {
+      type: number,  // 0: all, 1: upcoming, 2: ongoing, 3: expired
+      start_time?: number,
+      end_time?: number,
+      pagination_offset: number,  // min=0, max=1000
+      pagination_entry_count: number  // min=1, max=100
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/shop_flash_sale/get_shop_flash_sale_list';
+    const path = '/api/v2/shop_flash_sale/get_shop_flash_sale_list';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken,
+      type: options.type.toString(),
+      offset: options.pagination_offset.toString(),
+      limit: options.pagination_entry_count.toString()
+    });
+
+    if (options.start_time && options.end_time) {
+      params.append('start_time', options.start_time.toString());
+      params.append('end_time', options.end_time.toString());
+    }
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk mendapatkan daftar flash sale: URL=${fullUrl}`);
+
+    try {
+      const response = await axios.get(fullUrl, { headers });
+      console.info(`Response status: ${response.status}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat mengambil daftar flash sale:', error);
+      throw error;
+    }
+  }
+
+  async getShopFlashSale(
+    shopId: number,
+    accessToken: string,
+    flashSaleId: number
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/shop_flash_sale/get_shop_flash_sale';
+    const path = '/api/v2/shop_flash_sale/get_shop_flash_sale';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken,
+      flash_sale_id: flashSaleId.toString()
+    });
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk mendapatkan detail flash sale toko: URL=${fullUrl}`);
+
+    try {
+      const response = await axios.get(fullUrl, { headers });
+      console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat mengambil detail flash sale toko:', error);
+      throw error;
+    }
+  }
+
+  async getShopFlashSaleItems(
+    shopId: number,
+    accessToken: string,
+    options: {
+      flash_sale_id: number,
+      offset: number,  // min=0, max=1000
+      limit: number    // min=1, max=100
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/shop_flash_sale/get_shop_flash_sale_items';
+    const path = '/api/v2/shop_flash_sale/get_shop_flash_sale_items';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    // Validasi input
+    if (options.offset < 0 || options.offset > 1000) {
+      throw new Error('offset harus antara 0 dan 1000');
+    }
+    if (options.limit < 1 || options.limit > 100) {
+      throw new Error('limit harus antara 1 dan 100');
+    }
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken,
+      flash_sale_id: options.flash_sale_id.toString(),
+      offset: options.offset.toString(),
+      limit: options.limit.toString()
+    });
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk mendapatkan daftar item flash sale: URL=${fullUrl}`);
+
+    try {
+      const response = await axios.get(fullUrl, { headers });
+      console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat mengambil daftar item flash sale:', error);
+      throw error;
+    }
+  }
+
+  async updateShopFlashSale(
+    shopId: number,
+    accessToken: string,
+    data: {
+      flash_sale_id: number,
+      status: 1 | 2  // 1: enable, 2: disabled
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/shop_flash_sale/update_shop_flash_sale';
+    const path = '/api/v2/shop_flash_sale/update_shop_flash_sale';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    // Validasi status
+    if (![1, 2].includes(data.status)) {
+      throw new Error('Status harus 1 (enable) atau 2 (disabled)');
+    }
+
+    const body = {
+      flash_sale_id: data.flash_sale_id,
+      status: data.status
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk mengupdate status flash sale: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+    try {
+      const response = await axios.post(fullUrl, body, { headers });
+      console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat mengupdate status flash sale:', error);
+      throw error;
+    }
+  }
+
+  async updateShopFlashSaleItems(
+    shopId: number,
+    accessToken: string,
+    data: {
+      flash_sale_id: number,
+      item_list: Array<{
+        item_id: number,
+        model_list: Array<{
+          model_id: number,
+          promotion_price: number,
+          stock: number
+        }>
+      }>
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/shop_flash_sale/update_shop_flash_sale_items';
+    const path = '/api/v2/shop_flash_sale/update_shop_flash_sale_items';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    const body = {
+      flash_sale_id: data.flash_sale_id,
+      item_list: data.item_list
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    // Menambahkan logging untuk request
+    console.info('Request ke Shopee API:');
+    console.info('URL:', fullUrl);
+    console.info('Headers:', JSON.stringify(headers, null, 2));
+    console.info('Body:', JSON.stringify(body, null, 2));
+
+    try {
+      const response = await axios.post(fullUrl, body, { headers });
+      // Menambahkan logging untuk response
+      console.info('Response dari Shopee API:');
+      console.info('Status:', response.status);
+      console.info('Data:', JSON.stringify(response.data, null, 2));
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat mengupdate item flash sale:', error);
+      // Menambahkan logging untuk error response jika ada
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('Error Response:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
+      throw error;
+    }
+  }
+
+  async deleteShopFlashSale(
+    shopId: number,
+    accessToken: string,
+    flashSaleId: number
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/shop_flash_sale/delete_shop_flash_sale';
+    const path = '/api/v2/shop_flash_sale/delete_shop_flash_sale';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    const body = {
+      flash_sale_id: flashSaleId
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk menghapus flash sale: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+    try {
+      const response = await axios.post(fullUrl, body, { headers });
+      console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat menghapus flash sale:', error);
+      throw error;
+    }
+  }
+
+  async deleteShopFlashSaleItems(
+    shopId: number,
+    accessToken: string,
+    data: {
+      flash_sale_id: number,
+      item_ids: number[]
+    }
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/shop_flash_sale/delete_shop_flash_sale_items';
+    const path = '/api/v2/shop_flash_sale/delete_shop_flash_sale_items';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+      partner_id: this.partnerId.toString(),
+      timestamp: timest.toString(),
+      sign,
+      shop_id: shopId.toString(),
+      access_token: accessToken
+    });
+
+    // Validasi input
+    if (!data.item_ids || data.item_ids.length === 0) {
+      throw new Error('item_ids tidak boleh kosong');
+    }
+
+    const body = {
+      flash_sale_id: data.flash_sale_id,
+      item_ids: data.item_ids
+    };
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk menghapus item flash sale: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+    try {
+      const response = await axios.post(fullUrl, body, { headers });
+      console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Kesalahan saat menghapus item flash sale:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('Error Response:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
       throw error;
     }
   }

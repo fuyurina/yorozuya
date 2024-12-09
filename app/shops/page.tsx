@@ -170,6 +170,18 @@ export default function ShopsPage() {
     }
   };
 
+  const handleDeauth = async (shopId: number) => {
+    try {
+      const response = await fetch('/api/generate-deauth-url');
+      const data = await response.json();
+      if (data.deauthUrl) {
+        window.location.href = data.deauthUrl;
+      }
+    } catch (error) {
+      console.error('Gagal mendapatkan URL deautentikasi:', error);
+    }
+  };
+
   if (isLoading) {
     return <div className="p-4">Memuat data toko...</div>;
   }
@@ -179,27 +191,27 @@ export default function ShopsPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Daftar Toko Shopee</h1>
+    <div className="p-4 max-w-6xl mx-auto dark:bg-gray-900">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Toko Shopee</h1>
         <button
           onClick={handleConnect}
           disabled={isConnecting}
-          className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 
-                    disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors
-                    flex items-center gap-2"
+          className="px-3 py-1.5 bg-orange-500 text-white rounded-md hover:bg-orange-600 
+                    disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed transition-colors
+                    flex items-center gap-1.5 text-sm"
         >
           {isConnecting ? (
             <>
-              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <span>Menghubungkan...</span>
+              <span>Menghubungkan</span>
             </>
           ) : (
             <>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
               <span>Tambah Toko</span>
@@ -209,47 +221,47 @@ export default function ShopsPage() {
       </div>
 
       {shops.length === 0 ? (
-        <div className="bg-gray-50 rounded-lg p-8 text-center">
-          <p className="text-gray-500 text-lg">Belum ada toko yang terhubung</p>
-          <p className="text-gray-400 mt-2">Silakan hubungkan toko Shopee Anda terlebih dahulu</p>
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-6 text-center">
+          <p className="text-gray-500 dark:text-gray-400">Belum ada toko yang terhubung</p>
+          <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">Silakan hubungkan toko Shopee Anda</p>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {shops.map((shop) => (
             <div
               key={shop.shop_id}
-              className="bg-white border rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-gray-800 rounded-md p-4 border border-gray-100 dark:border-gray-700 
+                       hover:border-gray-200 dark:hover:border-gray-600 transition-all"
             >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                  <span className="text-orange-500 text-xl font-bold">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-orange-50 dark:bg-orange-900/30 rounded-md flex items-center justify-center">
+                  <span className="text-orange-500 dark:text-orange-400 text-lg font-semibold">
                     {shop.shop_name.charAt(0)}
                   </span>
                 </div>
                 <div>
-                  <h2 className="font-bold text-xl text-gray-800">{shop.shop_name}</h2>
-                  <p className="text-gray-500 text-sm">ID: {shop.shop_id}</p>
+                  <h2 className="font-medium text-gray-800 dark:text-gray-100">{shop.shop_name}</h2>
+                  <p className="text-gray-400 dark:text-gray-500 text-xs">ID: {shop.shop_id}</p>
                 </div>
               </div>
 
-              <div className="space-y-3 mb-4">
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <p className="text-sm text-gray-600 font-medium">Status Token</p>
-                  <div className="flex items-center gap-2 mt-1">
+              <div className="space-y-2 mb-3 text-sm">
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-md">
+                  <div className="flex items-center gap-2">
                     {tokenStatus[shop.shop_id]?.isChecking ? (
-                      <div className="flex items-center gap-2">
-                        <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <div className="flex items-center gap-1.5">
+                        <svg className="animate-spin h-3 w-3 text-blue-500 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <span className="text-sm text-blue-500">Mengecek...</span>
+                        <span className="text-xs text-blue-500 dark:text-blue-400">Mengecek token...</span>
                       </div>
                     ) : (
                       <>
-                        <div className={`w-2 h-2 rounded-full ${
+                        <div className={`w-1.5 h-1.5 rounded-full ${
                           tokenStatus[shop.shop_id]?.is_active ? 'bg-green-500' : 'bg-red-500'
                         }`}></div>
-                        <span className="text-sm text-gray-700">
+                        <span className="text-xs text-gray-600 dark:text-gray-300">
                           {tokenStatus[shop.shop_id]?.message || 'Belum dicek'}
                         </span>
                       </>
@@ -257,63 +269,50 @@ export default function ShopsPage() {
                   </div>
                 </div>
 
-                {syncStatus[shop.shop_id] && (
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <p className="text-sm text-blue-700 font-medium">Status Sinkronisasi</p>
-                    <div className="mt-2">
-                      <div className="w-full bg-blue-100 rounded-full h-2.5">
-                        <div 
-                          className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                          style={{ 
-                            width: (() => {
-                              const total = syncStatus[shop.shop_id]?.progress?.total || 0;
-                              const current = syncStatus[shop.shop_id]?.progress?.current || 0;
-                              return total > 0 ? `${Math.round((current / total) * 100)}%` : '0%';
-                            })()
-                          }}
-                        ></div>
-                      </div>
-                      <p className="text-sm text-blue-600 mt-2">
-                        {syncStatus[shop.shop_id]?.progress?.current || 0} dari {syncStatus[shop.shop_id]?.progress?.total || 0} order
-                      </p>
+                {syncStatus[shop.shop_id]?.isSyncing && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md">
+                    <div className="w-full bg-blue-100 dark:bg-blue-800/50 rounded-full h-1.5">
+                      <div 
+                        className="bg-blue-500 dark:bg-blue-400 h-1.5 rounded-full transition-all duration-300"
+                        style={{ 
+                          width: (() => {
+                            const total = syncStatus[shop.shop_id]?.progress?.total || 0;
+                            const current = syncStatus[shop.shop_id]?.progress?.current || 0;
+                            return total > 0 ? `${Math.round((current / total) * 100)}%` : '0%';
+                          })()
+                        }}
+                      ></div>
                     </div>
-                  </div>
-                )}
-
-                {syncStatus[shop.shop_id]?.error && (
-                  <div className="bg-red-50 p-3 rounded-lg">
-                    <p className="text-sm text-red-600 font-medium">Error</p>
-                    <p className="text-sm text-red-500 mt-1">
-                      {syncStatus[shop.shop_id].error}
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      {syncStatus[shop.shop_id]?.progress?.current || 0}/{syncStatus[shop.shop_id]?.progress?.total || 0}
                     </p>
                   </div>
                 )}
               </div>
 
-              <button
-                onClick={() => handleSync(shop.shop_id)}
-                disabled={syncStatus[shop.shop_id]?.isSyncing}
-                className="w-full px-4 py-2.5 bg-orange-500 text-white rounded-lg hover:bg-orange-600 
-                          disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors
-                          flex items-center justify-center gap-2"
-              >
-                {syncStatus[shop.shop_id]?.isSyncing ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Sedang Sinkronisasi...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                    <span>Sinkronisasi Order</span>
-                  </>
-                )}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleSync(shop.shop_id)}
+                  disabled={syncStatus[shop.shop_id]?.isSyncing}
+                  className="flex-1 px-3 py-1.5 bg-orange-500 text-white text-sm rounded-md hover:bg-orange-600 
+                            disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:cursor-not-allowed transition-colors
+                            flex items-center justify-center gap-1.5"
+                >
+                  {syncStatus[shop.shop_id]?.isSyncing ? 'Sinkronisasi...' : 'Sinkronisasi'}
+                </button>
+
+                <button
+                  onClick={() => handleDeauth(shop.shop_id)}
+                  className="p-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-md 
+                            hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center"
+                  title="Putuskan koneksi toko"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </button>
+              </div>
             </div>
           ))}
         </div>

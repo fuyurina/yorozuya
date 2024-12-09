@@ -220,6 +220,11 @@ export function generateAuthUrl(): string {
   }
 }
 
+export function generateDeauthUrl(): string {
+  const redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/shops`;
+  return shopeeApi.generateDeauthUrl(redirectUrl);
+}
+
 async function retryOperation<T>(
   operation: () => Promise<T>,
   maxRetries: number = 3,
@@ -331,7 +336,7 @@ export async function getOrderList(shopId: number, options: OrderListOptions = {
     const accessToken = await getValidAccessToken(shopId);
     console.log(accessToken)
     const response = await shopeeApi.getOrderList(shopId, accessToken, {
-      time_range_field: options.timeRangeField || 'update_time',
+      time_range_field: options.timeRangeField || 'create_time',
       time_from: options.startTime || Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60), // Default to 7 days ago
       time_to: options.endTime || Math.floor(Date.now() / 1000), // Default to current time
       page_size: options.pageSize || 50,

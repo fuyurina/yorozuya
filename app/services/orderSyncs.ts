@@ -25,44 +25,38 @@ interface OrderListResponse {
   message?: string;
 }
 
-async function processOrderDetail(shopId: number, orderSn: string) {
+async function processOrderDetails(shopId: number, orderSns: string[]) {
   try {
-    const response = await getOrderDetail(shopId, orderSn);
+    const response = await getOrderDetail(shopId, orderSns.join(','));
+    const orders = response.order_list || [];
     
-    const orderData = response.order_list?.[0] || response.data;
-    
-    if (!orderData) {
-      throw new Error(`Data pesanan kosong untuk order ${orderSn}`);
+    if (!orders.length) {
+      throw new Error(`Data pesanan kosong untuk orders: ${orderSns.join(',')}`);
     }
 
-    if (!orderData.order_sn) {
-      throw new Error(`Data pesanan tidak memiliki order_sn yang valid: ${orderSn}`);
-    }
+    const results = await Promise.all(orders.map(async (orderData: { order_sn: any; }) => {
+      try {
+        if (!orderData.order_sn) {
+          throw new Error(`Data pesanan tidak memiliki order_sn yang valid`);
+        }
 
-    await upsertOrderData(orderData, shopId).catch(err => {
-      throw new Error(`Gagal menyimpan order data: ${err.message}`);
-    });
+        await upsertOrderData(orderData, shopId);
+        await Promise.all([
+          upsertOrderItems(orderData),
+          upsertLogisticData(orderData, shopId)
+        ]);
+        
+        return { orderSn: orderData.order_sn, success: true };
+      } catch (error) {
+        console.error(`Gagal memproses pesanan ${orderData.order_sn}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return { orderSn: orderData.order_sn, success: false };
+      }
+    }));
 
-    await Promise.all([
-      upsertOrderItems(orderData).catch(err => {
-        throw new Error(`Gagal menyimpan order items: ${err.message}`);
-      }),
-      upsertLogisticData(orderData, shopId).catch(err => {
-        throw new Error(`Gagal menyimpan logistic data: ${err.message}`);
-      })
-    ]);
-
-    return true;
+    return results;
   } catch (error) {
-    const errorDetail = {
-      shopId,
-      orderSn,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    };
-    
-    console.error(`Gagal memproses pesanan ${orderSn}: ${errorDetail.error}`);
-    return false;
+    console.error(`Gagal memproses batch pesanan: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    return orderSns.map(sn => ({ orderSn: sn, success: false }));
   }
 }
 
@@ -89,7 +83,7 @@ export async function syncOrders(shopId: number, options: OrderSyncOptions = {})
   try {
     const now = Math.floor(Date.now() / 1000);
     const syncOptions = {
-      timeRangeField: 'update_time' as const,
+      timeRangeField: 'create_time' as const,
       startTime: now - (7 * 24 * 60 * 60),
       endTime: now,
       orderStatus: 'ALL' as const,
@@ -113,6 +107,7 @@ export async function syncOrders(shopId: number, options: OrderSyncOptions = {})
 
     // Set total awal
     totalOrders = initialResponse.data.order_list.length;
+    console.log(totalOrders)
     
     // Update progress awal
     if (options.onProgress) {
@@ -127,19 +122,24 @@ export async function syncOrders(shopId: number, options: OrderSyncOptions = {})
     let cursor = initialResponse.data.next_cursor;
 
     // Proses batch pertama
+    const BATCH_SIZE = 50; // Sesuaikan dengan batasan API Shopee
     const firstBatch = initialResponse.data.order_list;
-    for (const order of firstBatch) {
-      const success = await processOrderDetail(shopId, order.order_sn);
-      if (success) {
-        processedCount++;
-        processedOrders.push(order.order_sn);
-        
-        if (options.onProgress) {
-          options.onProgress({ 
-            current: processedCount, 
-            total: totalOrders 
-          });
+    for (let i = 0; i < firstBatch.length; i += BATCH_SIZE) {
+      const orderBatch = firstBatch.slice(i, i + BATCH_SIZE);
+      const results = await processOrderDetails(shopId, orderBatch.map(o => o.order_sn));
+      
+      results.forEach(result => {
+        if (result.success) {
+          processedCount++;
+          processedOrders.push(result.orderSn);
         }
+      });
+
+      if (options.onProgress) {
+        options.onProgress({ 
+          current: processedCount, 
+          total: totalOrders 
+        });
       }
     }
 
@@ -154,18 +154,22 @@ export async function syncOrders(shopId: number, options: OrderSyncOptions = {})
       // Update total orders
       totalOrders += response.data.order_list.length;
 
-      for (const order of response.data.order_list) {
-        const success = await processOrderDetail(shopId, order.order_sn);
-        if (success) {
-          processedCount++;
-          processedOrders.push(order.order_sn);
-          
-          if (options.onProgress) {
-            options.onProgress({ 
-              current: processedCount, 
-              total: totalOrders 
-            });
+      for (let i = 0; i < response.data.order_list.length; i += BATCH_SIZE) {
+        const orderBatch = response.data.order_list.slice(i, i + BATCH_SIZE);
+        const results = await processOrderDetails(shopId, orderBatch.map(o => o.order_sn));
+        
+        results.forEach(result => {
+          if (result.success) {
+            processedCount++;
+            processedOrders.push(result.orderSn);
           }
+        });
+
+        if (options.onProgress) {
+          options.onProgress({ 
+            current: processedCount, 
+            total: totalOrders 
+          });
         }
       }
 

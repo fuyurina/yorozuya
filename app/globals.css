@@ -76,3 +76,35 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+.rdp-day_selected:not([disabled]) {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.rdp-day_today:not([disabled]) {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.rdp {
+  --rdp-cell-size: 48px;
+  --rdp-accent-color: #000;
+  --rdp-background-color: #e7edff;
+  margin: 0;
+  width: 100%;
+}
+
+.rdp-day_selected:not([disabled]) {
+  background-color: var(--rdp-accent-color);
+  color: #fff;
+}
+
+.rdp-day_today:not([disabled]) {
+  background-color: var(--rdp-background-color);
+  color: var(--rdp-accent-color);
+}
+
+.rdp-button:hover:not([disabled]):not(.rdp-day_selected) {
+  background-color: var(--rdp-background-color);
+}
