@@ -40,21 +40,38 @@ export async function GET(request: NextRequest) {
               console.error(`Error syncing shop ${shop.shop_name} (${shop.shop_id}):`, error);
               reject(error);
             }
-          }).then(resolve);
+          }).then((orderCount) => {
+            resolve(orderCount); // Asumsikan syncOrders mengembalikan jumlah pesanan
+          }).catch(reject);
         });
       })
     );
 
     // Analisis hasil
-    const summary = results.reduce<Record<string, string>>((acc, result, index) => {
+    const summary = results.reduce<Record<string, any>>((acc, result, index) => {
       const shop = shops[index];
-      acc[`${shop.shop_name} (${shop.shop_id})`] = result.status;
+      acc[`${shop.shop_name} (${shop.shop_id})`] = {
+        status: result.status,
+        ...(result.status === 'fulfilled' && { 
+          total_orders: (result.value as { data: { total: number } }).data.total // Ambil total dari data dengan type assertion
+        }),
+        ...(result.status === 'rejected' && { error: result.reason })
+      };
       return acc;
     }, {});
+
+    // Hitung total keseluruhan
+    const totalOrders = results.reduce((total, result) => {
+      if (result.status === 'fulfilled') {
+        return total + (result.value as { data: { total: number } }).data.total;
+      }
+      return total;
+    }, 0);
 
     return NextResponse.json({
       success: true,
       message: `Sync completed`,
+      total_orders: totalOrders, // Tambahkan total keseluruhan
       summary
     });
 
