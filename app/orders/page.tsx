@@ -22,8 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Card } from "@/components/ui/card"
-import { Package, Clock, Truck, XCircle, ShoppingCart, XOctagon, Search, X } from "lucide-react"
+import { Card, CardHeader, CardContent } from "@/components/ui/card"
+import { Package, Clock, Truck, XCircle, ShoppingCart, XOctagon, Search, X, Wallet, ChevronDown } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Store } from "lucide-react"
@@ -148,6 +148,26 @@ function TableRowSkeleton() {
   )
 }
 
+// Tambahkan interface untuk SKU
+interface SkuSummary {
+  sku_name: string
+  quantity: number
+  total_amount: number
+}
+
+// Tambahkan interface untuk ringkasan toko
+interface ShopSummary {
+  name: string
+  totalOrders: number
+  totalAmount: number
+  pendingOrders: number
+  processOrders: number
+  shippingOrders: number
+  cancelledOrders: number
+  failedOrders: number
+  topSkus: SkuSummary[]
+}
+
 export default function OrdersPage() {
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(),
@@ -169,6 +189,15 @@ export default function OrdersPage() {
   const ITEMS_PER_PAGE = 20
   const { searchOrders, searchResults, loading: searchLoading } = useOrderSearch()
   
+  // Tambahkan state untuk modal ringkasan
+  const [showSummary, setShowSummary] = useState(false)
+
+  // Tambahkan state untuk tracking toko yang sedang dibuka
+  const [expandedShop, setExpandedShop] = useState<string | null>(null);
+
+  // Tambahkan state untuk tracking SKU yang sedang diperluas
+  const [expandedSku, setExpandedSku] = useState<string | null>(null);
+
   // Modifikasi logika filtering
   const filteredOrders = searchResults.length > 0 
     ? searchResults  // Langsung gunakan hasil pencarian jika ada
@@ -271,7 +300,7 @@ export default function OrdersPage() {
     setVisibleOrders([])
     setPage(1)
     setHasMore(true)
-  }, [activeFilter, selectedShops, selectedDateRange])
+  }, [activeFilter, selectedShops, selectedDateRange, orders])
 
   const handleDateSelect = (dateRange: DateRange | undefined) => {
     setDate(dateRange)
@@ -280,6 +309,11 @@ export default function OrdersPage() {
   const handleApplyDate = () => {
     setSelectedDateRange(date)
     setIsCalendarOpen(false)
+    
+    // Reset pagination dan visible orders
+    setVisibleOrders([])
+    setPage(1)
+    setHasMore(true)
   }
 
   const handlePresetDate = (days: number) => {
@@ -356,6 +390,108 @@ export default function OrdersPage() {
   // Dapatkan daftar unik toko dari orders
   const uniqueShops = Array.from(new Set(orders.map(order => order.shop_name))).sort()
 
+  // Tambahkan fungsi untuk menghitung ringkasan toko
+  const getShopsSummary = useCallback((): ShopSummary[] => {
+    const summary = orders.reduce((acc: { [key: string]: ShopSummary }, order) => {
+      if (!['PROCESSED', 'SHIPPED', 'COMPLETED', 'IN_CANCEL', 'TO_CONFIRM_RECEIVE'].includes(order.order_status)) {
+        return acc
+      }
+
+      if (!acc[order.shop_name]) {
+        acc[order.shop_name] = {
+          name: order.shop_name,
+          totalOrders: 0,
+          totalAmount: 0,
+          pendingOrders: 0,
+          processOrders: 0,
+          shippingOrders: 0,
+          cancelledOrders: 0,
+          failedOrders: 0,
+          topSkus: []
+        }
+      }
+
+      const shop = acc[order.shop_name]
+      
+      shop.totalOrders++
+      shop.totalAmount += parseFloat(order.total_amount)
+
+      if (order.sku_qty) {
+        const skuEntries = order.sku_qty.split(',').map(entry => entry.trim())
+        
+        skuEntries.forEach(entry => {
+          const match = entry.match(/(.*?)\s*\((\d+)\)/)
+          if (match) {
+            const [, skuName, quantityStr] = match
+            const quantity = parseInt(quantityStr)
+            const estimatedUnitAmount = parseFloat(order.total_amount) / skuEntries.length / quantity
+
+            const normalizedSkuName = skuName.toLowerCase()
+
+            const existingSku = shop.topSkus.find(sku => sku.sku_name.toLowerCase() === normalizedSkuName)
+            if (existingSku) {
+              existingSku.quantity += quantity
+              existingSku.total_amount += estimatedUnitAmount * quantity
+            } else {
+              shop.topSkus.push({
+                sku_name: normalizedSkuName,
+                quantity: quantity,
+                total_amount: estimatedUnitAmount * quantity
+              })
+            }
+          }
+        })
+      }
+
+      return acc
+    }, {})
+
+    Object.values(summary).forEach(shop => {
+      shop.topSkus.sort((a, b) => b.quantity - a.quantity)
+      shop.topSkus = shop.topSkus.slice(0, 5)
+    })
+
+    // Urutkan berdasarkan totalOrders
+    return Object.values(summary).sort((a, b) => b.totalOrders - a.totalOrders)
+  }, [orders])
+
+  // Tambahkan fungsi untuk menghitung total SKU dari semua toko
+  const getAllTopSkus = useCallback(() => {
+    const allSkus: { [key: string]: SkuSummary } = {}
+    
+    getShopsSummary().forEach(shop => {
+      shop.topSkus.forEach(sku => {
+        if (allSkus[sku.sku_name]) {
+          allSkus[sku.sku_name].quantity += sku.quantity
+          allSkus[sku.sku_name].total_amount += sku.total_amount
+        } else {
+          allSkus[sku.sku_name] = {
+            sku_name: sku.sku_name,
+            quantity: sku.quantity,
+            total_amount: sku.total_amount
+          }
+        }
+      })
+    })
+
+    return Object.values(allSkus)
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 10) // Ambil 10 SKU teratas
+  }, [getShopsSummary])
+
+  const [selectedSku, setSelectedSku] = useState<string | null>(null);
+
+  const handleSkuClick = (skuName: string) => {
+    setExpandedSku(expandedSku === skuName ? null : skuName);
+  };
+
+  const getSkuDetails = (skuName: string) => {
+    return getShopsSummary().map(shop => {
+      const sku = shop.topSkus.find(s => s.sku_name === skuName);
+      return sku ? { shopName: shop.name, quantity: sku.quantity } : null;
+    }).filter(Boolean);
+  };
+
   if (ordersLoading || searchLoading) {
     return (
       <div className="w-full p-4 sm:p-6 space-y-6">
@@ -409,7 +545,27 @@ export default function OrdersPage() {
 
   return (
     <div className="w-full p-4 sm:p-6 space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+        <Card className="col-span-2">
+          <div className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total Omset
+                </p>
+                <p className="text-2xl font-bold text-green-600">
+                  Rp {getShopsSummary()
+                    .reduce((sum, shop) => sum + shop.totalAmount, 0)
+                    .toLocaleString('id-ID')}
+                </p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-green-50">
+                <Wallet className="w-5 h-5 text-green-600" />
+              </div>
+            </div>
+          </div>
+        </Card>
+
         <OrderStatusCard
           title="Total"
           count={orderStats.total}
@@ -687,8 +843,141 @@ export default function OrdersPage() {
               )}
             </div>
           </div>
+
+          <Button
+            variant="outline"
+            className="md:col-span-3"
+            onClick={() => setShowSummary(!showSummary)}
+          >
+            {showSummary ? 'Sembunyikan Ringkasan' : 'Lihat Ringkasan per Toko'}
+          </Button>
         </div>
       </Card>
+
+      {/* Ringkasan Toko */}
+      {showSummary && (
+        <div className="grid md:grid-cols-2 gap-3">
+          {/* Top SKUs dengan desain yang dioptimalkan */}
+          <Card className="overflow-hidden">
+            <CardHeader className="py-2.5 px-4 flex flex-row items-center justify-between">
+              <h3 className="text-sm font-semibold">10 SKU Terlaris</h3>
+              <span className="text-xs text-muted-foreground">Total Penjualan</span>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[360px]">
+                <div className="divide-y">
+                  {getAllTopSkus().map((sku, index) => (
+                    <div key={sku.sku_name} className="group">
+                      <div 
+                        className="py-2.5 px-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => handleSkuClick(sku.sku_name)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                              <div className="w-5 h-5 flex items-center justify-center text-xs font-semibold text-muted-foreground">
+                                {index + 1}
+                              </div>
+                              <p className="text-sm font-medium truncate">{sku.sku_name}</p>
+                            </div>
+                            <div className="text-primary">
+                              <span className="text-xs font-semibold">{sku.quantity} pcs</span>
+                            </div>
+                          </div>
+                          <ChevronDown 
+                            className={`w-4 h-4 text-muted-foreground transition-transform ml-3 ${
+                              expandedSku === sku.sku_name ? 'rotate-180' : ''
+                            } ${expandedSku === sku.sku_name ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                          />
+                        </div>
+                      </div>
+                      
+                      {expandedSku === sku.sku_name && (
+                        <div className="bg-muted/30 divide-y animate-in slide-in-from-top-1 duration-200">
+                          {getSkuDetails(sku.sku_name).map(detail => detail && (
+                            <div key={detail.shopName} className="py-2 px-4 pl-12">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <Store className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                                  <p className="text-xs text-muted-foreground truncate">{detail.shopName}</p>
+                                </div>
+                                <div className="ml-2">
+                                  <span className="text-xs font-medium text-primary">{detail.quantity} pcs</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* Ringkasan Toko dengan desain yang dioptimalkan */}
+          <Card className="overflow-hidden">
+            <CardHeader className="py-2.5 px-4 flex flex-row items-center justify-between">
+              <h3 className="text-sm font-semibold">Ringkasan per Toko</h3>
+              <span className="text-xs text-muted-foreground">Total Pesanan</span>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[360px]">
+                <div className="divide-y">
+                  {getShopsSummary().map((shop) => (
+                    <div key={shop.name} className="group">
+                      <div 
+                        className="py-2.5 px-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => setExpandedShop(expandedShop === shop.name ? null : shop.name)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-medium truncate flex-1">{shop.name}</p>
+                              <span className="text-xs font-semibold text-primary whitespace-nowrap">
+                                {shop.totalOrders} pesanan
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Omset: Rp {shop.totalAmount.toLocaleString('id-ID')}
+                            </p>
+                          </div>
+                          <ChevronDown 
+                            className={`w-4 h-4 text-muted-foreground transition-transform ml-3 ${
+                              expandedShop === shop.name ? 'rotate-180' : ''
+                            } ${expandedShop === shop.name ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                          />
+                        </div>
+                      </div>
+                      
+                      {expandedShop === shop.name && (
+                        <div className="bg-muted/30 divide-y animate-in slide-in-from-top-1 duration-200">
+                          {shop.topSkus.map((sku, index) => (
+                            <div key={sku.sku_name} className="py-2 px-4 pl-8">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                  <div className="w-5 h-5 flex items-center justify-center text-xs font-semibold text-muted-foreground">
+                                    {index + 1}
+                                  </div>
+                                  <p className="text-xs font-medium truncate">{sku.sku_name}</p>
+                                </div>
+                                <span className="text-xs font-semibold text-primary ml-2 whitespace-nowrap">
+                                  {sku.quantity} pcs
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="rounded-lg border shadow-sm overflow-x-auto">
         <Table>

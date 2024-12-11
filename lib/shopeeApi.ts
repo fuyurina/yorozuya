@@ -1669,33 +1669,22 @@ export class ShopeeAPI {
   async createShopFlashSale(
     shopId: number,
     accessToken: string,
-    data: {
-      time_slot_id: number,
-      item_list: Array<{
-        item_id: number,
-        model_list: Array<{
-          model_id: number,
-          promotion_price: number,
-          stock: number
-        }>
-      }>
-    }
-  ): Promise<any> {
+    timeslotId: number  // Hanya membutuhkan timeslot_id sebagai parameter
+): Promise<any> {
     const url = 'https://partner.shopeemobile.com/api/v2/shop_flash_sale/create_shop_flash_sale';
     const path = '/api/v2/shop_flash_sale/create_shop_flash_sale';
     const [timest, sign] = this._generateSign(path, accessToken, shopId);
 
     const params = new URLSearchParams({
-      partner_id: this.partnerId.toString(),
-      timestamp: timest.toString(),
-      sign,
-      shop_id: shopId.toString(),
-      access_token: accessToken
+        partner_id: this.partnerId.toString(),
+        timestamp: timest.toString(),
+        sign,
+        shop_id: shopId.toString(),
+        access_token: accessToken
     });
 
     const body = {
-      time_slot_id: data.time_slot_id,
-      item_list: data.item_list
+        timeslot_id: timeslotId  // Sesuai dokumentasi, hanya memerlukan timeslot_id
     };
 
     const fullUrl = `${url}?${params.toString()}`;
@@ -1704,14 +1693,14 @@ export class ShopeeAPI {
     console.info(`Mengirim permintaan untuk membuat flash sale: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
 
     try {
-      const response = await axios.post(fullUrl, body, { headers });
-      console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
-      return response.data;
+        const response = await axios.post(fullUrl, body, { headers });
+        console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+        return response.data;
     } catch (error) {
-      console.error('Kesalahan saat membuat flash sale:', error);
-      throw error;
+        console.error('Kesalahan saat membuat flash sale:', error);
+        throw error;
     }
-  }
+}
 
   async getFlashSaleItemCriteria(
     shopId: number,
@@ -1750,12 +1739,13 @@ export class ShopeeAPI {
     shopId: number,
     accessToken: string,
     data: {
-      time_slot_id: number,
-      item_list: Array<{
+      flash_sale_id: number,
+      items: Array<{
         item_id: number,
-        model_list: Array<{
+        purchase_limit: number,
+        models: Array<{
           model_id: number,
-          promotion_price: number,
+          input_promo_price: number,
           stock: number
         }>
       }>
@@ -1774,8 +1764,8 @@ export class ShopeeAPI {
     });
 
     const body = {
-      time_slot_id: data.time_slot_id,
-      item_list: data.item_list
+      flash_sale_id: data.flash_sale_id,
+      items: data.items
     };
 
     const fullUrl = `${url}?${params.toString()}`;
@@ -1969,12 +1959,14 @@ export class ShopeeAPI {
     accessToken: string,
     data: {
       flash_sale_id: number,
-      item_list: Array<{
+      items: Array<{
         item_id: number,
-        model_list: Array<{
+        purchase_limit?: number, // optional, min=0, 0 means no limit
+        models: Array<{
           model_id: number,
-          promotion_price: number,
-          stock: number
+          status: 0 | 1, // 0: disable, 1: enable
+          input_promo_price?: number, // optional, hanya bisa diset jika status=1 dan model sebelumnya disabled
+          stock?: number // optional, min=1, hanya bisa diset jika status=1 dan model sebelumnya disabled
         }>
       }>
     }
@@ -1991,30 +1983,38 @@ export class ShopeeAPI {
       access_token: accessToken
     });
 
+    // Validasi input
+    for (const item of data.items) {
+      if (item.purchase_limit !== undefined && item.purchase_limit < 0) {
+        throw new Error('purchase_limit tidak boleh kurang dari 0');
+      }
+      
+      for (const model of item.models) {
+        if (![0, 1].includes(model.status)) {
+          throw new Error('status model harus 0 (disable) atau 1 (enable)');
+        }
+        if (model.stock !== undefined && model.stock < 1) {
+          throw new Error('stock harus minimal 1');
+        }
+      }
+    }
+
     const body = {
       flash_sale_id: data.flash_sale_id,
-      item_list: data.item_list
+      items: data.items
     };
 
     const fullUrl = `${url}?${params.toString()}`;
     const headers = { 'Content-Type': 'application/json' };
 
-    // Menambahkan logging untuk request
-    console.info('Request ke Shopee API:');
-    console.info('URL:', fullUrl);
-    console.info('Headers:', JSON.stringify(headers, null, 2));
-    console.info('Body:', JSON.stringify(body, null, 2));
+    console.info(`Mengirim permintaan untuk mengupdate item flash sale: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
 
     try {
       const response = await axios.post(fullUrl, body, { headers });
-      // Menambahkan logging untuk response
-      console.info('Response dari Shopee API:');
-      console.info('Status:', response.status);
-      console.info('Data:', JSON.stringify(response.data, null, 2));
+      console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
       return response.data;
     } catch (error) {
       console.error('Kesalahan saat mengupdate item flash sale:', error);
-      // Menambahkan logging untuk error response jika ada
       if (axios.isAxiosError(error) && error.response) {
         console.error('Error Response:', {
           status: error.response.status,

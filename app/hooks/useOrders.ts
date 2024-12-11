@@ -42,7 +42,7 @@ export function useOrders(dateRange: DateRange | undefined) {
           .select('*')
           .filter('create_time', 'gte', startTimestamp)
           .filter('create_time', 'lte', endTimestamp)
-          .order('create_time', { ascending: false })
+          .order('pay_time', { ascending: false })
 
         if (error) throw error
         setOrders(data)

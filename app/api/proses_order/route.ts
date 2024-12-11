@@ -43,7 +43,7 @@ async function getAllOrders(shopId: string, accessToken: string) {
             
             // Proses satu per satu pesanan
             for (const order of orders.response.order_list) {
-                console.log('Request proses pesanan:', {
+                console.log('Request proses pesanan dari api proses_order:', {
                     shop_id: numericShopId,
                     order_sn: order.order_sn,
                     shipping_method: 'dropoff'

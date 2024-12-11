@@ -249,7 +249,7 @@ export default function FlashSalePage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => router.push(`/flashsale/${record.flash_sale_id}`)}
+            onClick={() => router.push(`/flashsale/detail?shop_id=${selectedShop}&flash_sale_id=${record.flash_sale_id}`)}
           >
             Detail
           </Button>

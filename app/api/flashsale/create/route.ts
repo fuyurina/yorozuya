@@ -4,16 +4,16 @@ import { createShopFlashSale } from '@/app/services/shopeeFlashSaleService';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { shop_id, time_slot_id, item_list } = body;
+    const { shop_id, timeslot_id } = body;
 
-    if (!shop_id || !time_slot_id || !item_list) {
+    if (!shop_id || !timeslot_id) {
       return NextResponse.json(
-        { error: 'Parameter shop_id, time_slot_id, dan item_list diperlukan' },
+        { error: 'Parameter shop_id dan timeslot_id diperlukan' },
         { status: 400 }
       );
     }
 
-    const result = await createShopFlashSale(shop_id, { time_slot_id, item_list });
+    const result = await createShopFlashSale(shop_id, timeslot_id);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
