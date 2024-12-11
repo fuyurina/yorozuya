@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { syncOrders } from '@/app/services/orderSyncs';
 import { getAllShops } from '@/app/services/shopeeService';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
+
 export async function GET(request: NextRequest) {
   try {
     console.log('Memulai sinkronisasi...');
