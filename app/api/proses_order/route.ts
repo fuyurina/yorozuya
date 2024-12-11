@@ -24,6 +24,7 @@ async function getAllOrders(shopId: string, accessToken: string) {
     let allOrders: ShopeeOrder[] = [];
     let hasMore = true;
     let cursor = '';
+    let successfulOrders = 0;
     
     console.log('Original shopId:', shopId, 'Type:', typeof shopId);
     
@@ -41,22 +42,23 @@ async function getAllOrders(shopId: string, accessToken: string) {
         if (orders.response?.order_list && orders.response.order_list.length > 0) {
             console.log(`Memproses ${orders.response.order_list.length} pesanan...`);
             
-            // Proses satu per satu pesanan
             for (const order of orders.response.order_list) {
-                console.log('Request proses pesanan dari api proses_order:', {
-                    shop_id: numericShopId,
-                    order_sn: order.order_sn,
-                    shipping_method: 'dropoff'
-                });
+                try {
+                    const processResult = await processReadyToShipOrders(
+                        numericShopId,
+                        order.order_sn,
+                        'dropoff'
+                    );
+                    
+                    if (processResult.success) {
+                        successfulOrders++;
+                    }
+                    
+                    console.log('Hasil proses pesanan:', JSON.stringify(processResult, null, 2));
+                } catch (error) {
+                    console.error(`Gagal memproses pesanan ${order.order_sn}:`, error);
+                }
                 
-                const processResult = await processReadyToShipOrders(
-                    numericShopId,
-                    order.order_sn,
-                    'dropoff'
-                );
-                console.log('Hasil proses pesanan:', JSON.stringify(processResult, null, 2));
-                
-                // Delay antar proses pesanan
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
             
@@ -70,7 +72,11 @@ async function getAllOrders(shopId: string, accessToken: string) {
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
-    return allOrders;
+    return {
+        totalOrders: allOrders.length,
+        successfulOrders,
+        orders: allOrders
+    };
 }
 
 export async function GET(): Promise<Response> {
@@ -95,20 +101,27 @@ export async function GET(): Promise<Response> {
             }
             
             console.log(`Mengambil pesanan untuk ${shop.shop_name}...`);
-            const orders = await getAllOrders(shop.shop_id, shop.access_token);
-            console.log(`${shop.shop_name}: ditemukan ${orders.length} pesanan`);
+            const orderResult = await getAllOrders(shop.shop_id, shop.access_token);
+            console.log(`${shop.shop_name}: Total ${orderResult.totalOrders} pesanan, ${orderResult.successfulOrders} berhasil diproses`);
             
             allShopOrders.push({
                 shop_name: shop.shop_name,
                 shop_id: shop.shop_id,
-                orders: orders
+                total_orders: orderResult.totalOrders,
+                successful_orders: orderResult.successfulOrders,
+                orders: orderResult.orders
             });
         }
 
         return NextResponse.json({
             success: true,
             message: 'Berhasil mendapatkan semua pesanan',
-            data: allShopOrders
+            data: allShopOrders,
+            summary: allShopOrders.map(shop => ({
+                shop_name: shop.shop_name,
+                total_orders: shop.total_orders,
+                successful_orders: shop.successful_orders
+            }))
         }, { status: 200 });
     } catch (error) {
         console.error('Error in GET orders:', error);
