@@ -2,8 +2,6 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import dayjs from 'dayjs';
-import Image from 'next/image';
 import { format } from 'date-fns';
 
 // Shadcn UI imports
@@ -33,27 +31,37 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Search } from "lucide-react";
 
 // Interfaces
-interface Item {
-  item_id: number;
-  model_id: number;
-  name: string;
-  model_name: string;
-  original_price: number;
-  current_price: number;
-  promotion_price: number;
-  stock: number;
-  status?: number;
+interface UnqualifiedCondition {
+  unqualified_code: number;
+  unqualified_msg: string;
 }
 
 interface FailedItem {
-  err_code: number;
-  err_msg: string;
   item_id: number;
   model_id: number;
-  unqualified_conditions: {
-    unqualified_code: number;
-    unqualified_msg: string;
-  }[];
+  err_code?: number;
+  err_msg: string;
+  unqualified_conditions?: UnqualifiedCondition[];
+}
+
+interface FlashSaleItem {
+  item_id: number;
+  item_name: string;
+  image: string;
+}
+
+interface Item {
+  item_id: number;
+  model_id: number;
+  model_name: string;
+  original_price: number;
+  promotion_price_with_tax: number;
+  input_promotion_price?: number;
+  campaign_stock: number;
+  purchase_limit: number;
+  reject_reason: string;
+  status: number;
+  stock: number;
 }
 
 interface FlashSaleData {
@@ -63,7 +71,7 @@ interface FlashSaleData {
   start_time: number;
   end_time: number;
   status: string;
-  items: Item[];
+  items: FlashSaleItem[];
   models: Item[];
 }
 
@@ -72,6 +80,7 @@ interface Product {
   item_name: string;
   item_sku: string;
   image: {
+    image_id_list: any;
     image_url_list: string[];
   };
   models: {
@@ -120,7 +129,6 @@ export default function FlashSaleDetailPage() {
   const [loading, setLoading] = useState(false);
   const [activatedModels, setActivatedModels] = useState<Set<string>>(new Set());
   const [registeredItems, setRegisteredItems] = useState<Set<number>>(new Set());
-  const [failedItems, setFailedItems] = useState<FailedItem[]>([]);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -204,106 +212,206 @@ export default function FlashSaleDetailPage() {
     }
   };
 
-  // Fungsi untuk mengaktifkan/menonaktifkan model tunggal
-  const handleActivateSingleModel = async (
-    itemId: number, 
-    modelId: number, 
-    isActive: boolean,
-    promoPrice?: number,
-    stockValue?: number
-  ) => {
+  // Tambahkan fungsi helper untuk membedakan item terdaftar dan baru
+  const isItemRegistered = (itemId: number) => {
+    return registeredItems.has(itemId);
+  };
+
+  // Modifikasi handleActivateSingleModel
+  const handleActivateSingleModel = async (itemId: number, modelId: number, isActive: boolean) => {
     try {
-      const modelData: any = {
-        model_id: modelId,
-        status: isActive ? 1 : 0
-      };
-
-      // Hanya tambahkan promoPrice dan stock jika mengaktifkan model (isActive true)
-      if (isActive) {
-        if (promoPrice !== undefined) {
-          modelData.input_promo_price = promoPrice;
+      if (!isActive) {
+        // Nonaktifkan model (hanya untuk item yang sudah terdaftar)
+        if (!isItemRegistered(itemId)) {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Tidak dapat menonaktifkan item yang belum terdaftar"
+          });
+          return;
         }
-        if (stockValue !== undefined) {
-          modelData.stock = stockValue;
-        }
-      }
 
-      const requestBody = {
-        shop_id: shopId,
-        flash_sale_id: flashSaleId,
-        items: [{
-          item_id: itemId,
-          ...(isActive && { purchase_limit: 0 }),
-          models: [modelData]
-        }]
-      };
+        const response = await fetch('/api/flashsale/items/update', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            shop_id: shopId,
+            flash_sale_id: flashSaleId,
+            items: [{
+              item_id: itemId,
+              models: [{
+                model_id: modelId,
+                status: 0
+              }]
+            }]
+          })
+        });
 
-      const response = await fetch('/api/flashsale/items/update', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
+        const data = await response.json();
+        
+        if (data.success) {
+          // Cek apakah ada failed items
+          if (data.data?.failed_items?.length > 0) {
+            const failedItem = data.data.failed_items[0];
+            const errorMessages = failedItem.unqualified_conditions
+              ?.map((condition: UnqualifiedCondition) => condition.unqualified_msg)
+              .join(', ');
+              
+            toast({
+              variant: "destructive",
+              title: "Gagal menonaktifkan model",
+              description: errorMessages || failedItem.err_msg
+            });
+            return;
+          }
 
-      const data = await response.json();
-      
-      if (data.success) {
-        // Cek apakah ada failed items
-        const hasFailedItems = data.data?.failed_items?.some(
-          (item: any) => item.item_id === itemId && item.model_id === modelId
-        );
-
-        if (!hasFailedItems) {
-          // Update activatedModels hanya jika tidak ada error
+          // Update state hanya jika tidak ada error
           setActivatedModels(prev => {
             const next = new Set(prev);
-            const modelKey = `${itemId}-${modelId}`;
-            if (isActive) {
-              next.add(modelKey);
-            } else {
-              next.delete(modelKey);
-            }
+            next.delete(`${itemId}-${modelId}`);
             return next;
           });
 
-          // Update status di flashSaleData
           setFlashSaleData(prev => {
             if (!prev) return prev;
             return {
               ...prev,
-              models: prev.models.map(model => {
-                if (model.item_id === itemId && model.model_id === modelId) {
-                  return {
-                    ...model,
-                    status: isActive ? 1 : 0
-                  };
+              models: prev.models.map(m => {
+                if (m.item_id === itemId && m.model_id === modelId) {
+                  return { ...m, status: 0 } as Item;
                 }
-                return model;
+                return m;
               })
             };
           });
 
           toast({
             title: "Berhasil",
-            description: `Model berhasil ${isActive ? 'diaktifkan' : 'dinonaktifkan'}`
+            description: "Model berhasil dinonaktifkan"
           });
         } else {
-          // Tampilkan pesan error jika gagal
-          const failedItem = data.data.failed_items.find(
-            (item: any) => item.item_id === itemId && item.model_id === modelId
-          );
-          
           toast({
             variant: "destructive",
             title: "Error",
-            description: failedItem?.err_msg || `Gagal ${isActive ? 'mengaktifkan' : 'menonaktifkan'} model`
+            description: data.message || "Gagal menonaktifkan model"
           });
         }
       } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: data.message || `Gagal ${isActive ? 'mengaktifkan' : 'menonaktifkan'} model`
+        const model = flashSaleData?.models.find(
+          m => m.item_id === itemId && m.model_id === modelId
+        );
+        
+        if (!model) return;
+
+        // Cek apakah semua model dalam item ini tidak aktif
+        const allModelsInactive = flashSaleData?.models
+          .filter(m => m.item_id === itemId)
+          .every(m => m.status === 0);
+
+        // Tentukan endpoint dan body berdasarkan status registrasi dan status model
+        const endpoint = isItemRegistered(itemId) 
+          ? '/api/flashsale/items/update'
+          : '/api/flashsale/items/add';
+
+        const requestBody = isItemRegistered(itemId) 
+          ? {
+              shop_id: Number(shopId),
+              flash_sale_id: Number(flashSaleId),
+              items: [{
+                item_id: itemId,
+                // Sertakan purchase_limit jika semua model tidak aktif
+                ...(allModelsInactive && { purchase_limit: 0 }),
+                models: [{
+                  model_id: modelId,
+                  status: 1,
+                  input_promo_price: model.input_promotion_price,
+                  stock: model.campaign_stock
+                }]
+              }]
+            }
+          : {
+              shop_id: Number(shopId),
+              flash_sale_id: Number(flashSaleId),
+              items: [{
+                item_id: itemId,
+                purchase_limit: 0,
+                models: [{
+                  model_id: modelId,
+                  input_promo_price: model.input_promotion_price,
+                  stock: model.campaign_stock
+                }]
+              }]
+            };
+
+        const response = await fetch(endpoint, {
+          method: isItemRegistered(itemId) ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
         });
+
+        const data = await response.json();
+        
+        if (data.success) {
+          // Cek apakah ada failed items
+          if (data.data?.failed_items?.length > 0) {
+            const failedItem = data.data.failed_items[0];
+            const errorMessages = failedItem.unqualified_conditions
+              ?.map((condition: UnqualifiedCondition) => condition.unqualified_msg)
+              .join(', ');
+            
+            toast({
+              variant: "destructive",
+              title: "Gagal mengaktifkan model",
+              description: errorMessages || failedItem.err_msg
+            });
+            return;
+          }
+
+          // Update registeredItems jika ini item baru
+          if (!isItemRegistered(itemId)) {
+            setRegisteredItems(prev => {
+              const next = new Set(prev);
+              next.add(itemId);
+              return next;
+            });
+          }
+
+          // Update state
+          setActivatedModels(prev => {
+            const next = new Set(prev);
+            next.add(`${itemId}-${modelId}`);
+            return next;
+          });
+
+          setFlashSaleData(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              models: prev.models.map(m => {
+                if (m.item_id === itemId && m.model_id === modelId) {
+                  return { 
+                    ...m, 
+                    status: 1,
+                    input_promotion_price: model.input_promotion_price,
+                    campaign_stock: model.campaign_stock
+                  } as Item;
+                }
+                return m;
+              })
+            };
+          });
+
+          toast({
+            title: "Berhasil",
+            description: "Model berhasil diaktifkan"
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: data.message || "Gagal mengaktifkan model"
+          });
+        }
       }
     } catch (error) {
       toast({
@@ -412,107 +520,229 @@ export default function FlashSaleDetailPage() {
     setSelectedModels(newSelected);
   };
 
-  // Fungsi baru untuk mass update
+  // Modifikasi handleMassActivation
   const handleMassActivation = async (activate: boolean) => {
     try {
       const modelKeys = Array.from(selectedModels);
-      const updates = modelKeys.reduce((acc: any[], key) => {
+      const registeredModels: any[] = [];
+      const newModels: any[] = [];
+
+      // Buat Map untuk mengelompokkan model berdasarkan item_id
+      const itemModelsMap = new Map<number, {
+        models: any[],
+        allInactive: boolean
+      }>();
+
+      // Pertama, kelompokkan model berdasarkan item_id
+      modelKeys.forEach(key => {
         const [itemId, modelId] = key.split('-').map(Number);
-        
-        // Skip jika status sudah sesuai
-        if (activate === activatedModels.has(key)) return acc;
-        
-        const existingItem = acc.find(item => item.item_id === itemId);
-        const modelData = {
-          model_id: modelId,
-          status: activate ? 1 : 0
-        };
-
-        if (existingItem) {
-          existingItem.models.push(modelData);
-        } else {
-          acc.push({
-            item_id: itemId,
-            ...(activate && { purchase_limit: 0 }),
-            models: [modelData]
-          });
-        }
-        
-        return acc;
-      }, []);
-
-      if (updates.length === 0) return;
-
-      const response = await fetch('/api/flashsale/items/update', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          shop_id: shopId,
-          flash_sale_id: flashSaleId,
-          items: updates
-        })
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        // Buat Set untuk menyimpan model yang gagal
-        const failedModels = new Set(
-          data.data.failed_items?.map((item: any) => `${item.item_id}-${item.model_id}`) || []
+        const model = flashSaleData?.models.find(
+          m => m.item_id === itemId && m.model_id === modelId
         );
 
-        // Update activatedModels state, hanya untuk model yang berhasil
-        setActivatedModels(prev => {
-          const next = new Set(prev);
-          modelKeys.forEach(key => {
-            if (activate) {
-              // Hanya tambahkan jika tidak ada di failedModels
-              if (!failedModels.has(key)) {
-                next.add(key);
-              }
-            } else {
-              next.delete(key);
+        if (!model) return;
+
+        if (!itemModelsMap.has(itemId)) {
+          // Cek apakah semua model dalam item ini tidak aktif
+          const allItemModels = flashSaleData?.models.filter(m => m.item_id === itemId) || [];
+          const allInactive = allItemModels.length > 0 ? allItemModels.every(m => m.status === 0) : true;
+          
+          itemModelsMap.set(itemId, {
+            models: [],
+            allInactive
+          });
+        }
+
+        const itemData = itemModelsMap.get(itemId);
+        if (itemData) {
+          itemData.models.push(model);
+        }
+      });
+
+      // Kemudian, proses setiap item
+      itemModelsMap.forEach((itemData, itemId) => {
+        if (isItemRegistered(itemId)) {
+          // Untuk item yang sudah terdaftar
+          const modelData = itemData.models.map(model => 
+            activate ? {
+              model_id: model.model_id,
+              status: 1,
+              input_promo_price: model.input_promotion_price,
+              stock: model.campaign_stock
+            } : {
+              model_id: model.model_id,
+              status: 0
             }
-          });
-          return next;
-        });
+          );
 
-        // Update flashSaleData state untuk mengubah status model
-        setFlashSaleData(prev => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            models: prev.models.map(model => {
-              const modelKey = `${model.item_id}-${model.model_id}`;
-              if (selectedModels.has(modelKey) && !failedModels.has(modelKey)) {
-                return {
-                  ...model,
-                  status: activate ? 1 : 0
-                };
-              }
-              return model;
+          registeredModels.push({
+            item_id: itemId,
+            // Sertakan purchase_limit jika semua model tidak aktif
+            ...(itemData.allInactive && activate && { purchase_limit: 0 }),
+            models: modelData
+          });
+        } else if (activate) {
+          // Untuk item baru
+          newModels.push({
+            item_id: itemId,
+            purchase_limit: 0, // Selalu sertakan untuk item baru
+            models: itemData.models.map(model => ({
+              model_id: model.model_id,
+              input_promo_price: model.input_promotion_price,
+              stock: model.campaign_stock
+            }))
+          });
+        }
+      });
+
+      // Lanjutkan dengan kode yang ada untuk mengirim request...
+      const requests = [];
+      
+      if (registeredModels.length > 0) {
+        requests.push(
+          fetch('/api/flashsale/items/update', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              shop_id: shopId,
+              flash_sale_id: flashSaleId,
+              items: registeredModels
             })
-          };
-        });
-
-        // Tampilkan toast success
-        const successCount = modelKeys.length - failedModels.size;
-        if (successCount > 0) {
-          toast({
-            title: "Berhasil",
-            description: `${successCount} model berhasil ${activate ? 'diaktifkan' : 'dinonaktifkan'}`
-          });
-        }
-
-        // Tampilkan toast error untuk yang gagal
-        if (failedModels.size > 0) {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: `${failedModels.size} model gagal ${activate ? 'diaktifkan' : 'dinonaktifkan'}`
-          });
-        }
+          })
+        );
       }
+
+      if (newModels.length > 0) {
+        requests.push(
+          fetch('/api/flashsale/items/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              shop_id: shopId,
+              flash_sale_id: flashSaleId,
+              items: newModels
+            })
+          })
+        );
+      }
+
+      const responses = await Promise.all(requests);
+      const results = await Promise.all(responses.map(r => r.json()));
+
+      // Proses hasil
+      let successCount = 0;
+      let failedCount = 0;
+      const newRegisteredItems = new Set(registeredItems);
+
+      results.forEach(result => {
+        if (result.success) {
+          // Update registeredItems untuk item baru yang berhasil
+          if (result.data?.items) {
+            result.data.items.forEach((item: any) => {
+              newRegisteredItems.add(item.item_id);
+            });
+          }
+          successCount += result.data?.success_count || 0;
+
+          // Buat Set untuk menyimpan model yang gagal
+          const failedModels = new Set(
+            (result.data?.failed_items || []).map((item: FailedItem) => 
+              `${item.item_id}-${item.model_id}`
+            )
+          );
+
+          // Update hanya untuk model yang berhasil
+          modelKeys.forEach(key => {
+            // Skip jika model ini ada di failed_items
+            if (failedModels.has(key)) return;
+
+            const [itemId, modelId] = key.split('-').map(Number);
+            
+            if (activate) {
+              // Aktifkan model
+              setActivatedModels(prev => {
+                const next = new Set(prev);
+                next.add(`${itemId}-${modelId}`);
+                return next;
+              });
+            } else {
+              // Nonaktifkan model
+              setActivatedModels(prev => {
+                const next = new Set(prev);
+                next.delete(`${itemId}-${modelId}`);
+                return next;
+              });
+            }
+
+            // Update flashSaleData
+            setFlashSaleData(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                models: prev.models.map(m => {
+                  if (m.item_id === itemId && m.model_id === modelId) {
+                    const model = flashSaleData?.models.find(
+                      fm => fm.item_id === itemId && fm.model_id === modelId
+                    );
+                    
+                    if (activate && model) {
+                      return { 
+                        ...m,
+                        status: 1,
+                        input_promotion_price: model.input_promotion_price || model.promotion_price_with_tax,
+                        campaign_stock: model.campaign_stock || 0
+                      } as Item;
+                    } else {
+                      return {
+                        ...m,
+                        status: 0
+                      } as Item;
+                    }
+                  }
+                  return m;
+                })
+              };
+            });
+          });
+        }
+        
+        // Update failedCount dan tampilkan detail error
+        if (result.data?.failed_items) {
+          failedCount += result.data.failed_items.length;
+          
+          // Tampilkan detail error untuk setiap item yang gagal
+          result.data.failed_items.forEach((failedItem: FailedItem) => {
+            const errorMessages = failedItem.unqualified_conditions
+              ?.map((condition: UnqualifiedCondition) => condition.unqualified_msg)
+              .join(', ');
+              
+            toast({
+              variant: "destructive",
+              title: `Error pada item ${failedItem.item_id}`,
+              description: errorMessages || failedItem.err_msg
+            });
+          });
+        }
+      });
+
+      // Update state
+      setRegisteredItems(newRegisteredItems);
+
+      // Tampilkan notifikasi
+      if (successCount > 0) {
+        toast({
+          title: "Berhasil",
+          description: `${successCount} model berhasil ${activate ? 'diaktifkan' : 'dinonaktifkan'}`
+        });
+      }
+      if (failedCount > 0) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `${failedCount} model gagal ${activate ? 'diaktifkan' : 'dinonaktifkan'}`
+        });
+      }
+
     } catch (error) {
       toast({
         variant: "destructive",
@@ -577,51 +807,50 @@ export default function FlashSaleDetailPage() {
   const handleConfirmProducts = async () => {
     const selectedProducts = products.filter(p => selectedProductIds.has(p.item_id));
     
-    // Ubah format data produk sesuai dengan struktur yang dibutuhkan
-    const newModels = selectedProducts.flatMap(product => 
+    // Buat array untuk items baru dengan type FlashSaleItem
+    const newItems: FlashSaleItem[] = selectedProducts.map(product => ({
+      item_id: product.item_id,
+      item_name: product.item_name,
+      image: product.image.image_url_list[0]
+    }));
+
+    // Buat array untuk models baru dengan type Item
+    const newModels: Item[] = selectedProducts.flatMap(product => 
       product.models.map(model => ({
         item_id: product.item_id,
         model_id: model.model_id,
-        name: product.item_name,   // Gunakan name sesuai interface Item
         model_name: model.model_name,
         original_price: model.price_info.original_price,
-        current_price: model.price_info.current_price,
-        promotion_price: model.price_info.current_price,
-        stock: Math.min(20, (model.stock_info?.seller_stock ?? 0) - (model.stock_info?.total_reserved_stock ?? 0)),
-        image: product.image.image_url_list[0],
-        status: 0
+        promotion_price_with_tax: model.price_info.current_price,
+        input_promotion_price: model.price_info.current_price,
+        campaign_stock: Math.min(20, (model.stock_info?.seller_stock ?? 0) - (model.stock_info?.total_reserved_stock ?? 0)),
+        purchase_limit: 0,
+        reject_reason: "",
+        status: 0,
+        stock: model.stock_info?.seller_stock ?? 0
       }))
     );
 
-    // Update flashSaleData dengan item baru
     setFlashSaleData(prev => {
       if (!prev) return prev;
 
-      // Konversi produk baru ke format Item yang sesuai
-      const newItems = selectedProducts.map(product => {
-        const firstModel = product.models[0];
-        return {
-          item_id: product.item_id,
-          model_id: firstModel.model_id,
-          name: product.item_name,   // Gunakan name sesuai interface Item
-          model_name: firstModel.model_name,
-          original_price: firstModel.price_info.original_price,
-          current_price: firstModel.price_info.current_price,
-          promotion_price: firstModel.price_info.current_price,
-          stock: Math.min(20, (firstModel.stock_info?.seller_stock ?? 0) - (firstModel.stock_info?.total_reserved_stock ?? 0)),
-          image: product.image.image_url_list[0],
-          status: 0
-        } as Item; // Pastikan tipe data sesuai dengan Item
-      });
+      const existingItemIds = new Set(prev.items.map(item => item.item_id));
+      const filteredNewItems = newItems.filter(item => !existingItemIds.has(item.item_id));
+
+      const existingModelKeys = new Set(
+        prev.models.map(model => `${model.item_id}-${model.model_id}`)
+      );
+      const filteredNewModels = newModels.filter(
+        model => !existingModelKeys.has(`${model.item_id}-${model.model_id}`)
+      );
 
       return {
         ...prev,
-        items: [...prev.items, ...newItems],
-        models: [...prev.models, ...newModels]
+        items: [...prev.items, ...filteredNewItems],
+        models: [...prev.models, ...filteredNewModels]
       };
     });
 
-    // Reset state dialog
     setIsProductDialogOpen(false);
     setSelectedProductIds(new Set());
 
@@ -834,46 +1063,55 @@ export default function FlashSaleDetailPage() {
                             </button>
                           </div>
                           <div className="relative w-8 h-8">
-                            <img
-                              src={item.image}
-                              alt={item.name}
-                              className="w-8 h-8 object-cover rounded-sm"
+                            <img 
+                              src={`https://down-id.img.susercontent.com/${item.image}`}
+                              alt={item.item_name}
+                              className="object-cover rounded-md w-full h-full"
+                              onError={(e) => {
+                                e.currentTarget.src = '/placeholder-image.jpg';
+                              }}
                             />
                           </div>
-                          <span className="font-medium text-sm">
-                            {item.name}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{item.item_name}</span>
+                            {isItemRegistered(item.item_id) ? (
+                              <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">
+                                Terdaftar
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
+                                Belum Terdaftar
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                     </TableRow>
 
                     {/* Model rows */}
                     {!collapsedItems.has(item.item_id) && itemModels.map((model: any) => (
-                      <TableRow key={`${item.item_id}-${model.model_id}`}>
+                      <TableRow key={`${model.item_id}-${model.model_id}`}>
                         <TableCell>
                           <Checkbox
                             checked={selectedModels.has(`${model.item_id}-${model.model_id}`)}
                             onCheckedChange={() => toggleModelSelection(model.item_id, model.model_id)}
                           />
                         </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-gray-500">
-                            {model.model_name}
-                          </span>
-                        </TableCell>
+                        <TableCell>{model.model_name}</TableCell>
                         <TableCell>{formatRupiah(model.original_price)}</TableCell>
-                        <TableCell>{formatRupiah(model.current_price)}</TableCell>
+                        <TableCell>{formatRupiah(model.promotion_price_with_tax || model.promotion_price)}</TableCell>
                         <TableCell>
                           <Input
                             type="number"
-                            value={model.promotion_price}
+                            value={model.input_promotion_price || model.promotion_price_with_tax}
                             className="w-28 h-9"
+                            disabled={activatedModels.has(`${model.item_id}-${model.model_id}`)}
                             onChange={(e) => {
                               const value = parseInt(e.target.value);
                               if (!isNaN(value)) {
                                 const updatedModels = flashSaleData.models.map((m: any) => {
                                   if (m.item_id === model.item_id && m.model_id === model.model_id) {
-                                    return { ...m, promotion_price: value };
+                                    return { ...m, input_promotion_price: value };
                                   }
                                   return m;
                                 });
@@ -888,6 +1126,7 @@ export default function FlashSaleDetailPage() {
                             type="number"
                             value={model.campaign_stock}
                             className="w-24 h-9"
+                            disabled={activatedModels.has(`${model.item_id}-${model.model_id}`)}
                             onChange={(e) => {
                               const value = parseInt(e.target.value);
                               if (!isNaN(value)) {
@@ -909,9 +1148,7 @@ export default function FlashSaleDetailPage() {
                               handleActivateSingleModel(
                                 model.item_id, 
                                 model.model_id, 
-                                checked,
-                                checked ? model.input_promotion_price : undefined,
-                                checked ? model.campaign_stock : undefined
+                                checked
                               )
                             }
                           />

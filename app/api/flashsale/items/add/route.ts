@@ -6,6 +6,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { shop_id, flash_sale_id, items } = body;
 
+    // Konversi ke number
+    const shopIdNumber = Number(shop_id);
+    const flashSaleIdNumber = Number(flash_sale_id);
+
+    // Validasi
+    if (isNaN(shopIdNumber) || isNaN(flashSaleIdNumber)) {
+      return NextResponse.json(
+        { error: 'shop_id dan flash_sale_id harus berupa angka yang valid' },
+        { status: 400 }
+      );
+    }
+
     // Log request headers
     console.log('=== REQUEST HEADERS ===');
     const headers: Record<string, string> = {};
@@ -65,8 +77,8 @@ export async function POST(request: NextRequest) {
 
     console.log('=== SENDING REQUEST TO SHOPEE API ===');
     const startTime = new Date();
-    const result = await addShopFlashSaleItems(shop_id, { 
-      flash_sale_id,
+    const result = await addShopFlashSaleItems(shopIdNumber, { 
+      flash_sale_id: flashSaleIdNumber,
       items: items 
     });
     const endTime = new Date();
