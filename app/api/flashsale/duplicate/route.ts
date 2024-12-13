@@ -114,21 +114,19 @@ export async function POST(request: NextRequest) {
 
             // Buat flash sale baru
             console.log('Creating new flash sale:', { shop_id, timeslot_id });
-            const createResponse = await NextResponse.json(
-              await fetch(new NextRequest('http://localhost:10000/api/flashsale/create', {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ shop_id, timeslot_id })
-              }))
-            );
+            const createResponse = await fetch('http://localhost:10000/api/flashsale/create', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ shop_id, timeslot_id })
+            });
 
             const createData = await createResponse.json();
             console.log('Create flash sale response:', createData);
-            
-            if (createData.success) {
-              const newFlashSaleId = createData.data.flash_sale_id;
+
+            if (createData?.response?.flash_sale_id) {
+              const newFlashSaleId = createData.response.flash_sale_id;
               console.log('New flash sale created:', { newFlashSaleId });
               
               let items = [];
@@ -206,24 +204,22 @@ export async function POST(request: NextRequest) {
                   itemCount: items.length
                 });
 
-                const addResponse = await NextResponse.json(
-                  await fetch(new NextRequest('http://localhost:10000/api/flashsale/items/add', {
-                    method: 'POST',
-                    headers: { 
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      shop_id,
-                      flash_sale_id: newFlashSaleId,
-                      items
-                    })
-                  }))
-                );
+                const addResponse = await fetch('http://localhost:10000/api/flashsale/items/add', {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    shop_id,
+                    flash_sale_id: newFlashSaleId,
+                    items
+                  })
+                });
 
                 const addData = await addResponse.json();
                 console.log('Add items response:', addData);
 
-                if (addData.success) {
+                if (addData?.response?.success || addData?.response?.status === 1) {
                   duplicatedFlashSales.push({
                     timeslot_id,
                     flash_sale_id: newFlashSaleId,
