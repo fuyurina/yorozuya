@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
 
           try {
             // Tambahkan base URL untuk request dari server
-            const baseUrl = 'http://localhost:3000';
+            const baseUrl = 'http://localhost:100000';
 
             // Buat flash sale baru
             console.log('Creating new flash sale:', { shop_id, timeslot_id });
