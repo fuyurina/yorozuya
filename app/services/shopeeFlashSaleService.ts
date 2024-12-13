@@ -387,6 +387,56 @@ export async function deleteShopFlashSaleItems(
   }
 }
 
+interface FlashSaleItem {
+  item_id: number;
+  item_name: string;
+  image: string;
+  status: number;
+}
+
+interface FlashSaleModel {
+  item_id: number;
+  model_id: number;
+  model_name: string;
+  original_price: number;
+  promotion_price_with_tax: number;
+  campaign_stock: number;
+  purchase_limit: number;
+  status: number;
+  stock: number;
+}
+
+interface FlashSaleItemsResponse {
+  item_info: FlashSaleItem[];
+  models: FlashSaleModel[];
+}
+
+export function processFlashSaleItems(response: any): FlashSaleItemsResponse {
+  const items = response.response.item_info.map((item: any) => ({
+    item_id: item.item_id,
+    item_name: item.item_name,
+    image: item.image,
+    status: item.status
+  }));
+
+  const models = response.response.models.map((model: any) => ({
+    item_id: model.item_id,
+    model_id: model.model_id,
+    model_name: model.model_name,
+    original_price: model.original_price,
+    promotion_price_with_tax: model.promotion_price_with_tax,
+    campaign_stock: model.campaign_stock,
+    purchase_limit: model.purchase_limit,
+    status: model.status,
+    stock: model.stock
+  }));
+
+  return {
+    item_info: items,
+    models: models
+  };
+}
+
 export async function getShopFlashSaleItems(
   shopId: number,
   flashSaleId: number,
@@ -440,4 +490,51 @@ export async function getShopFlashSaleItems(
       message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
     };
   }
+} 
+
+interface FlashSaleAddItemModel {
+  model_id: number;
+  input_promo_price: number;
+  stock: number;
+}
+
+interface FlashSaleAddItem {
+  item_id: number;
+  purchase_limit: number;
+  models: FlashSaleAddItemModel[];
+}
+
+interface FlashSaleAddItemsRequest {
+  shop_id: string;
+  flash_sale_id: string;
+  items: FlashSaleAddItem[];
+}
+
+export function prepareFlashSaleAddItems(
+  shopId: string, 
+  flashSaleId: string, 
+  items: FlashSaleItemsResponse
+): FlashSaleAddItemsRequest {
+  // Transform items dan models menjadi format yang sesuai untuk add items
+  const formattedItems = items.item_info.map(item => {
+    const itemModels = items.models
+      .filter(model => model.item_id === item.item_id)
+      .map(model => ({
+        model_id: model.model_id,
+        input_promo_price: model.promotion_price_with_tax,
+        stock: model.campaign_stock
+      }));
+
+    return {
+      item_id: item.item_id,
+      purchase_limit: 0, // Default 0 sesuai contoh
+      models: itemModels
+    };
+  });
+
+  return {
+    shop_id: shopId,
+    flash_sale_id: flashSaleId,
+    items: formattedItems
+  };
 } 

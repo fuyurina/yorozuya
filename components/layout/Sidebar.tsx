@@ -13,7 +13,8 @@ import {
   KeyRound,
   Percent,
   ShoppingBag,
-  Package
+  Package,
+  Zap
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -33,6 +34,7 @@ export const navItems = [
   { href: '/orders', icon: ShoppingBag, label: 'Orders' },
   { href: '/ubah_pesanan', icon: ShoppingCart, label: 'Perubahan Pesanan' },
   { href: '/produk', icon: Package, label: 'Produk' },
+  { href: '/flashsale', icon: Zap, label: 'Flash Sale' },
   { href: '/ads', icon: Megaphone, label: 'Iklan' },
   { href: '/shops', icon: Store, label: 'Shops' },
   { href: '/keluhan', icon: AlertCircle, label: 'Keluhan' },

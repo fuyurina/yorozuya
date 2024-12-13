@@ -1,8 +1,9 @@
 'use client';
 import React from 'react';
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
+import { toast } from "sonner";
 
 // Shadcn UI imports
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -16,9 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { toast } from "@/components/ui/use-toast";
 import { Checkbox } from "@/components/ui/checkbox"
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -29,6 +29,17 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 
 // Interfaces
 interface UnqualifiedCondition {
@@ -66,11 +77,13 @@ interface Item {
 
 interface FlashSaleData {
   flash_sale_id: number;
-  shop_id: number;
-  shop_name: string;
   start_time: number;
   end_time: number;
-  status: string;
+  status: number;
+  item_count: number;
+  enabled_item_count: number;
+  timeslot_id: number;
+  type: number;
   items: FlashSaleItem[];
   models: Item[];
 }
@@ -116,9 +129,10 @@ const formatRupiah = (amount: number) => {
 
 export default function FlashSaleDetailPage() {
   const params = useParams();
-  const searchParams = new URLSearchParams(window.location.search);
+  const searchParams = useSearchParams();
   const shopId = searchParams.get('shop_id');
   const flashSaleId = searchParams.get('flash_sale_id');
+  const shopName = decodeURIComponent(searchParams.get('shop_name') || '');
   
   const [flashSaleData, setFlashSaleData] = useState<FlashSaleData | null>(null);
   const [selectedModels, setSelectedModels] = useState<Set<string>>(new Set());
@@ -134,23 +148,29 @@ export default function FlashSaleDetailPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<number | number[] | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [hasLoadedProducts, setHasLoadedProducts] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Tambahkan validasi parameter di awal
   useEffect(() => {
+    // Pastikan searchParams sudah tersedia
+    if (!searchParams.has('shop_id') || !searchParams.has('flash_sale_id')) {
+      return;
+    }
+
     if (!shopId || !flashSaleId || isNaN(Number(shopId)) || isNaN(Number(flashSaleId))) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Parameter shop_id dan flash_sale_id harus berupa angka yang valid"
-      });
+      toast.error("Parameter shop_id dan flash_sale_id harus berupa angka yang valid");
       return;
     }
 
     const fetchData = async () => {
       setLoading(true);
       try {
-        const flashSaleIdInt = Math.abs(parseInt(flashSaleId || '0'));
-        const shopIdInt = Math.abs(parseInt(shopId || '0'));
+        const flashSaleIdInt = Math.abs(parseInt(flashSaleId));
+        const shopIdInt = Math.abs(parseInt(shopId));
 
         const [detailRes, itemsRes] = await Promise.all([
           fetch(`/api/flashsale/detail?shop_id=${shopIdInt}&flash_sale_id=${flashSaleIdInt}`),
@@ -184,31 +204,44 @@ export default function FlashSaleDetailPage() {
           setRegisteredItems(registeredSet);
         }
       } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Gagal mengambil data flash sale",
-        });
+        toast.error("Gagal mengambil data flash sale");
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [shopId, flashSaleId]);
+  }, [shopId, flashSaleId, searchParams]);
+
+  // Tambahkan loading indicator
+  if (loading) {
+    return (
+      <div className="p-6">
+        <Card className="bg-white shadow-sm border-0">
+          <CardContent className="flex items-center justify-center h-[200px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+              <p className="text-gray-600">Memuat data flash sale...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Pindahkan toggleAllItems ke dalam komponen
   const toggleAllItems = () => {
-    const allModelKeys = flashSaleData?.models.map(
-      model => `${model.item_id}-${model.model_id}`
-    ) || [];
+    // Filter hanya model dengan stok > 0
+    const availableModelKeys = flashSaleData?.models
+      .filter(model => model.stock > 0)
+      .map(model => `${model.item_id}-${model.model_id}`) || [];
     
-    const allSelected = allModelKeys.every(key => selectedModels.has(key));
+    const allSelected = availableModelKeys.every(key => selectedModels.has(key));
     
     if (allSelected) {
       setSelectedModels(new Set());
     } else {
-      setSelectedModels(new Set(allModelKeys));
+      setSelectedModels(new Set(availableModelKeys));
     }
   };
 
@@ -223,11 +256,7 @@ export default function FlashSaleDetailPage() {
       if (!isActive) {
         // Nonaktifkan model (hanya untuk item yang sudah terdaftar)
         if (!isItemRegistered(itemId)) {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Tidak dapat menonaktifkan item yang belum terdaftar"
-          });
+          toast.error("Tidak dapat menonaktifkan item yang belum terdaftar");
           return;
         }
 
@@ -257,11 +286,7 @@ export default function FlashSaleDetailPage() {
               ?.map((condition: UnqualifiedCondition) => condition.unqualified_msg)
               .join(', ');
               
-            toast({
-              variant: "destructive",
-              title: "Gagal menonaktifkan model",
-              description: errorMessages || failedItem.err_msg
-            });
+            toast.error(`Gagal menonaktifkan model: ${errorMessages || failedItem.err_msg}`);
             return;
           }
 
@@ -285,16 +310,9 @@ export default function FlashSaleDetailPage() {
             };
           });
 
-          toast({
-            title: "Berhasil",
-            description: "Model berhasil dinonaktifkan"
-          });
+          toast.success("Model berhasil dinonaktifkan");
         } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: data.message || "Gagal menonaktifkan model"
-          });
+          toast.error(data.message || "Gagal menonaktifkan model");
         }
       } else {
         const model = flashSaleData?.models.find(
@@ -359,11 +377,7 @@ export default function FlashSaleDetailPage() {
               ?.map((condition: UnqualifiedCondition) => condition.unqualified_msg)
               .join(', ');
             
-            toast({
-              variant: "destructive",
-              title: "Gagal mengaktifkan model",
-              description: errorMessages || failedItem.err_msg
-            });
+            toast.error(`Gagal mengaktifkan model: ${errorMessages || failedItem.err_msg}`);
             return;
           }
 
@@ -401,90 +415,53 @@ export default function FlashSaleDetailPage() {
             };
           });
 
-          toast({
-            title: "Berhasil",
-            description: "Model berhasil diaktifkan"
-          });
+          toast.success("Model berhasil diaktifkan");
         } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: data.message || "Gagal mengaktifkan model"
-          });
+          toast.error(data.message || "Gagal mengaktifkan model");
         }
       }
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: `Terjadi kesalahan saat ${isActive ? 'mengaktifkan' : 'menonaktifkan'} model`
-      });
+      toast.error(`Terjadi kesalahan saat ${isActive ? 'mengaktifkan' : 'menonaktifkan'} model`);
     }
   };
 
   // Fungsi untuk mass update
-  const handleMassUpdate = async (field: 'promotion_price' | 'stock' | 'discount', value: number) => {
+  const handleMassUpdate = (field: 'promotion_price' | 'stock' | 'discount', value: number) => {
     if (selectedModels.size === 0) return;
 
-    const updates = Array.from(selectedModels).map(modelKey => {
-      const [itemId, modelId] = modelKey.split('-').map(Number);
-      const model = flashSaleData?.models.find(
-        m => m.item_id === itemId && m.model_id === modelId
-      );
-
-      if (!model) return null;
-
-      let updateValue = value;
-      if (field === 'discount') {
-        updateValue = Math.floor(model.original_price * (1 - value / 100));
-      }
-
-      return {
-        item_id: itemId,
-        models: [{
-          model_id: modelId,
-          status: 1, // Mengaktifkan model
-          input_promo_price: field === 'discount' || field === 'promotion_price' ? updateValue : undefined,
-          stock: field === 'stock' ? updateValue : undefined
-        }]
-      };
-    }).filter(Boolean);
-
-    try {
-      const response = await fetch('/api/flashsale/items/update', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          shop_id: shopId,
-          flash_sale_id: flashSaleId,
-          items: updates
-        })
-      });
-
-      const data = await response.json();
+    setFlashSaleData(prev => {
+      if (!prev) return prev;
       
-      if (data.success) {
-        toast({
-          title: "Berhasil",
-          description: "Item berhasil diperbarui"
-        });
-        
-        // Refresh data
-        window.location.reload();
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: data.message || "Gagal memperbarui item"
-        });
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Gagal memperbarui item"
-      });
-    }
+      return {
+        ...prev,
+        models: prev.models.map(model => {
+          // Cek apakah model ini termasuk yang dipilih
+          if (selectedModels.has(`${model.item_id}-${model.model_id}`)) {
+            let updateValue = value;
+            
+            // Hitung harga diskon jika tipe update adalah discount
+            if (field === 'discount') {
+              updateValue = Math.floor(model.original_price * (1 - value / 100));
+            }
+
+            return {
+              ...model,
+              // Update input_promotion_price jika field adalah promotion_price atau discount
+              input_promotion_price: field === 'promotion_price' || field === 'discount' 
+                ? updateValue 
+                : model.input_promotion_price,
+              // Update campaign_stock jika field adalah stock
+              campaign_stock: field === 'stock' 
+                ? updateValue 
+                : model.campaign_stock
+            };
+          }
+          return model;
+        })
+      };
+    });
+
+    toast.success(`${selectedModels.size} model berhasil diperbarui`);
   };
 
   // Tambahkan fungsi untuk toggle model selection
@@ -502,10 +479,12 @@ export default function FlashSaleDetailPage() {
   // Tambahkan fungsi untuk toggle semua model dalam satu item
   const toggleAllModels = (itemId: number, models: any[]) => {
     const newSelected = new Set(selectedModels);
-    const allModelKeys = models.map(model => `${itemId}-${model.model_id}`);
+    // Filter hanya model dengan stok > 0
+    const availableModels = models.filter(model => model.stock > 0);
+    const allModelKeys = availableModels.map(model => `${itemId}-${model.model_id}`);
     
-    // Check if all models are already selected
-    const allSelected = models.every(model => 
+    // Check if all available models are already selected
+    const allSelected = availableModels.every(model => 
       newSelected.has(`${itemId}-${model.model_id}`)
     );
     
@@ -513,7 +492,7 @@ export default function FlashSaleDetailPage() {
       // Unselect all models of this item
       allModelKeys.forEach(key => newSelected.delete(key));
     } else {
-      // Select all models of this item
+      // Select all available models of this item
       allModelKeys.forEach(key => newSelected.add(key));
     }
     
@@ -533,14 +512,15 @@ export default function FlashSaleDetailPage() {
         allInactive: boolean
       }>();
 
-      // Pertama, kelompokkan model berdasarkan item_id
+      // Pertama, kelompokkan model berdasarkan item_id dan filter model yang perlu diupdate
       modelKeys.forEach(key => {
         const [itemId, modelId] = key.split('-').map(Number);
         const model = flashSaleData?.models.find(
           m => m.item_id === itemId && m.model_id === modelId
         );
 
-        if (!model) return;
+        // Skip jika model tidak ditemukan atau status sudah sesuai
+        if (!model || (activate ? model.status === 1 : model.status === 0)) return;
 
         if (!itemModelsMap.has(itemId)) {
           // Cek apakah semua model dalam item ini tidak aktif
@@ -559,7 +539,13 @@ export default function FlashSaleDetailPage() {
         }
       });
 
-      // Kemudian, proses setiap item
+      // Jika tidak ada model yang perlu diupdate, keluar dari fungsi
+      if (itemModelsMap.size === 0) {
+        toast.info(`Tidak ada model yang perlu di${activate ? 'aktifkan' : 'nonaktifkan'}`);
+        return;
+      }
+
+      // Sisa kode sama seperti sebelumnya...
       itemModelsMap.forEach((itemData, itemId) => {
         if (isItemRegistered(itemId)) {
           // Untuk item yang sudah terdaftar
@@ -575,17 +561,18 @@ export default function FlashSaleDetailPage() {
             }
           );
 
-          registeredModels.push({
-            item_id: itemId,
-            // Sertakan purchase_limit jika semua model tidak aktif
-            ...(itemData.allInactive && activate && { purchase_limit: 0 }),
-            models: modelData
-          });
+          if (modelData.length > 0) {
+            registeredModels.push({
+              item_id: itemId,
+              ...(itemData.allInactive && activate && { purchase_limit: 0 }),
+              models: modelData
+            });
+          }
         } else if (activate) {
           // Untuk item baru
           newModels.push({
             item_id: itemId,
-            purchase_limit: 0, // Selalu sertakan untuk item baru
+            purchase_limit: 0,
             models: itemData.models.map(model => ({
               model_id: model.model_id,
               input_promo_price: model.input_promotion_price,
@@ -626,47 +613,55 @@ export default function FlashSaleDetailPage() {
         );
       }
 
+      // Eksekusi semua request (bisa items/add dan/atau items/update)
       const responses = await Promise.all(requests);
       const results = await Promise.all(responses.map(r => r.json()));
 
-      // Proses hasil
-      let successCount = 0;
-      let failedCount = 0;
+      // Inisialisasi Set baru dari registeredItems yang ada
       const newRegisteredItems = new Set(registeredItems);
+
+      // Kumpulkan semua failed items dari semua response
+      const failedItems = new Set(
+        results.flatMap(result => 
+          result.data?.failed_items?.map((item: FailedItem) => 
+            `${item.item_id}-${item.model_id}`
+          ) || []
+        )
+      );
+
+      // Proses setiap hasil
+      let successCount = 0;
+      let failedCount = failedItems.size;
 
       results.forEach(result => {
         if (result.success) {
-          // Update registeredItems untuk item baru yang berhasil
-          if (result.data?.items) {
-            result.data.items.forEach((item: any) => {
-              newRegisteredItems.add(item.item_id);
+          if (activate) {
+            // Untuk request items/add, tambahkan item ke registeredItems 
+            // hanya jika setidaknya satu model berhasil
+            newModels.forEach(item => {
+              const hasSuccessfulModel = item.models.some((model: { model_id: number }) => 
+                !failedItems.has(`${item.item_id}-${model.model_id}`)
+              );
+              if (hasSuccessfulModel) {
+                newRegisteredItems.add(item.item_id);
+              }
             });
           }
-          successCount += result.data?.success_count || 0;
 
-          // Buat Set untuk menyimpan model yang gagal
-          const failedModels = new Set(
-            (result.data?.failed_items || []).map((item: FailedItem) => 
-              `${item.item_id}-${item.model_id}`
-            )
-          );
-
-          // Update hanya untuk model yang berhasil
+          // Update model status, skip yang gagal
           modelKeys.forEach(key => {
-            // Skip jika model ini ada di failed_items
-            if (failedModels.has(key)) return;
+            // Skip update jika model ini gagal
+            if (failedItems.has(key)) return;
 
             const [itemId, modelId] = key.split('-').map(Number);
             
             if (activate) {
-              // Aktifkan model
               setActivatedModels(prev => {
                 const next = new Set(prev);
                 next.add(`${itemId}-${modelId}`);
                 return next;
               });
             } else {
-              // Nonaktifkan model
               setActivatedModels(prev => {
                 const next = new Set(prev);
                 next.delete(`${itemId}-${modelId}`);
@@ -704,83 +699,77 @@ export default function FlashSaleDetailPage() {
               };
             });
           });
-        }
-        
-        // Update failedCount dan tampilkan detail error
-        if (result.data?.failed_items) {
-          failedCount += result.data.failed_items.length;
-          
-          // Tampilkan detail error untuk setiap item yang gagal
-          result.data.failed_items.forEach((failedItem: FailedItem) => {
-            const errorMessages = failedItem.unqualified_conditions
-              ?.map((condition: UnqualifiedCondition) => condition.unqualified_msg)
-              .join(', ');
-              
-            toast({
-              variant: "destructive",
-              title: `Error pada item ${failedItem.item_id}`,
-              description: errorMessages || failedItem.err_msg
-            });
-          });
+
+          // Tampilkan pesan error untuk failed items
+          if (failedItems.size > 0) {
+            const errorMessages = results
+              .flatMap(result => 
+                result.data?.failed_items?.map((item: FailedItem) => 
+                  `Model ${item.model_id}: ${item.err_msg}`
+                ) || []
+              )
+              .join('\n');
+
+            toast.error(`Beberapa model gagal diaktifkan: ${errorMessages}`);
+          }
+
+          successCount = modelKeys.length - failedCount;
+        } else {
+          failedCount = modelKeys.length;
+          toast.error(`Gagal memperbarui item: ${result.message || "Gagal memperbarui item"}`);
         }
       });
 
-      // Update state
+      // Update registeredItems setelah semua proses selesai
       setRegisteredItems(newRegisteredItems);
 
-      // Tampilkan notifikasi
+      // Tampilkan notifikasi sukses jika ada
       if (successCount > 0) {
-        toast({
-          title: "Berhasil",
-          description: `${successCount} model berhasil ${activate ? 'diaktifkan' : 'dinonaktifkan'}`
-        });
-      }
-      if (failedCount > 0) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: `${failedCount} model gagal ${activate ? 'diaktifkan' : 'dinonaktifkan'}`
-        });
+        toast.success(`${successCount} model berhasil ${activate ? 'diaktifkan' : 'dinonaktifkan'}`);
       }
 
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: `Gagal ${activate ? 'mengaktifkan' : 'menonaktifkan'} item`
-      });
+      toast.error(`Gagal ${activate ? 'mengaktifkan' : 'menonaktifkan'} item`);
     }
   };
 
-  // Tambahkan fungsi untuk membuka dialog dan mengambil data produk
-  const handleAddProduct = async () => {
+  // Modifikasi fungsi handleAddProduct
+  const handleAddProduct = () => {
+    setIsProductDialogOpen(true);
+    
+    // Hanya ambil data jika belum pernah diambil sebelumnya
+    if (!hasLoadedProducts) {
+      fetchProducts();
+    }
+  };
+
+  // Pisahkan logika fetch products ke fungsi terpisah
+  const fetchProducts = async () => {
     if (!shopId) return;
     
-    setIsProductDialogOpen(true);
     setLoadingProducts(true);
-    
     try {
       const response = await fetch(`/api/produk?shop_id=${shopId}`);
       const data = await response.json();
       
       if (data.success) {
         setProducts(data.data.items);
+        setHasLoadedProducts(true);
       } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: 'Gagal mengambil daftar produk',
-        });
+        toast.error('Gagal mengambil daftar produk');
       }
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: 'Terjadi kesalahan saat mengambil data produk',
-      });
+      toast.error('Terjadi kesalahan saat mengambil data produk');
     } finally {
       setLoadingProducts(false);
+      setIsRefreshing(false);
     }
+  };
+
+  // Tambahkan fungsi untuk refresh data
+  const handleRefreshProducts = () => {
+    setIsRefreshing(true);
+    fetchProducts();
   };
 
   // Fungsi untuk menangani pemilihan produk
@@ -811,7 +800,7 @@ export default function FlashSaleDetailPage() {
     const newItems: FlashSaleItem[] = selectedProducts.map(product => ({
       item_id: product.item_id,
       item_name: product.item_name,
-      image: product.image.image_url_list[0]
+      image: product.image.image_id_list[0]
     }));
 
     // Buat array untuk models baru dengan type Item
@@ -846,145 +835,311 @@ export default function FlashSaleDetailPage() {
 
       return {
         ...prev,
-        items: [...prev.items, ...filteredNewItems],
-        models: [...prev.models, ...filteredNewModels]
+        // Tempatkan item baru di awal array
+        items: [...filteredNewItems, ...prev.items],
+        // Tempatkan model baru di awal array
+        models: [...filteredNewModels, ...prev.models]
       };
     });
 
     setIsProductDialogOpen(false);
     setSelectedProductIds(new Set());
 
-    toast({
-      title: "Berhasil",
-      description: `${newModels.length} model produk berhasil ditambahkan`,
-    });
+    toast.success(`${newModels.length} model produk berhasil ditambahkan`);
+  };
+
+  // Tambahkan fungsi untuk menghapus item
+  const handleDeleteItems = async () => {
+    if (selectedModels.size === 0) return;
+
+    const itemIds = Array.from(selectedModels).map(key => parseInt(key.split('-')[0]));
+    const uniqueItemIds = Array.from(new Set(itemIds));
+    
+    // Buka dialog dengan menyimpan items yang akan dihapus
+    setItemToDelete(uniqueItemIds);
+    setDeleteDialogOpen(true);
+  };
+
+  // Tambahkan fungsi untuk menghapus single item
+  const handleDeleteSingleItem = (itemId: number) => {
+    setItemToDelete(itemId);
+    setDeleteDialogOpen(true);
+  };
+
+  // Tambahkan fungsi untuk mengeksekusi penghapusan
+  const executeDelete = async () => {
+    if (!itemToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const itemIds = Array.isArray(itemToDelete) ? itemToDelete : [itemToDelete];
+      
+      // Pisahkan item yang terdaftar dan belum terdaftar
+      const registeredItemIds = itemIds.filter(id => registeredItems.has(id));
+      const unregisteredItemIds = itemIds.filter(id => !registeredItems.has(id));
+      
+      // Jika ada item terdaftar, hapus melalui API
+      if (registeredItemIds.length > 0) {
+        const response = await fetch(
+          `/api/flashsale/items/delete?shop_id=${shopId}&flash_sale_id=${flashSaleId}&item_ids=${registeredItemIds.join(',')}`,
+          { method: 'DELETE' }
+        );
+        const data = await response.json();
+
+        if (!data.success) {
+          toast.error(`Gagal menghapus item: ${data.message || "Gagal menghapus item"}`);
+          return;
+        }
+      }
+
+      // Update state untuk semua item (terdaftar dan tidak terdaftar)
+      setFlashSaleData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.filter(item => !itemIds.includes(item.item_id)),
+          models: prev.models.filter(model => !itemIds.includes(model.item_id))
+        };
+      });
+
+      // Update registered items untuk item yang terdaftar
+      if (registeredItemIds.length > 0) {
+        setRegisteredItems(prev => {
+          const next = new Set(prev);
+          registeredItemIds.forEach(id => next.delete(id));
+          return next;
+        });
+      }
+
+      // Update selected models
+      setSelectedModels(prev => {
+        const next = new Set(prev);
+        itemIds.forEach(itemId => {
+          Array.from(prev).forEach(key => {
+            if (key.startsWith(`${itemId}-`)) {
+              next.delete(key);
+            }
+          });
+        });
+        return next;
+      });
+
+      // Tampilkan pesan sukses yang sesuai
+      if (registeredItemIds.length > 0 && unregisteredItemIds.length > 0) {
+        toast.success(`${registeredItemIds.length} item berhasil dihapus dari flash sale dan ${unregisteredItemIds.length} item dihapus dari tabel`);
+      } else if (registeredItemIds.length > 0) {
+        toast.success(`${registeredItemIds.length} item berhasil dihapus dari flash sale`);
+      } else {
+        toast.success(`${unregisteredItemIds.length} item berhasil dihapus dari tabel`);
+      }
+
+    } catch (error) {
+      toast.error("Terjadi kesalahan saat menghapus item");
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
+    }
   };
 
   // Render komponen
   return (
     <div className="p-6">
       <Card className="bg-white shadow-sm border-0">
-        <CardHeader className="pb-4 border-b">
-          <CardTitle className="text-lg font-medium">Detail Flash Sale</CardTitle>
-        </CardHeader>
         <CardContent className="pt-6">
           {/* Info Flash Sale */}
-          <div className="bg-gray-50 p-4 rounded-lg mb-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm font-medium text-gray-700">ID Flash Sale:</span>
-                <span className="text-sm text-gray-900 ml-2">{flashSaleId}</span>
+          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            <h2 className="text-lg font-semibold mb-4">Detail Flash Sale</h2>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {/* Kolom 1 */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-gray-500 block mb-1">ID Flash Sale</label>
+                  <p className="font-medium">{flashSaleId}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-500 block mb-1">ID Time Slot</label>
+                  <p className="font-medium">{flashSaleData?.timeslot_id}</p>
+                </div>
               </div>
-              <div>
-                <span className="text-sm font-medium text-gray-700">Toko:</span>
-                <span className="text-sm text-gray-900 ml-2">{flashSaleData?.shop_name}</span>
+
+              {/* Kolom 2 */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-gray-500 block mb-1">Toko</label>
+                  <p className="font-medium">{shopName}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-500 block mb-1">Status</label>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${Number(flashSaleData?.status) === 1 ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <span className={`font-medium ${Number(flashSaleData?.status) === 1 ? 'text-green-600' : 'text-red-600'}`}>
+                      {Number(flashSaleData?.status) === 1 ? 'Aktif' : 'Nonaktif'}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <span className="text-sm font-medium text-gray-700">Waktu Flash Sale:</span>
-                <span className="text-sm text-gray-900 ml-2">
-                  {flashSaleData && `${format(new Date(flashSaleData.start_time * 1000), "PPP")} ${formatTime(flashSaleData.start_time)} - ${formatTime(flashSaleData.end_time)}`}
-                </span>
+
+              {/* Kolom 3 */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-gray-500 block mb-1">Waktu Flash Sale</label>
+                  <p className="font-medium">
+                    {flashSaleData && `${format(new Date(flashSaleData.start_time * 1000), "PPP")}`}
+                    <br />
+                    {flashSaleData && `${formatTime(flashSaleData.start_time)} - ${formatTime(flashSaleData.end_time)}`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Kolom 4 */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-gray-500 block mb-1">Total Produk</label>
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <p className="font-medium">{flashSaleData?.item_count ?? 0}</p>
+                      <span className="text-sm text-gray-500">Total</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{flashSaleData?.enabled_item_count ?? 0}</p>
+                      <span className="text-sm text-gray-500">Aktif</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-500 block mb-1">Tipe</label>
+                  <p className="font-medium">
+                    {Number(flashSaleData?.type) === 1 ? 'Regular Flash Sale' : 'Special Flash Sale'}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Mass Update Controls */}
-          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg mb-4">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span className="font-medium">
-                Pilih model untuk update massal
+          <div className="flex items-center gap-4 p-5 bg-white rounded-lg shadow-sm border mb-6">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">
+                Mass Update
               </span>
+              <Badge 
+                variant="secondary" 
+                className="bg-gray-100 text-gray-700 hover:bg-gray-100"
+              >
+                {selectedModels.size} model terpilih
+              </Badge>
             </div>
 
-            <div className="h-4 w-px bg-gray-300 mx-2" />
+            <div className="h-4 w-px bg-gray-200 mx-2" />
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Select onValueChange={(value: 'fixed' | 'percentage') => {
-                  setUpdateType(value);
-                  setPromoPrice(null);
-                }}>
-                  <SelectTrigger className="w-[140px] h-8 text-sm">
-                    <SelectValue placeholder="Harga promo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fixed">Harga Tetap</SelectItem>
-                    <SelectItem value="percentage">Persentase Diskon</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="flex items-center gap-3 flex-1">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Select 
+                    onValueChange={(value: 'fixed' | 'percentage') => {
+                      setUpdateType(value);
+                      setPromoPrice(null);
+                    }}
+                    value={updateType}
+                  >
+                    <SelectTrigger className="h-9 text-sm bg-white">
+                      <SelectValue placeholder="Tipe harga promo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed">Harga Tetap</SelectItem>
+                      <SelectItem value="percentage">Persentase Diskon</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                <Input
-                  type="number"
-                  placeholder={updateType === 'fixed' ? "Masukkan harga" : "Masukkan %"}
-                  className="w-28 h-8 text-sm"
-                  value={promoPrice || ''}
-                  min={0}
-                  max={updateType === 'percentage' ? 100 : undefined}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value);
-                    if (!isNaN(value)) {
-                      setPromoPrice(value);
-                    }
-                  }}
-                />
+                  <Input
+                    type="number"
+                    placeholder={updateType === 'fixed' ? "Masukkan harga" : "Masukkan %"}
+                    className="h-9 text-sm w-32"
+                    value={promoPrice || ''}
+                    min={0}
+                    max={updateType === 'percentage' ? 100 : undefined}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value);
+                      if (!isNaN(value)) {
+                        setPromoPrice(value);
+                      }
+                    }}
+                  />
+
+                  <Input
+                    type="number"
+                    placeholder="Stok"
+                    className="h-9 text-sm w-32"
+                    value={stockValue || ''}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value);
+                      if (!isNaN(value)) {
+                        setStockValue(value);
+                      }
+                    }}
+                  />
+
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (promoPrice !== null) {
+                        if (updateType === 'fixed') {
+                          handleMassUpdate('promotion_price', promoPrice);
+                        } else {
+                          handleMassUpdate('discount', promoPrice);
+                        }
+                      }
+                      if (stockValue !== null) {
+                        handleMassUpdate('stock', stockValue);
+                      }
+                    }}
+                    disabled={selectedModels.size === 0}
+                    className="h-9 bg-black text-white hover:bg-black/90"
+                  >
+                    Update
+                  </Button>
+                </div>
               </div>
 
-              <Input
-                type="number"
-                placeholder="Stok"
-                className="w-28 h-8 text-sm"
-                value={stockValue || ''}
-                onChange={(e) => {
-                  const value = parseInt(e.target.value);
-                  if (!isNaN(value)) {
-                    setStockValue(value);
-                  }
-                }}
-              />
+              <div className="h-4 w-px bg-gray-200 mx-2" />
 
-              <Button
-                type="button"
-                onClick={() => {
-                  if (promoPrice !== null) {
-                    if (updateType === 'fixed') {
-                      handleMassUpdate('promotion_price', promoPrice);
-                    } else {
-                      handleMassUpdate('discount', promoPrice);
-                    }
-                  }
-                  if (stockValue !== null) {
-                    handleMassUpdate('stock', stockValue);
-                  }
-                }}
-                disabled={selectedModels.size === 0}
-                className="h-8 px-4 bg-black text-white hover:bg-black/90 text-sm"
-              >
-                Update
-              </Button>
+              <div className="flex items-center gap-2 ml-auto">
+                <Button
+                  onClick={() => handleMassActivation(true)}
+                  className="h-9 bg-emerald-500 text-white hover:bg-emerald-600"
+                  disabled={selectedModels.size === 0}
+                >
+                  Aktifkan
+                </Button>
 
-              {selectedModels.size > 0 && (
-                <>
-                  <Button
-                    onClick={() => handleMassActivation(true)}
-                    className="h-8 px-4 bg-green-500 text-white hover:bg-green-600 text-sm"
-                  >
-                    Aktifkan
-                  </Button>
+                <Button
+                  onClick={() => handleMassActivation(false)}
+                  className="h-9 bg-rose-500 text-white hover:bg-rose-600"
+                  disabled={selectedModels.size === 0}
+                >
+                  Nonaktifkan
+                </Button>
 
-                  <Button
-                    onClick={() => handleMassActivation(false)}
-                    className="h-8 px-4 bg-red-500 text-white hover:bg-red-600 text-sm"
-                  >
-                    Nonaktifkan
-                  </Button>
-                </>
-              )}
-
-              {selectedModels.size > 0 && (
-                <span className="text-sm text-gray-600">
-                  {selectedModels.size} model terpilih
-                </span>
-              )}
+                <Button
+                  onClick={handleDeleteItems}
+                  className="h-9 bg-red-600 text-white hover:bg-red-700"
+                  disabled={selectedModels.size === 0 || isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                      Menghapus...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-1.5" />
+                      Hapus Item
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -1032,58 +1187,74 @@ export default function FlashSaleDetailPage() {
                     {/* Item row */}
                     <TableRow className="bg-gray-50">
                       <TableCell colSpan={8}>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              checked={itemModels.every(model => 
-                                selectedModels.has(`${item.item_id}-${model.model_id}`)
-                              )}
-                              onCheckedChange={() => toggleAllModels(item.item_id, itemModels)}
-                            />
-                            <button 
-                              onClick={() => {
-                                setCollapsedItems(prev => {
-                                  const next = new Set(prev);
-                                  if (next.has(item.item_id)) {
-                                    next.delete(item.item_id);
-                                  } else {
-                                    next.add(item.item_id);
-                                  }
-                                  return next;
-                                });
-                              }}
-                              type="button"
-                              className="p-0.5 hover:bg-gray-200 rounded-sm transition-colors"
-                            >
-                              {collapsedItems.has(item.item_id) ? (
-                                <ChevronRight className="h-4 w-4" />
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={itemModels.every(model => 
+                                  selectedModels.has(`${item.item_id}-${model.model_id}`)
+                                )}
+                                onCheckedChange={() => toggleAllModels(item.item_id, itemModels)}
+                              />
+                              <button 
+                                onClick={() => {
+                                  setCollapsedItems(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(item.item_id)) {
+                                      next.delete(item.item_id);
+                                    } else {
+                                      next.add(item.item_id);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                type="button"
+                                className="p-0.5 hover:bg-gray-200 rounded-sm transition-colors"
+                              >
+                                {collapsedItems.has(item.item_id) ? (
+                                  <ChevronRight className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </button>
+                            </div>
+                            <div className="relative w-8 h-8">
+                              <img 
+                                src={`https://down-id.img.susercontent.com/${item.image}`}
+                                alt={item.item_name}
+                                className="object-cover rounded-md w-full h-full"
+                                onError={(e) => {
+                                  e.currentTarget.src = '/placeholder-image.jpg';
+                                }}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{item.item_name}</span>
+                              {isItemRegistered(item.item_id) ? (
+                                <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">
+                                  Terdaftar
+                                </span>
                               ) : (
-                                <ChevronDown className="h-4 w-4" />
+                                <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
+                                  Belum Terdaftar
+                                </span>
                               )}
-                            </button>
+                            </div>
                           </div>
-                          <div className="relative w-8 h-8">
-                            <img 
-                              src={`https://down-id.img.susercontent.com/${item.image}`}
-                              alt={item.item_name}
-                              className="object-cover rounded-md w-full h-full"
-                              onError={(e) => {
-                                e.currentTarget.src = '/placeholder-image.jpg';
-                              }}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{item.item_name}</span>
-                            {isItemRegistered(item.item_id) ? (
-                              <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">
-                                Terdaftar
-                              </span>
+                          
+                          <Button
+                            onClick={() => handleDeleteSingleItem(item.item_id)}
+                            variant="ghost"
+                            className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            disabled={isDeleting}
+                          >
+                            {isDeleting && itemToDelete === item.item_id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2" />
                             ) : (
-                              <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
-                                Belum Terdaftar
-                              </span>
+                              <Trash2 className="h-4 w-4 mr-1" />
                             )}
-                          </div>
+                            {isDeleting && itemToDelete === item.item_id ? 'Menghapus...' : 'Hapus'}
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1095,6 +1266,7 @@ export default function FlashSaleDetailPage() {
                           <Checkbox
                             checked={selectedModels.has(`${model.item_id}-${model.model_id}`)}
                             onCheckedChange={() => toggleModelSelection(model.item_id, model.model_id)}
+                            disabled={model.stock === 0}
                           />
                         </TableCell>
                         <TableCell>{model.model_name}</TableCell>
@@ -1165,7 +1337,44 @@ export default function FlashSaleDetailPage() {
           <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
             <DialogContent className="sm:max-w-[900px]">
               <DialogHeader>
-                <DialogTitle>Pilih Produk</DialogTitle>
+                <div className="flex justify-between items-center">
+                  <DialogTitle>Pilih Produk</DialogTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefreshProducts}
+                    disabled={isRefreshing || loadingProducts}
+                    className="flex items-center gap-2"
+                  >
+                    {(isRefreshing || loadingProducts) ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black" />
+                        Memuat...
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="h-4 w-4"
+                        >
+                          <path d="M21 2v6h-6" />
+                          <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                          <path d="M3 22v-6h6" />
+                          <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                        </svg>
+                        Refresh
+                      </>
+                    )}
+                  </Button>
+                </div>
               </DialogHeader>
               
               <div className="relative">
@@ -1200,17 +1409,19 @@ export default function FlashSaleDetailPage() {
                     {products.map((product) => {
                       const lowestPrice = Math.min(...product.models.map(m => m.price_info.current_price));
                       const totalStock = product.models.reduce((sum, m) => sum + m.stock_info.total_available_stock, 0);
+                      const isExisting = flashSaleData?.items.some(item => item.item_id === product.item_id) ?? false;
                       
                       return (
                         <TableRow 
                           key={product.item_id} 
-                          className="cursor-pointer hover:bg-gray-50"
-                          onClick={() => handleProductSelect(product.item_id)}
+                          className={`cursor-pointer hover:bg-gray-50 ${isExisting ? 'opacity-50' : ''}`}
+                          onClick={() => !isExisting && handleProductSelect(product.item_id)}
                         >
                           <TableCell className="w-[50px]">
                             <Checkbox
                               checked={selectedProductIds.has(product.item_id)}
-                              onCheckedChange={() => handleProductSelect(product.item_id)}
+                              onCheckedChange={() => !isExisting && handleProductSelect(product.item_id)}
+                              disabled={isExisting}
                               onClick={(e) => e.stopPropagation()}
                             />
                           </TableCell>
@@ -1228,7 +1439,12 @@ export default function FlashSaleDetailPage() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell>{product.item_name}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {product.item_name}
+                              {isExisting}
+                            </div>
+                          </TableCell>
                           <TableCell>{product.item_sku}</TableCell>
                           <TableCell>{formatRupiah(lowestPrice)}</TableCell>
                           <TableCell>{totalStock}</TableCell>
@@ -1264,6 +1480,47 @@ export default function FlashSaleDetailPage() {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Tambahkan Alert Dialog */}
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Konfirmasi Penghapusan</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {Array.isArray(itemToDelete) ? (
+                    <>
+                      Apakah Anda yakin ingin menghapus {itemToDelete.length} item yang dipilih dari flash sale ini?
+                      <br />
+                      Tindakan ini tidak dapat dibatalkan.
+                    </>
+                  ) : (
+                    <>
+                      Apakah Anda yakin ingin menghapus item ini dari flash sale?
+                      <br />
+                      Tindakan ini tidak dapat dibatalkan.
+                    </>
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={executeDelete}
+                  disabled={isDeleting}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                      Menghapus...
+                    </>
+                  ) : (
+                    'Ya, Hapus'
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
     </div>
