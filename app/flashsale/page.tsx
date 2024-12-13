@@ -335,9 +335,9 @@ export default function FlashSalePage() {
   // Mengambil daftar flash sale ketika toko dipilih
   useEffect(() => {
     if (selectedShop) {
-      fetchFlashSales();
+      fetchFlashSales(currentPage, pageSize);
     }
-  }, [selectedShop, selectedType]);
+  }, [selectedShop, selectedType, currentPage, pageSize]);
 
   const fetchFlashSales = async (page: number = 1, pageSize: number = 10) => {
     if (!selectedShop) return;
@@ -994,30 +994,14 @@ export default function FlashSalePage() {
   };
 
   const ProgressList = () => {
-    if (!duplicateProgress) return null;
-
-    // Filter dan urutkan progress details
     const sortedProgressDetails = useMemo(() => {
+      if (!duplicateProgress) return [];
+      
       return Object.values(progressDetails)
-        .filter(detail => detail.flash_sale_id) // Filter hanya yang valid
-        .sort((a, b) => {
-          // Urutkan berdasarkan flash_sale_id terbaru
-          return b.flash_sale_id - a.flash_sale_id;
-        })
-        .slice(0, duplicateProgress.total); // Batasi sesuai jumlah slot yang dipilih
-    }, [progressDetails, duplicateProgress.total]);
-
-    return (
-      <div className="mt-4 space-y-2 max-h-[300px] overflow-y-auto pr-2">
-        {sortedProgressDetails.map((detail) => (
-          <ProgressItem 
-            key={detail.flash_sale_id} 
-            detail={detail}
-          />
-        ))}
-      </div>
-    );
-  };
+        .filter(detail => detail.flash_sale_id)
+        .sort((a, b) => b.flash_sale_id - a.flash_sale_id)
+        .slice(0, duplicateProgress.total);
+    }, [duplicateProgress]);
 
   return (
     <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
@@ -1695,4 +1679,5 @@ export default function FlashSalePage() {
       <DeleteConfirmDialog />
     </div>
   );
-} 
+  }
+}
