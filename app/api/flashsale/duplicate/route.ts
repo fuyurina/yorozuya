@@ -109,9 +109,12 @@ export async function POST(request: NextRequest) {
           );
 
           try {
+            // Tambahkan base URL untuk request dari server
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
             // Buat flash sale baru
             console.log('Creating new flash sale:', { shop_id, timeslot_id });
-            const createResponse = await fetch('/api/flashsale/create', {
+            const createResponse = await fetch(`${baseUrl}/api/flashsale/create`, {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json'
@@ -201,7 +204,7 @@ export async function POST(request: NextRequest) {
                   itemCount: items.length
                 });
 
-                const addResponse = await fetch('/api/flashsale/items/add', {
+                const addResponse = await fetch(`${baseUrl}/api/flashsale/items/add`, {
                   method: 'POST',
                   headers: { 
                     'Content-Type': 'application/json'
