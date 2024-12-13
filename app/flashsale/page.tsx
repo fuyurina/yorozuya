@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
 import { getAllShops } from '@/app/services/shopeeService';
-import { Card } from '@/components/ui/card';
+
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -24,15 +24,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+
 import {
   Dialog,
   DialogContent,
@@ -46,8 +38,9 @@ import {
   RadioGroupItem,
 } from "@/components/ui/radio-group";
 import { format } from 'date-fns';
-import { X, AlertTriangle, Plus, CalendarDays, Clock, Eye, Bell, MoreVertical, Check, Trash2 } from 'lucide-react';
+import { X, AlertTriangle, Plus, CalendarDays, Clock, Eye, Bell, MoreVertical, Check, Trash2, Copy } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 import { Checkbox } from "@/components/ui/checkbox"
 
@@ -84,14 +77,182 @@ type FlashSaleStatus = 1 | 2;
 
 // Definisikan interface untuk progress detail
 interface ProgressDetail {
-  step: 'create' | 'register' | 'complete';
   flash_sale_id: number;
   timeslot_id?: number;
-  total_items?: number;
-  successful_items?: number;
+  step: 'create' | 'register' | 'complete';
   status: string;
-  success?: boolean;
+  total_items: number;
+  successful_items: number;
+  error?: string;
 }
+
+interface StepStatus {
+  create: 'pending' | 'processing' | 'success' | 'error';
+  register: 'pending' | 'processing' | 'success' | 'error';
+  complete: 'pending' | 'processing' | 'success' | 'error';
+}
+
+// Update class untuk animasi dengan dukungan dark mode
+const progressItemClass = `
+  transition-all duration-300 ease-in-out
+  transform hover:scale-[1.02]
+  dark:border-gray-800
+`;
+
+// Definisikan interface untuk duplicateProgress
+interface DuplicateProgress {
+  total: number;
+  current: number;
+  status: string;
+}
+
+// Buat komponen ErrorBoundary
+import { Component, ErrorInfo, ReactNode } from 'react';
+
+interface Props {
+  children?: ReactNode;
+  fallback: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+}
+
+class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false
+  };
+
+  public static getDerivedStateFromError(_: Error): State {
+    return { hasError: true };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Error:', error, errorInfo);
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+
+    return this.props.children;
+  }
+}
+
+// Tambahkan interface untuk StepIndicator
+interface StepIndicatorProps {
+  step: 'create' | 'register' | 'complete';
+  currentStep: 'create' | 'register' | 'complete';
+  success: boolean;
+  error: boolean;
+}
+
+// Pindahkan fungsi getStatusBadge ke luar komponen
+const getStatusBadge = (status: number, type: number) => {
+  switch (type) {
+    case 1:
+      return <Badge variant="secondary">Akan Datang</Badge>
+    case 2:
+      return <Badge className="bg-green-500">Sedang Berlangsung</Badge>
+    case 3:
+      return <Badge variant="destructive">Berakhir</Badge>
+    default:
+      return null;
+  }
+};
+
+// Update interface FlashSaleCard
+const FlashSaleCard = ({ 
+  sale, 
+  onStatusChange, 
+  onDelete, 
+  onDuplicate, 
+  shopName,
+  selectedShop 
+}: {
+  sale: FlashSale;
+  onStatusChange: (id: number, status: FlashSaleStatus) => void;
+  onDelete: (id: number) => void;
+  onDuplicate: (id: number) => void;
+  shopName?: string;
+  selectedShop: number;
+}) => {
+  const router = useRouter();
+
+  return (
+    <div className="p-3 border rounded-lg space-y-2.5 dark:border-gray-800">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">#{sale.flash_sale_id}</span>
+          {getStatusBadge(sale.status, sale.type)}
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => {
+              router.push(`/flashsale/detail?shop_id=${selectedShop}&shop_name=${encodeURIComponent(shopName || '')}&flash_sale_id=${sale.flash_sale_id}`);
+            }}>
+              <Eye className="w-4 h-4 mr-2" />
+              Detail
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onDuplicate(sale.flash_sale_id)}>
+              <Copy className="w-4 h-4 mr-2" />
+              Duplikat
+            </DropdownMenuItem>
+            {sale.status !== 3 && (
+              <DropdownMenuItem 
+                onClick={() => onDelete(sale.flash_sale_id)}
+                className="text-red-600"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Hapus
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Periode dan Statistik */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <div className="flex items-center text-sm">
+            <CalendarDays className="w-4 h-4 mr-1.5 text-muted-foreground" />
+            {dayjs(sale.start_time * 1000).format('DD/MM/YYYY')}
+          </div>
+          <div className="flex items-center text-sm">
+            <Clock className="w-4 h-4 mr-1.5 text-muted-foreground" />
+            <span className="font-semibold text-blue-600">
+              {dayjs(sale.start_time * 1000).format('HH:mm')} - {dayjs(sale.end_time * 1000).format('HH:mm')}
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-1 text-right">
+          <div className="text-sm">
+            <span className="font-medium">{sale.enabled_item_count}</span>
+            <span className="text-muted-foreground"> / {sale.item_count} item</span>
+          </div>
+          <div className="flex items-center justify-end gap-3 text-sm text-muted-foreground">
+            <span className="flex items-center">
+              <Eye className="w-3.5 h-3.5 mr-1" />
+              {sale.click_count}
+            </span>
+            <span className="flex items-center">
+              <Bell className="w-3.5 h-3.5 mr-1" />
+              {sale.remindme_count}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function FlashSalePage() {
   const [loading, setLoading] = useState(false);
@@ -119,17 +280,14 @@ export default function FlashSalePage() {
   const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
   const [selectedSlots, setSelectedSlots] = useState<number[]>([]);
   const [duplicatingFlashSaleId, setDuplicatingFlashSaleId] = useState<number | null>(null);
-  const [duplicateProgress, setDuplicateProgress] = useState<{
-    total: number;
-    current: number;
-    status: string;
-  } | null>(null);
+  const [duplicateProgress, setDuplicateProgress] = useState<DuplicateProgress | null>(null);
   const [progressDetails, setProgressDetails] = useState<Record<number, ProgressDetail>>({});
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
   const [isDeletingItems, setIsDeletingItems] = useState(false);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [deletingFlashSale, setDeletingFlashSale] = useState<number | null>(null);
   const [isDeletingSingle, setIsDeletingSingle] = useState(false);
+  const [stepStatuses, setStepStatuses] = useState<Record<number, StepStatus>>({});
 
   // Tambahkan fungsi helper untuk mengambil slot waktu
   const fetchTimeSlots = async (shopId: number) => {
@@ -441,7 +599,7 @@ export default function FlashSalePage() {
       current: 0,
       status: 'Memulai proses duplikasi...'
     });
-    setProgressDetails({});
+    setProgressDetails({}); // Reset progress details
 
     try {
       const response = await fetch('/api/flashsale/duplicate', {
@@ -466,59 +624,44 @@ export default function FlashSalePage() {
         
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const data = JSON.parse(line.slice(6));
-            
-            if (data.progress) {
-              setDuplicateProgress({
-                total: data.progress.total,
-                current: data.progress.current,
-                status: data.progress.status
-              });
-
-              if (data.progress.detail) {
-                const { flash_sale_id, step, ...rest } = data.progress.detail;
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.progress?.detail) {
+                const { flash_sale_id, ...rest } = data.progress.detail;
                 if (flash_sale_id) {
                   setProgressDetails(prev => ({
                     ...prev,
                     [flash_sale_id]: {
-                      ...prev[flash_sale_id],
-                      step,
+                      ...rest,
                       flash_sale_id,
-                      status: data.progress.status,
-                      ...rest
                     }
                   }));
                 }
               }
-            } else if (data.success) {
-              const { summary } = data.data;
-              setDuplicateProgress({
-                total: selectedSlots.length,
-                current: selectedSlots.length,
-                status: `Selesai: ${summary.successful_slots} dari ${summary.total_slots} slot berhasil diduplikasi (${summary.successful_items} items)`
-              });
+
+              if (data.progress) {
+                setDuplicateProgress(prev => ({
+                  total: selectedSlots.length, // Pastikan total sesuai slot yang dipilih
+                  current: data.progress.current,
+                  status: data.progress.status
+                }));
+              }
+            } catch (error) {
+              console.error('Error parsing progress:', error);
             }
           }
         }
       }
     } catch (error) {
-      setDuplicateProgress(null);
+      setDuplicateProgress(prev => ({
+        total: prev?.total || selectedSlots.length,
+        current: prev?.current || 0,
+        status: 'Terjadi kesalahan saat menduplikasi flash sale'
+      }));
       toast.error('Error', {
         description: 'Terjadi kesalahan saat menduplikasi flash sale'
       });
-    }
-  };
-
-  const getStatusBadge = (status: number, type: number) => {
-    switch (type) {
-      case 1:
-        return <Badge variant="secondary">Akan Datang</Badge>
-      case 2:
-        return <Badge className="bg-green-500">Sedang Berlangsung</Badge>
-      case 3:
-        return <Badge variant="destructive">Berakhir</Badge>
-      default:
-        return null;
     }
   };
 
@@ -760,22 +903,144 @@ export default function FlashSalePage() {
     </Dialog>
   );
 
+  const ProgressItem = ({ detail }: { detail: ProgressDetail }) => {
+    const hasError = Boolean(detail.error);
+    const isSuccess = detail.step === 'complete' && !hasError;
+
+    return (
+      <div className={`p-4 border rounded-lg mb-2 ${progressItemClass}`}>
+        {/* Header */}
+        <div className="flex justify-between items-center mb-3">
+          <div className="font-medium">
+            {detail.flash_sale_id ? (
+              `Flash Sale #${detail.flash_sale_id}`
+            ) : (
+              <span className="text-muted-foreground">Membuat Flash Sale...</span>
+            )}
+          </div>
+          {detail.total_items > 0 && (
+            <div className="text-sm text-muted-foreground">
+              {detail.successful_items} / {detail.total_items} items
+            </div>
+          )}
+        </div>
+
+        {/* Progress steps */}
+        <div className="flex items-center gap-6 mb-2">
+          <StepIndicator 
+            step="create"
+            currentStep={detail.step}
+            success={isSuccess || detail.flash_sale_id !== null}
+            error={hasError}
+          />
+          <StepIndicator 
+            step="register"
+            currentStep={detail.step}
+            success={isSuccess}
+            error={hasError}
+          />
+          <StepIndicator 
+            step="complete"
+            currentStep={detail.step}
+            success={isSuccess}
+            error={hasError}
+          />
+        </div>
+
+        {/* Status message */}
+        <p className={`text-sm ${hasError ? 'text-red-600' : 'text-muted-foreground'}`}>
+          {detail.error || (
+            isSuccess 
+              ? `Berhasil mendaftarkan ${detail.successful_items} items ke Flash Sale #${detail.flash_sale_id}`
+              : detail.status
+          )}
+        </p>
+      </div>
+    );
+  };
+
+  // Update StepIndicator untuk menangani status pembuatan flash sale
+  const StepIndicator = ({ 
+    step, 
+    currentStep,
+    success,
+    error 
+  }: StepIndicatorProps) => {
+    const getStatus = () => {
+      if (error) return 'error';
+      if (step === 'create' && success) return 'success'; // Khusus untuk step create
+      if (step === currentStep) return 'processing';
+      if (success && ['create', 'register', 'complete'].indexOf(step) <= ['create', 'register', 'complete'].indexOf(currentStep)) {
+        return 'success';
+      }
+      return 'pending';
+    };
+
+    return (
+      <div className="flex items-center gap-1">
+        <div className={`h-2 w-2 rounded-full ${
+          getStatus() === 'error' ? 'bg-red-500' :
+          getStatus() === 'pending' ? 'bg-gray-200' :
+          getStatus() === 'processing' ? 'bg-blue-400 animate-pulse' :
+          'bg-green-500'
+        }`} />
+        <span className="text-xs text-muted-foreground">
+          {step === 'create' ? 'Membuat' :
+           step === 'register' ? 'Mendaftarkan' :
+           'Selesai'}
+        </span>
+      </div>
+    );
+  };
+
+  const ProgressList = () => {
+    if (!duplicateProgress) return null;
+
+    // Filter dan urutkan progress details
+    const sortedProgressDetails = useMemo(() => {
+      return Object.values(progressDetails)
+        .filter(detail => detail.flash_sale_id) // Filter hanya yang valid
+        .sort((a, b) => {
+          // Urutkan berdasarkan flash_sale_id terbaru
+          return b.flash_sale_id - a.flash_sale_id;
+        })
+        .slice(0, duplicateProgress.total); // Batasi sesuai jumlah slot yang dipilih
+    }, [progressDetails, duplicateProgress.total]);
+
+    return (
+      <div className="mt-4 space-y-2 max-h-[300px] overflow-y-auto pr-2">
+        {sortedProgressDetails.map((detail) => (
+          <ProgressItem 
+            key={detail.flash_sale_id} 
+            detail={detail}
+          />
+        ))}
+      </div>
+    );
+  };
+
   return (
-    <div className="p-6 max-w-[1400px] mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">Manajemen Flash Sale</h1>
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
+      {/* Header yang lebih compact untuk mobile */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 md:mb-8">
+        <h1 className="text-xl md:text-2xl font-bold dark:text-white">Manajemen Flash Sale</h1>
         <div className="flex gap-2">
           {selectedItems.length > 0 && (
             <Button
               variant="destructive"
               onClick={handleBulkDelete}
-              className="flex items-center gap-2"
+              size="sm"
+              className="flex items-center gap-2 md:size-default"
             >
               <Trash2 className="w-4 h-4" />
-              Hapus {selectedItems.length} Flash Sale
+              <span className="hidden md:inline">Hapus</span> {selectedItems.length}
             </Button>
           )}
-          <Button className="bg-primary" onClick={handleCreateFlashSale}>
+          <Button 
+            className="bg-primary flex-1 md:flex-none" 
+            size="sm" 
+            onClick={handleCreateFlashSale}
+          >
             {calendarLoading ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
@@ -786,9 +1051,10 @@ export default function FlashSalePage() {
         </div>
       </div>
 
-      <div className="flex gap-4 mb-6">
+      {/* Filter yang lebih compact untuk mobile */}
+      <div className="flex flex-col md:flex-row gap-3 md:gap-4 mb-4 md:mb-6">
         <Select value={selectedShop?.toString()} onValueChange={handleShopChange}>
-          <SelectTrigger className="w-[250px]">
+          <SelectTrigger className="w-full md:w-[250px]">
             <SelectValue placeholder="Pilih Toko" />
           </SelectTrigger>
           <SelectContent>
@@ -801,7 +1067,7 @@ export default function FlashSalePage() {
         </Select>
 
         <Select value={selectedType.toString()} onValueChange={(value) => setSelectedType(Number(value))}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full md:w-[200px]">
             <SelectValue placeholder="Status Flash Sale" />
           </SelectTrigger>
           <SelectContent>
@@ -814,172 +1080,214 @@ export default function FlashSalePage() {
         </Select>
       </div>
 
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]">
-                <Checkbox
-                  checked={
-                    flashSales.length > 0 && selectedItems.length === flashSales.length
-                  }
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSelectedItems(flashSales.map((sale) => sale.flash_sale_id));
-                    } else {
-                      setSelectedItems([]);
+      {/* Table dan Card View */}
+      <div className="hidden md:block">
+        <div className="border rounded-lg dark:border-gray-800">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={
+                      flashSales.length > 0 && selectedItems.length === flashSales.length
                     }
-                  }}
-                />
-              </TableHead>
-              <TableHead>Periode</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Statistik</TableHead>
-              <TableHead>Status Aktif</TableHead>
-              <TableHead>ID Flash Sale</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  <div className="flex justify-center items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Memuat data...</span>
-                  </div>
-                </TableCell>
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedItems(flashSales.map((sale) => sale.flash_sale_id));
+                      } else {
+                        setSelectedItems([]);
+                      }
+                    }}
+                  />
+                </TableHead>
+                <TableHead>Periode</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Statistik</TableHead>
+                <TableHead>Status Aktif</TableHead>
+                <TableHead>ID Flash Sale</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
-            ) : flashSales.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-[400px]">
-                  <div className="flex flex-col items-center justify-center h-full">
-                    <div className="relative mb-4">
-                      <CalendarDays className="h-12 w-12 text-gray-400" strokeWidth={1.5} />
-                      <X className="h-6 w-6 text-gray-400 absolute -top-2 -right-2" strokeWidth={1.5} />
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">
-                      Belum Ada Flash Sale
-                    </h3>
-                    <p className="text-sm text-gray-500 mb-4 text-center max-w-[300px]">
-                      Buat flash sale pertama Anda untuk meningkatkan penjualan dengan penawaran terbatas waktu
-                    </p>
-                    <Button onClick={handleCreateFlashSale}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Buat Flash Sale
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              flashSales.map((sale) => (
-                <TableRow key={sale.flash_sale_id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedItems.includes(sale.flash_sale_id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedItems([...selectedItems, sale.flash_sale_id]);
-                        } else {
-                          setSelectedItems(selectedItems.filter(id => id !== sale.flash_sale_id));
-                        }
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center text-sm">
-                        <CalendarDays className="w-4 h-4 mr-2 text-muted-foreground" />
-                        {dayjs(sale.start_time * 1000).format('DD/MM/YYYY')}
-                      </div>
-                      <div className="flex items-center text-sm">
-                        <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
-                        <span className="font-semibold text-blue-600">
-                          {dayjs(sale.start_time * 1000).format('HH:mm')} - {dayjs(sale.end_time * 1000).format('HH:mm')}
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{getStatusBadge(sale.status, sale.type)}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-2">
-                      <div className="text-sm">
-                        {sale.enabled_item_count} / {sale.item_count} item aktif
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center">
-                          <Eye className="w-4 h-4 mr-1" />
-                          {sale.click_count} klik
-                        </span>
-                        <span className="flex items-center">
-                          <Bell className="w-4 h-4 mr-1" />
-                          {sale.remindme_count} pengingat
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        checked={sale.status === 1}
-                        disabled={sale.status === 3}
-                        onCheckedChange={(checked) => {
-                          handleUpdateStatus(sale.flash_sale_id, checked ? 1 : 2);
-                        }}
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        {sale.status === 1 ? 'Aktif' : 'Nonaktif'}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{sale.flash_sale_id}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex gap-2 justify-end">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const shopName = shops.find(shop => shop.shop_id === selectedShop)?.shop_name;
-                          router.push(`/flashsale/detail?shop_id=${selectedShop}&shop_name=${encodeURIComponent(shopName || '')}&flash_sale_id=${sale.flash_sale_id}`);
-                        }}
-                      >
-                        Detail
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDuplicate(sale.flash_sale_id)}
-                      >
-                        Duplikat
-                      </Button>
-                      {sale.status !== 3 && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(sale.flash_sale_id)}
-                        >
-                          Hapus
-                        </Button>
-                      )}
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 dark:text-gray-400">
+                    <div className="flex justify-center items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Memuat data...</span>
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : flashSales.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-[400px]">
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <div className="relative mb-4">
+                        <CalendarDays className="h-12 w-12 text-gray-400 dark:text-gray-600" strokeWidth={1.5} />
+                        <X className="h-6 w-6 text-gray-400 dark:text-gray-600 absolute -top-2 -right-2" strokeWidth={1.5} />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">
+                        Belum Ada Flash Sale
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center max-w-[300px]">
+                        Buat flash sale pertama Anda untuk meningkatkan penjualan dengan penawaran terbatas waktu
+                      </p>
+                      <Button onClick={handleCreateFlashSale}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Buat Flash Sale
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                flashSales.map((sale) => (
+                  <TableRow key={sale.flash_sale_id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedItems.includes(sale.flash_sale_id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedItems([...selectedItems, sale.flash_sale_id]);
+                          } else {
+                            setSelectedItems(selectedItems.filter(id => id !== sale.flash_sale_id));
+                          }
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center text-sm">
+                          <CalendarDays className="w-4 h-4 mr-2 text-muted-foreground" />
+                          {dayjs(sale.start_time * 1000).format('DD/MM/YYYY')}
+                        </div>
+                        <div className="flex items-center text-sm">
+                          <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
+                          <span className="font-semibold text-blue-600">
+                            {dayjs(sale.start_time * 1000).format('HH:mm')} - {dayjs(sale.end_time * 1000).format('HH:mm')}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{getStatusBadge(sale.status, sale.type)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-2">
+                        <div className="text-sm">
+                          {sale.enabled_item_count} / {sale.item_count} item aktif
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span className="flex items-center">
+                            <Eye className="w-4 h-4 mr-1" />
+                            {sale.click_count} klik
+                          </span>
+                          <span className="flex items-center">
+                            <Bell className="w-4 h-4 mr-1" />
+                            {sale.remindme_count} pengingat
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          checked={sale.status === 1}
+                          disabled={sale.status === 3}
+                          onCheckedChange={(checked) => {
+                            handleUpdateStatus(sale.flash_sale_id, checked ? 1 : 2);
+                          }}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {sale.status === 1 ? 'Aktif' : 'Nonaktif'}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{sale.flash_sale_id}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const shopName = shops.find(shop => shop.shop_id === selectedShop)?.shop_name;
+                            router.push(`/flashsale/detail?shop_id=${selectedShop}&shop_name=${encodeURIComponent(shopName || '')}&flash_sale_id=${sale.flash_sale_id}`);
+                          }}
+                        >
+                          Detail
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDuplicate(sale.flash_sale_id)}
+                        >
+                          Duplikat
+                        </Button>
+                        {sale.status !== 3 && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(sale.flash_sale_id)}
+                          >
+                            Hapus
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-        <div>
+      <div className="md:hidden space-y-3"> {/* Kurangi gap antar card */}
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : flashSales.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="flex justify-center mb-4">
+              <div className="relative">
+                <CalendarDays className="h-12 w-12 text-gray-400 dark:text-gray-600" strokeWidth={1.5} />
+                <X className="h-6 w-6 text-gray-400 dark:text-gray-600 absolute -top-2 -right-2" strokeWidth={1.5} />
+              </div>
+            </div>
+            <h3 className="text-lg font-medium mb-2">Belum Ada Flash Sale</h3>
+            <p className="text-sm text-gray-500 mb-4 px-6">
+              Buat flash sale pertama Anda untuk meningkatkan penjualan
+            </p>
+            <Button onClick={handleCreateFlashSale} size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Buat Flash Sale
+            </Button>
+          </div>
+        ) : (
+          flashSales.map((sale) => (
+            <FlashSaleCard
+              key={sale.flash_sale_id}
+              sale={sale}
+              onStatusChange={handleUpdateStatus}
+              onDelete={handleDelete}
+              onDuplicate={handleDuplicate}
+              shopName={shops.find(shop => shop.shop_id === selectedShop)?.shop_name}
+              selectedShop={selectedShop!}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Pagination yang lebih compact untuk mobile */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4 text-sm text-muted-foreground">
+        <div className="order-2 md:order-1 text-center md:text-left dark:text-gray-400">
           Menampilkan {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalCount)} dari {totalCount} data
         </div>
-        <div className="flex items-center gap-2">
+        <div className="order-1 md:order-2 flex items-center gap-1 md:gap-2">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
             disabled={currentPage <= 1}
+            className="dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800 dark:disabled:text-gray-700"
           >
             Previous
           </Button>
@@ -989,27 +1297,29 @@ export default function FlashSalePage() {
             variant="outline" 
             size="sm"
             onClick={() => handlePageChange(1)}
-            className={currentPage === 1 ? "bg-primary text-white hover:bg-primary" : ""}
+            className={currentPage === 1 
+              ? "bg-primary text-white hover:bg-primary dark:bg-white dark:text-black dark:hover:bg-white/90" 
+              : "dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800"}
           >
             1
           </Button>
 
           {/* Show dots if there are many pages before current page */}
-          {currentPage > 3 && <span>...</span>}
+          {currentPage > 3 && <span className="px-1 dark:text-gray-400">...</span>}
 
           {/* Current page and surrounding pages */}
           {currentPage > 2 && currentPage < totalPages - 1 && (
             <Button 
               variant="outline" 
               size="sm"
-              className="bg-primary text-white hover:bg-primary"
+              className="bg-primary text-white hover:bg-primary dark:bg-white dark:text-black dark:hover:bg-white/90"
             >
               {currentPage}
             </Button>
           )}
 
           {/* Show dots if there are many pages after current page */}
-          {currentPage < totalPages - 2 && <span>...</span>}
+          {currentPage < totalPages - 2 && <span className="px-1 dark:text-gray-400">...</span>}
 
           {/* Last page */}
           {totalPages > 1 && (
@@ -1017,7 +1327,9 @@ export default function FlashSalePage() {
               variant="outline" 
               size="sm"
               onClick={() => handlePageChange(totalPages)}
-              className={currentPage === totalPages ? "bg-primary text-white hover:bg-primary" : ""}
+              className={currentPage === totalPages 
+                ? "bg-primary text-white hover:bg-primary dark:bg-white dark:text-black dark:hover:bg-white/90" 
+                : "dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800"}
             >
               {totalPages}
             </Button>
@@ -1028,6 +1340,7 @@ export default function FlashSalePage() {
             size="sm"
             onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
             disabled={currentPage >= totalPages}
+            className="dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800 dark:disabled:text-gray-700"
           >
             Next
           </Button>
@@ -1035,14 +1348,14 @@ export default function FlashSalePage() {
       </div>
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[900px] p-0">
-          <div className="p-6 pb-4 border-b">
+        <DialogContent className="sm:max-w-[900px] p-0 dark:border-gray-800 dark:bg-gray-950">
+          <div className="p-6 pb-4 border-b dark:border-gray-800">
             <div className="flex items-center justify-between gap-4 pr-8">
-              <h2 className="text-xl font-semibold">
+              <h2 className="text-xl font-semibold dark:text-white">
                 Buat Flash Sale Baru
               </h2>
               <div className="flex items-center gap-2">
-                <span className="text-gray-600">Toko:</span>
+                <span className="text-gray-600 dark:text-gray-400">Toko:</span>
                 <Select
                   value={selectedDialogShop?.toString()}
                   onValueChange={handleDialogShopChange}
@@ -1063,8 +1376,8 @@ export default function FlashSalePage() {
           </div>
           
           {!selectedShop && (
-            <div className="px-6 py-3 bg-yellow-50 border-b">
-              <div className="flex items-center gap-2 text-sm text-yellow-800">
+            <div className="px-6 py-3 bg-yellow-50 dark:bg-yellow-900/30 border-b dark:border-gray-800">
+              <div className="flex items-center gap-2 text-sm text-yellow-800 dark:text-yellow-200">
                 <AlertTriangle className="h-4 w-4" />
                 <span>Silakan pilih toko terlebih dahulu untuk melihat slot waktu yang tersedia</span>
               </div>
@@ -1073,28 +1386,28 @@ export default function FlashSalePage() {
 
           <div className="grid grid-cols-2 gap-0">
             {/* Kolom Kalender */}
-            <div className="p-8 border-r border-t">
+            <div className="p-8 border-r border-t dark:border-gray-800">
               <Calendar
                 mode="single"
                 selected={date}
                 onSelect={handleDateChange}
-                className="w-full"
+                className="w-full dark:bg-gray-950"
                 classNames={{
                   months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
                   month: "space-y-4 w-full",
                   caption: "flex justify-center pt-1 relative items-center",
-                  caption_label: "text-base font-medium",
+                  caption_label: "text-base font-medium dark:text-white",
                   nav: "space-x-1 flex items-center",
-                  nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
+                  nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 dark:text-gray-400",
                   nav_button_previous: "absolute left-1",
                   nav_button_next: "absolute right-1",
                   table: "w-full border-collapse space-y-1",
                   head_row: "flex w-full",
-                  head_cell: "text-slate-500 rounded-md w-12 font-normal text-[0.875rem]",
+                  head_cell: "text-slate-500 dark:text-gray-400 rounded-md w-12 font-normal text-[0.875rem]",
                   row: "flex w-full mt-2",
                   cell: "relative p-0 text-center text-sm w-12 h-12",
-                  day: "h-12 w-12 p-0 font-normal text-sm",
-                  day_selected: "bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
+                  day: "h-12 w-12 p-0 font-normal text-sm dark:text-gray-300",
+                  day_selected: "bg-black dark:bg-white text-white dark:text-black hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black focus:bg-black dark:focus:bg-white focus:text-white dark:focus:text-black",
                 }}
                 components={{
                   DayContent: ({ date }) => (
@@ -1110,10 +1423,10 @@ export default function FlashSalePage() {
             </div>
 
             {/* Kolom Slot Waktu */}
-            <div className="p-6 border-t h-[600px] flex flex-col">
+            <div className="p-6 border-t dark:border-gray-800 h-[600px] flex flex-col">
               <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                <h3 className="text-sm font-medium text-gray-700">Sesi Flash Sale</h3>
-                <h3 className="text-sm font-medium text-gray-700">Kuota Produk</h3>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Sesi Flash Sale</h3>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Kuota Produk</h3>
               </div>
               <RadioGroup
                 value={selectedTimeSlot?.timeslot_id.toString()}
@@ -1125,51 +1438,61 @@ export default function FlashSalePage() {
                 }}
                 className="space-y-2.5 overflow-y-auto pr-2 custom-scrollbar"
               >
-                {timeSlots.map((slot) => (
-                  <div 
-                    key={slot.timeslot_id} 
-                    className="flex items-center justify-between p-3 rounded-md border border-gray-200 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => {
-                      const value = slot.timeslot_id.toString();
-                      setSelectedTimeSlot(slot);
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <RadioGroupItem 
-                        value={slot.timeslot_id.toString()} 
-                        className="w-4 h-4"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {`${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Durasi: {((slot.end_time - slot.start_time) / 3600).toFixed(1)} jam
-                        </p>
+                {timeSlots.map((slot) => {
+                  const isSelected = selectedSlots.includes(slot.timeslot_id);
+                  return (
+                    <div
+                      key={slot.timeslot_id}
+                      className={`flex items-center justify-between p-3 rounded-md border ${
+                        isSelected 
+                          ? 'border-primary bg-primary/5 dark:bg-primary/10' 
+                          : 'border-gray-200 dark:border-gray-800'
+                      } hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer`}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedSlots(selectedSlots.filter(id => id !== slot.timeslot_id));
+                        } else if (selectedSlots.length < 20) {
+                          setSelectedSlots([...selectedSlots, slot.timeslot_id]);
+                        } else {
+                          toast.warning('Maksimal 20 Slot', {
+                            description: 'Anda hanya dapat memilih maksimal 20 slot waktu'
+                          });
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => {}}
+                          className="pointer-events-none invisible"
+                        />
+                        <div>
+                          <p className="text-sm font-medium dark:text-gray-200">
+                            {dayjs(slot.start_time * 1000).format('DD/MM/YYYY')}
+                          </p>
+                          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                            {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-sm font-medium text-gray-900">50</span>
-                      <p className="text-xs text-gray-500">produk tersisa</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </RadioGroup>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 p-6 border-t mt-4">
+          <div className="flex items-center justify-end gap-3 p-6 border-t dark:border-gray-800 mt-4">
             <Button
               variant="outline"
               onClick={() => setIsCreateDialogOpen(false)}
-              className="px-6"
+              className="px-6 dark:border-gray-700 dark:text-gray-300"
             >
               Batal
             </Button>
             <Button
               onClick={handleConfirmTimeSlot}
-              className="px-6 bg-black text-white hover:bg-black/90"
+              className="px-6 bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90"
             >
               Buat Flash Sale
             </Button>
@@ -1217,15 +1540,15 @@ export default function FlashSalePage() {
       </Dialog>
 
       <Dialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogTitle>Duplikasi Flash Sale</DialogTitle>
+        <DialogContent className="sm:max-w-[600px] dark:border-gray-800 dark:bg-gray-950">
+          <DialogTitle className="dark:text-gray-100">Duplikasi Flash Sale</DialogTitle>
           
           {duplicateProgress ? (
             <div className="py-6">
               <div className="space-y-5">
                 {/* Progress bar */}
                 <div className="space-y-2">
-                  <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-primary transition-all duration-500 ease-in-out"
                       style={{ 
@@ -1233,52 +1556,39 @@ export default function FlashSalePage() {
                       }}
                     />
                   </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
+                  <div className="flex justify-between text-sm text-muted-foreground dark:text-gray-400">
                     <span>Progress</span>
                     <span>{duplicateProgress.current} dari {duplicateProgress.total} slot</span>
                   </div>
                 </div>
 
-                {/* Status text */}
-                <div className="text-sm text-center text-muted-foreground">
-                  {duplicateProgress.status}
+                {/* Informasi Flash Sale yang diduplikasi */}
+                <div className="text-sm text-center">
+                  <div className="font-medium dark:text-gray-200">
+                    {(() => {
+                      const flashSale = flashSales.find(fs => fs.flash_sale_id === duplicatingFlashSaleId);
+                      return flashSale ? `Menduplikasi Flash Sale #${duplicatingFlashSaleId} - ${flashSale.item_count} produk` : '-';
+                    })()}
+                  </div>
+                  <div className="text-muted-foreground dark:text-gray-400">
+                    {(() => {
+                      const flashSale = flashSales.find(fs => fs.flash_sale_id === duplicatingFlashSaleId);
+                      if (!flashSale) return '-';
+                      
+                      return (
+                        <>
+                          <div>
+                            {dayjs(flashSale.start_time * 1000).format('DD/MM/YYYY HH:mm')} - {dayjs(flashSale.end_time * 1000).format('HH:mm')}
+                          </div>
+                         
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
 
                 {/* Detail progress */}
-                <div className="mt-4 space-y-2 max-h-[300px] overflow-y-auto">
-                  {Object.values(progressDetails).map((detail) => (
-                    <div 
-                      key={detail.flash_sale_id}
-                      className={`p-3 rounded-md border ${
-                        detail.successful_items !== undefined ? 'border-green-200 bg-green-50' : 'border-gray-200'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {detail.successful_items !== undefined ? (
-                            <Check className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                          )}
-                          <span className="text-sm font-medium">
-                            Flash Sale #{detail.flash_sale_id}
-                          </span>
-                        </div>
-                        <span className="text-sm text-muted-foreground">
-                          {detail.successful_items !== undefined 
-                            ? `${detail.successful_items} items`
-                            : detail.total_items 
-                              ? `${detail.total_items} items`
-                              : ''
-                          }
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1 ml-6">
-                        {detail.status}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                <ProgressList />
               </div>
 
               {duplicateProgress.current === duplicateProgress.total && (
@@ -1289,6 +1599,7 @@ export default function FlashSalePage() {
                       setDuplicateProgress(null);
                       fetchFlashSales();
                     }}
+                    className="dark:bg-white dark:text-black dark:hover:bg-white/90"
                   >
                     Selesai
                   </Button>
@@ -1299,8 +1610,8 @@ export default function FlashSalePage() {
             <>
               <div className="py-4">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="text-sm text-muted-foreground">
-                    Pilih slot waktu untuk menduplikasi flash sale ini (maksimal 20 slot)
+                  <div className="text-sm text-muted-foreground dark:text-gray-400">
+                    Pilih slot waktu flash sale(maksimal 20 slot)
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox
@@ -1314,65 +1625,62 @@ export default function FlashSalePage() {
                         }
                       }}
                     />
-                    <span className="text-sm">Pilih Semua</span>
+                   
                   </div>
                 </div>
                 <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                  {timeSlots.map((slot) => {
-                    const isSelected = selectedSlots.includes(slot.timeslot_id);
-                    return (
-                      <div
-                        key={slot.timeslot_id}
-                        className={`flex items-center justify-between p-3 rounded-md border ${
-                          isSelected ? 'border-primary bg-primary/5' : 'border-gray-200'
-                        } hover:bg-gray-50 cursor-pointer`}
-                        onClick={() => {
-                          if (isSelected) {
-                            setSelectedSlots(selectedSlots.filter(id => id !== slot.timeslot_id));
-                          } else if (selectedSlots.length < 20) {
-                            setSelectedSlots([...selectedSlots, slot.timeslot_id]);
-                          } else {
-                            toast.warning('Maksimal 20 Slot', {
-                              description: 'Anda hanya dapat memilih maksimal 20 slot waktu'
-                            });
-                          }
-                        }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => {}}
-                            className="pointer-events-none"
-                          />
-                          <div>
-                            <p className="text-sm font-medium">
-                              {dayjs(slot.start_time * 1000).format('DD/MM/YYYY')}
-                            </p>
-                            <p className="text-sm font-semibold text-blue-600">
-                              {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
-                            </p>
-                          </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {timeSlots.map((slot) => {
+                      const isSelected = selectedSlots.includes(slot.timeslot_id);
+                      return (
+                        <div
+                          key={slot.timeslot_id}
+                          className={`flex flex-col items-center justify-center p-2.5 rounded-md border cursor-pointer ${
+                            isSelected 
+                              ? 'border-primary bg-primary/5 dark:bg-primary/10' 
+                              : 'border-gray-200 dark:border-gray-800'
+                          } hover:bg-gray-50 dark:hover:bg-gray-800/50`}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedSlots(selectedSlots.filter(id => id !== slot.timeslot_id));
+                            } else if (selectedSlots.length < 20) {
+                              setSelectedSlots([...selectedSlots, slot.timeslot_id]);
+                            } else {
+                              toast.warning('Maksimal 20 Slot', {
+                                description: 'Anda hanya dapat memilih maksimal 20 slot waktu'
+                              });
+                            }
+                          }}
+                        >
+                          <p className="text-xs font-medium dark:text-gray-200">
+                            {dayjs(slot.start_time * 1000).format('DD/MM/YYYY')}
+                          </p>
+                          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                            {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                          </p>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="border-t dark:border-gray-800 pt-4 -mt-4">
                 <div className="flex items-center justify-between w-full">
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground dark:text-gray-400">
                     {selectedSlots.length} slot dipilih
                   </div>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       onClick={() => setIsDuplicateDialogOpen(false)}
+                      className="dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                     >
                       Batal
                     </Button>
                     <Button
                       onClick={handleConfirmDuplicate}
                       disabled={selectedSlots.length === 0}
+                      className="dark:bg-white dark:text-black dark:hover:bg-white/90 disabled:dark:bg-gray-700"
                     >
                       Duplikasi
                     </Button>

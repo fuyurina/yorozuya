@@ -93,226 +93,168 @@ export async function POST(request: NextRequest) {
       try {
         for (let i = 0; i < timeslot_ids.length; i++) {
           const timeslot_id = timeslot_ids[i];
-          console.log(`Processing slot ${i + 1}/${timeslot_ids.length}:`, { timeslot_id });
           
-          // Kirim status awal untuk slot ini
+          // 1. Kirim status memulai pembuatan flash sale
           await writer.write(
             encoder.encode(
               `data: ${JSON.stringify({
                 progress: {
                   current: i,
                   total: timeslot_ids.length,
-                  status: `Membuat flash sale untuk slot ${i + 1}/${timeslot_ids.length}...`
+                  status: `Membuat flash sale untuk slot ${i + 1}/${timeslot_ids.length}...`,
+                  detail: {
+                    flash_sale_id: null,
+                    step: 'create',
+                    status: 'Membuat flash sale baru...',
+                    total_items: detailResponse.data?.items?.length || 0,
+                    successful_items: 0
+                  }
                 }
               })}\n\n`
             )
           );
 
-          try {
-            // Dapatkan base URL dari request asli
-            const baseUrl = new URL(request.url).origin;
+          // 2. Buat flash sale baru
+          const createResponse = await fetch('http://localhost:10000/api/flashsale/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ shop_id, timeslot_id })
+          });
 
-            // Buat flash sale baru
-            console.log('Creating new flash sale:', { shop_id, timeslot_id });
-            const createResponse = await fetch('http://localhost:10000/api/flashsale/create', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ shop_id, timeslot_id })
-            });
+          const createData = await createResponse.json();
+          
+          if (!createData?.success) {
+            throw new Error('Gagal membuat flash sale');
+          }
 
-            const createData = await createResponse.json();
-            console.log('Create flash sale response:', createData);
+          const newFlashSaleId = createData.data.flash_sale_id;
 
-            if (createData?.response?.flash_sale_id) {
-              const newFlashSaleId = createData.response.flash_sale_id;
-              console.log('New flash sale created:', { newFlashSaleId });
-              
-              let items = [];
+          // Kirim update status setelah flash sale berhasil dibuat
+          await writer.write(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                progress: {
+                  current: i,
+                  total: timeslot_ids.length,
+                  status: `Flash sale berhasil dibuat dengan ID #${newFlashSaleId}`,
+                  detail: {
+                    flash_sale_id: newFlashSaleId,
+                    step: 'create',
+                    status: 'Flash sale berhasil dibuat',
+                    total_items: detailResponse.data?.items?.length || 0,
+                    successful_items: 0
+                  }
+                }
+              })}\n\n`
+            )
+          );
 
-              // Kirim status pembuatan flash sale berhasil
-              await writer.write(
-                encoder.encode(
-                  `data: ${JSON.stringify({
-                    progress: {
-                      current: i,
-                      total: timeslot_ids.length,
-                      status: `Flash Sale #${newFlashSaleId} berhasil dibuat, mendaftarkan items...`,
-                      detail: {
-                        flash_sale_id: newFlashSaleId,
-                        timeslot_id: timeslot_id
-                      }
-                    }
-                  })}\n\n`
-                )
-              );
+          // 3. Kirim status mulai mendaftarkan items
+          await writer.write(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                progress: {
+                  current: i,
+                  total: timeslot_ids.length,
+                  status: `Mendaftarkan items ke Flash Sale #${newFlashSaleId}...`,
+                  detail: {
+                    flash_sale_id: newFlashSaleId,
+                    step: 'register',
+                    status: `Mendaftarkan items ke Flash Sale #${newFlashSaleId}`,
+                    total_items: detailResponse.data?.items?.length || 0,
+                    successful_items: 0
+                  }
+                }
+              })}\n\n`
+            )
+          );
 
-              // Proses items
-              if (detailResponse.data?.items && detailResponse.data?.models) {
-                console.log('Processing items for flash sale:', { 
-                  newFlashSaleId,
-                  itemCount: detailResponse.data.items.length,
-                  modelCount: detailResponse.data.models.length
-                });
-
-                items = detailResponse.data.items.map((item: FlashSaleItem) => {
-                  const itemModels = detailResponse.data.models
-                    .filter((model: FlashSaleModel) => 
-                      model.item_id === item.item_id && 
-                      model.campaign_stock > 0
-                    );
-                  
-                  if (itemModels.length === 0) return null;
-
-                  return {
-                    item_id: item.item_id,
-                    purchase_limit: 0,
-                    models: itemModels.map((model: FlashSaleModel) => ({
-                      model_id: model.model_id,
-                      input_promo_price: model.input_promotion_price,
-                      stock: model.campaign_stock
-                    }))
-                  };
-                }).filter(Boolean);
-
-                console.log('Processed items:', {
-                  newFlashSaleId,
-                  processedItemCount: items.length
-                });
-
-                // Kirim status jumlah item yang akan didaftarkan
-                await writer.write(
-                  encoder.encode(
-                    `data: ${JSON.stringify({
-                      progress: {
-                        current: i,
-                        total: timeslot_ids.length,
-                        status: `Mendaftarkan ${items.length} items ke Flash Sale #${newFlashSaleId}...`,
-                        detail: {
-                          flash_sale_id: newFlashSaleId,
-                          total_items: items.length
-                        }
-                      }
-                    })}\n\n`
-                  )
+          // 4. Proses penambahan items
+          const items = detailResponse.data.items
+            .map((item: FlashSaleItem) => {
+              const itemModels = detailResponse.data.models
+                .filter((model: FlashSaleModel) => 
+                  model.item_id === item.item_id && model.campaign_stock > 0
                 );
+              
+              if (itemModels.length === 0) return null;
 
-                // Tambahkan items ke flash sale baru
-                console.log('Adding items to flash sale:', {
-                  newFlashSaleId,
-                  itemCount: items.length
-                });
+              return {
+                item_id: item.item_id,
+                purchase_limit: 0,
+                models: itemModels.map((model: FlashSaleModel) => ({
+                  model_id: model.model_id,
+                  input_promo_price: model.input_promotion_price,
+                  stock: model.campaign_stock
+                }))
+              };
+            })
+            .filter(Boolean);
 
-                const addResponse = await fetch('http://localhost:10000/api/flashsale/items/add', {
-                  method: 'POST',
-                  headers: { 
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    shop_id,
+          // 5. Tambahkan items ke flash sale
+          const addResponse = await fetch('http://localhost:10000/api/flashsale/items/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              shop_id,
+              flash_sale_id: newFlashSaleId,
+              items
+            })
+          });
+
+          const addData = await addResponse.json();
+
+          // 6. Kirim status selesai untuk flash sale ini
+          await writer.write(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                progress: {
+                  current: i + 1,
+                  total: timeslot_ids.length,
+                  status: `Berhasil mendaftarkan items ke Flash Sale #${newFlashSaleId}`,
+                  detail: {
                     flash_sale_id: newFlashSaleId,
-                    items
-                  })
-                });
-
-                const addData = await addResponse.json();
-                console.log('Add items response:', addData);
-
-                if (addData?.response?.success || addData?.response?.status === 1) {
-                  duplicatedFlashSales.push({
-                    timeslot_id,
-                    flash_sale_id: newFlashSaleId,
+                    step: 'complete',
+                    status: `Berhasil mendaftarkan ${items.length} items ke Flash Sale #${newFlashSaleId}`,
                     total_items: items.length,
                     successful_items: items.length
-                  });
-
-                  console.log('Items successfully added:', {
-                    newFlashSaleId,
-                    successfulItems: items.length
-                  });
-
-                  // Kirim status berhasil
-                  await writer.write(
-                    encoder.encode(
-                      `data: ${JSON.stringify({
-                        progress: {
-                          current: i + 1,
-                          total: timeslot_ids.length,
-                          status: `Berhasil mendaftarkan ${items.length} items ke Flash Sale #${newFlashSaleId}`,
-                          detail: {
-                            flash_sale_id: newFlashSaleId,
-                            total_items: items.length,
-                            successful_items: items.length
-                          }
-                        }
-                      })}\n\n`
-                    )
-                  );
-                } else {
-                  console.error('Failed to add items:', {
-                    newFlashSaleId,
-                    error: addData
-                  });
-                  
-                  failedDuplications.push({
-                    timeslot_id,
-                    flash_sale_id: newFlashSaleId,
-                    error: 'Gagal menambahkan items'
-                  });
+                  }
                 }
-              }
-            } else {
-              console.error('Failed to create flash sale:', {
-                timeslot_id,
-                error: createData
-              });
-              
-              failedDuplications.push({
-                timeslot_id,
-                error: 'Gagal membuat flash sale'
-              });
-            }
-          } catch (error) {
-            console.error('Error during duplication process:', {
-              timeslot_id,
-              error
-            });
-            
-            failedDuplications.push({
-              timeslot_id,
-              error: 'Error saat proses duplikasi'
-            });
-          }
+              })}\n\n`
+            )
+          );
+
+          // Tunggu sebentar sebelum memproses slot berikutnya
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        // Kirim ringkasan akhir
-        const summary = {
-          total_slots: timeslot_ids.length,
-          successful_slots: duplicatedFlashSales.length,
-          failed_slots: failedDuplications.length,
-          total_items: duplicatedFlashSales.reduce((sum, fs) => sum + fs.total_items, 0),
-          successful_items: duplicatedFlashSales.reduce((sum, fs) => sum + fs.successful_items, 0)
-        };
-
-        console.log('Duplication completed. Summary:', summary);
-
+        // 7. Kirim ringkasan akhir setelah semua selesai
         await writer.write(
           encoder.encode(
             `data: ${JSON.stringify({
               success: true,
               data: {
-                duplicated_flash_sales: duplicatedFlashSales,
-                failed_duplications: failedDuplications,
-                summary
+                summary: {
+                  total_slots: timeslot_ids.length,
+                  successful_slots: timeslot_ids.length,
+                  failed_slots: 0
+                }
               }
             })}\n\n`
           )
         );
       } catch (error) {
-        console.error('Fatal error during duplication:', error);
+        console.error('Error during duplication:', error);
+        // Kirim status error
+        await writer.write(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              success: false,
+              message: 'Terjadi kesalahan saat duplikasi flash sale'
+            })}\n\n`
+          )
+        );
       } finally {
-        console.log('Closing stream writer');
         await writer.close();
       }
     })();
