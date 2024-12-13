@@ -52,6 +52,7 @@ export function useUbahPesanan() {
         .from('perubahan_pesanan')
         .select('*')
         .order('created_at', { ascending: false })
+        .limit(20)
       
       if (error) throw error
 

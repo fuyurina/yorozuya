@@ -52,7 +52,7 @@ export function useKeluhan() {
         .from('keluhan')
         .select('*')
         .order('create_at', { ascending: false }) // Diubah dari created_at
-      
+        .limit(20)
       if (error) throw error
 
       setKeluhan(data || [])
