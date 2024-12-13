@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
 
             // Buat flash sale baru
             console.log('Creating new flash sale:', { shop_id, timeslot_id });
+            console.log(`${baseUrl}/api/flashsale/create`);
             const createResponse = await fetch(`${baseUrl}/api/flashsale/create`, {
               method: 'POST',
               headers: { 
