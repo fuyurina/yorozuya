@@ -2111,6 +2111,45 @@ export class ShopeeAPI {
       throw error;
     }
   }
+
+  async getItemPromotion(
+    shopId: number,
+    accessToken: string,
+    itemIdList: number[]
+  ): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/product/get_item_promotion';
+    const path = '/api/v2/product/get_item_promotion';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+        partner_id: this.partnerId.toString(),
+        timestamp: timest.toString(),
+        sign,
+        shop_id: shopId.toString(),
+        access_token: accessToken,
+        item_id_list: itemIdList.join(',')
+    });
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk mendapatkan informasi promosi produk: URL=${fullUrl}`);
+
+    try {
+        const response = await axios.get(fullUrl, { headers });
+        console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+        return response.data;
+    } catch (error) {
+        console.error('Kesalahan saat mengambil informasi promosi produk:', error);
+        if (axios.isAxiosError(error) && error.response) {
+            console.error('Error Response:', {
+                status: error.response.status,
+                data: error.response.data
+            });
+        }
+        throw error;
+    }
+  }
 }
 
 export default ShopeeAPI;

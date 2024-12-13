@@ -1071,3 +1071,35 @@ export async function updateStock(
     };
   }
 }
+
+export async function getItemPromotion(
+  shopId: number,
+  itemIdList: number[]
+): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    const result = await shopeeApi.getItemPromotion(shopId, accessToken, itemIdList);
+
+    if (result.error) {
+      console.error(`Error saat mengambil informasi promosi produk: ${JSON.stringify(result)}`);
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal mengambil informasi promosi produk'
+      };
+    }
+
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+  } catch (error) {
+    console.error('Kesalahan saat mengambil informasi promosi produk:', error);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
