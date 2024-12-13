@@ -109,10 +109,13 @@ export async function POST(request: NextRequest) {
           );
 
           try {
+            // Dapatkan base URL dari request asli
+            const baseUrl = new URL(request.url).origin;
+
             // Buat flash sale baru
             console.log('Creating new flash sale:', { shop_id, timeslot_id });
             const createResponse = await NextResponse.json(
-              await fetch(new NextRequest('/api/flashsale/create', {
+              await fetch(new NextRequest('http://localhost:10000/api/flashsale/create', {
                 method: 'POST',
                 headers: { 
                   'Content-Type': 'application/json'
@@ -204,7 +207,7 @@ export async function POST(request: NextRequest) {
                 });
 
                 const addResponse = await NextResponse.json(
-                  await fetch(new NextRequest('/api/flashsale/items/add', {
+                  await fetch(new NextRequest('http://localhost:10000/api/flashsale/items/add', {
                     method: 'POST',
                     headers: { 
                       'Content-Type': 'application/json'
