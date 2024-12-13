@@ -111,11 +111,10 @@ export async function POST(request: NextRequest) {
           try {
             // Buat flash sale baru
             console.log('Creating new flash sale:', { shop_id, timeslot_id });
-            const createResponse = await fetch(new URL('/api/flashsale/create', request.nextUrl.origin).toString(), {
+            const createResponse = await fetch('/api/flashsale/create', {
               method: 'POST',
               headers: { 
-                'Content-Type': 'application/json',
-                'Host': request.headers.get('host') || request.nextUrl.host
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify({ shop_id, timeslot_id })
             });
@@ -202,11 +201,10 @@ export async function POST(request: NextRequest) {
                   itemCount: items.length
                 });
 
-                const addResponse = await fetch(new URL('/api/flashsale/items/add', request.nextUrl.origin).toString(), {
+                const addResponse = await fetch('/api/flashsale/items/add', {
                   method: 'POST',
                   headers: { 
-                    'Content-Type': 'application/json',
-                    'Host': request.headers.get('host') || request.nextUrl.host
+                    'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
                     shop_id,
