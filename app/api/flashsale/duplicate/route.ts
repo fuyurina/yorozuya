@@ -109,19 +109,17 @@ export async function POST(request: NextRequest) {
           );
 
           try {
-            // Tambahkan base URL untuk request dari server
-            const baseUrl = 'http://localhost:100000';
-
             // Buat flash sale baru
             console.log('Creating new flash sale:', { shop_id, timeslot_id });
-            console.log(`${baseUrl}/api/flashsale/create`);
-            const createResponse = await fetch(`${baseUrl}/api/flashsale/create`, {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ shop_id, timeslot_id })
-            });
+            const createResponse = await NextResponse.json(
+              await fetch(new NextRequest('/api/flashsale/create', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ shop_id, timeslot_id })
+              }))
+            );
 
             const createData = await createResponse.json();
             console.log('Create flash sale response:', createData);
@@ -205,17 +203,19 @@ export async function POST(request: NextRequest) {
                   itemCount: items.length
                 });
 
-                const addResponse = await fetch(`${baseUrl}/api/flashsale/items/add`, {
-                  method: 'POST',
-                  headers: { 
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    shop_id,
-                    flash_sale_id: newFlashSaleId,
-                    items
-                  })
-                });
+                const addResponse = await NextResponse.json(
+                  await fetch(new NextRequest('/api/flashsale/items/add', {
+                    method: 'POST',
+                    headers: { 
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      shop_id,
+                      flash_sale_id: newFlashSaleId,
+                      items
+                    })
+                  }))
+                );
 
                 const addData = await addResponse.json();
                 console.log('Add items response:', addData);
