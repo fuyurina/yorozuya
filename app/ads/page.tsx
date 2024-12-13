@@ -11,10 +11,12 @@ interface AdData {
   shop_id: number
   shop_name: string
   cost: string
+  direct_roas: number
 }
 
 interface AdsResponse {
   ads_data: AdData[]
+  direct_roas: number
   total_cost: string
 }
 
@@ -102,6 +104,7 @@ function AdCards({ adsData }: { adsData: AdData[] }) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{ad.cost}</div>
+            <div className="text-sm font-medium">{ad.direct_roas}</div>
             <p className="text-xs text-muted-foreground">Ad spend for this store</p>
           </CardContent>
         </Card>
