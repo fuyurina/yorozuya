@@ -775,7 +775,6 @@ export default function FlashSalePage() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    fetchFlashSales(page, pageSize);
   };
 
   const formatTime = (timestamp: number) => {
