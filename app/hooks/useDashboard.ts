@@ -433,12 +433,15 @@ export const useDashboard = () => {
         const audio = new Audio('/notif1.mp3');
         audio.play().catch(error => console.error('Audio play error:', error));
         
+        const messageContent = typeof eventData.content === 'string' ? eventData.content : 'Pesan baru';
+        
         toast.message('Pesan Baru!', {
-          description: `${eventData.sender_name}: ${eventData.content}`,
+          description: `${eventData.sender_name} mengirim: ${messageContent}`,
           action: {
-            label: "Lihat",
+            label: "Buka Chat",
             onClick: () => window.open('/chat', '_blank')
-          }
+          },
+          duration: 5000
         });
       }
     }
