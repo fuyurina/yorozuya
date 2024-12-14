@@ -120,24 +120,22 @@ async function processWebhookData(webhookData: any) {
 }
 
 async function handleChat(data: any) {
-  
   if (data.data.type === 'message') {
+    const messageContent = data.data.content; // Simpan reference ke content
     const chatData = {
       type: 'new_message',
-      conversation_id: data.content.conversation_id,
-      message_id: data.content.message_id,
-      sender: data.content.from_id,
-      sender_name: data.content.from_user_name,
-      receiver: data.content.to_id,
-      receiver_name: data.content.to_user_name,
-      content: data.content.content.text,
-      timestamp: data.content.created_timestamp,
+      conversation_id: messageContent.conversation_id,
+      message_id: messageContent.message_id,
+      sender: messageContent.from_id,
+      sender_name: messageContent.from_user_name,
+      receiver: messageContent.to_id,
+      receiver_name: messageContent.to_user_name,
+      content: messageContent.content,
+      timestamp: messageContent.created_timestamp,
       shop_id: data.shop_id
     };
-    console.log('Received text chat from Shopee', chatData);
+    console.log('Received chat message from Shopee', chatData);
     sendEventToAll(chatData);
-  } else {
-    console.log('Received non-text message');
   }
 }
 
