@@ -169,7 +169,7 @@ const WebChatPage: React.FC = () => {
 
   const { sendMessage, isLoading: isSendingMessage, error: sendMessageError } = useSendMessage();
 
-  const { data: sseData, error: sseError, isConnected: sseConnected } = useSSE('http://localhost:10000/api/webhook');
+  const { data: sseData, error: sseError, isConnected: sseConnected } = useSSE('api/webhook');
 
   const { markAsRead, isLoading: isMarkingAsRead, error: markAsReadError } = useMarkAsRead();
 

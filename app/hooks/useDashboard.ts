@@ -87,7 +87,7 @@ const fetchAdsData = async () => {
 
 
 export const useDashboard = () => {
-  const { data: sseData, error: sseError } = useSSE('http://localhost:10000/api/webhook');
+  const { data: sseData, error: sseError } = useSSE('/api/webhook');
   
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     summary: {
