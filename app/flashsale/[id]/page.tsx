@@ -1277,7 +1277,10 @@ export default function FlashSaleDetailPage() {
                         [...itemModels] // Buat copy array untuk diurutkan
                           .sort((a, b) => a.model_name.localeCompare(b.model_name)) // Urutkan berdasarkan model_name
                           .map((model: any) => (
-                            <TableRow className="border-b dark:border-gray-700/50">
+                            <TableRow 
+                              key={`${model.item_id}-${model.model_id}`} 
+                              className="border-b dark:border-gray-700/50"
+                            >
                               <TableCell>
                                 <Checkbox
                                   checked={selectedModels.has(`${model.item_id}-${model.model_id}`)}
