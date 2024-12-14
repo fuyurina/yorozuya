@@ -97,13 +97,14 @@ interface Order {
   tracking_number: string;
 }
 
-// Tambahkan interface untuk tipe konten
+// Perbaiki interface MessageContent sesuai format Shopee
 interface MessageContent {
   text?: string;
   url?: string;
   thumb_url?: string;
   thumb_height?: number;
   thumb_width?: number;
+  file_server_id?: number;
 }
 
 // Definisikan base SSE interface
@@ -122,13 +123,16 @@ interface MessageContent {
   thumb_width?: number;
 }
 
-// Interface untuk data pesan SSE
+// Perbaiki interface SSEMessageData
 interface SSEMessageData extends SSEData {
   type: 'new_message';
   message_id: string;
   conversation_id: string;
   sender: number;
   sender_name?: string;
+  receiver?: number;
+  receiver_name?: string;
+  shop_id?: number;
   message_type?: 'text' | 'image';
   content?: string | MessageContent;
 }
@@ -137,6 +141,15 @@ interface SSEMessageData extends SSEData {
 function isSSEMessageData(data: SSEData): data is SSEMessageData {
   return data.type === 'new_message' && 'message_id' in data;
 }
+
+// Tambahkan fungsi helper untuk membangun URL gambar lengkap
+const buildImageUrl = (url: string) => {
+  // Format URL sesuai standar Shopee CDN
+  if (url.startsWith('sg-')) {
+    return `https://down-id.img.susercontent.com/${url}`;
+  }
+  return url;
+};
 
 const WebChatPage: React.FC = () => {
   const [selectedShop, setSelectedShop] = useState<number | null>(null);
@@ -224,68 +237,19 @@ const WebChatPage: React.FC = () => {
     }
   }, [sseData]); // Hapus updateConversationList dari dependency array
 
-  // Perbaiki handling SSE data dengan type guard
+  // Perbaiki useEffect untuk handling SSE data
   useEffect(() => {
     if (sseData) {
       switch (sseData.type) {
         case 'new_message':
-          if (isSSEMessageData(sseData) && sseData.conversation_id === selectedConversation) {
-            if (!sseData.message_id || !sseData.content) {
-              console.error('Invalid message data:', sseData);
-              return;
-            }
-
-            let messageContent: string;
-            if (typeof sseData.content === 'string') {
-              messageContent = sseData.content;
-            } else if (typeof sseData.content === 'object' && sseData.content !== null) {
-              messageContent = (sseData.content as MessageContent).text || '';
-            } else {
-              messageContent = '';
-            }
-
-            const newMessage: Message = {
-              id: sseData.message_id,
-              sender: sseData.sender === selectedConversationData?.to_id ? 'buyer' : 'seller',
-              type: sseData.message_type || 'text',
-              content: messageContent,
-              time: new Date(sseData.timestamp * 1000).toLocaleTimeString([], { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })
-            };
-
-            // Handle image type
-            if (sseData.message_type === 'image' && 
-                typeof sseData.content === 'object' && 
-                sseData.content !== null) {
-              const imageContent = sseData.content as MessageContent;
-              if ('url' in imageContent) {
-                newMessage.imageUrl = imageContent.url;
-                if (imageContent.thumb_url || imageContent.url) {
-                  newMessage.imageThumb = {
-                    url: imageContent.thumb_url || imageContent.url || '',
-                    height: imageContent.thumb_height || 0,
-                    width: imageContent.thumb_width || 0
-                  };
-                }
-              }
-            }
-
-            addNewMessage(newMessage);
-          }
-          
           if (isSSEMessageData(sseData)) {
-            let messageContent: string;
-            if (typeof sseData.content === 'string') {
-              messageContent = sseData.content;
-            } else if (typeof sseData.content === 'object' && sseData.content !== null) {
-              const contentObj = sseData.content as MessageContent;
-              messageContent = contentObj.text || '';
-            } else {
-              messageContent = '';
-            }
-
+            const content = sseData.content as MessageContent;
+            
+            // Tentukan tipe pesan dan kontennya
+            const messageType = content.url ? 'image' : 'text';
+            const messageContent = content.text || '';
+            
+            // Update conversation list
             updateConversationList({
               type: 'new_message',
               conversation_id: sseData.conversation_id,
@@ -295,6 +259,31 @@ const WebChatPage: React.FC = () => {
                 timestamp: sseData.timestamp
               }
             });
+
+            // Tambah pesan baru jika conversation aktif
+            if (sseData.conversation_id === selectedConversation) {
+              const newMessage: Message = {
+                id: sseData.message_id,
+                sender: sseData.sender === selectedConversationData?.to_id ? 'buyer' : 'seller',
+                type: messageType,
+                content: messageContent,
+                time: new Date(sseData.timestamp).toLocaleTimeString([], { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                }),
+                // Tambahkan properti gambar dengan URL yang sudah diformat
+                ...(messageType === 'image' && {
+                  imageUrl: buildImageUrl(content.url || ''),
+                  imageThumb: {
+                    url: buildImageUrl(content.thumb_url || ''),
+                    height: content.thumb_height || 0,
+                    width: content.thumb_width || 0
+                  }
+                })
+              };
+
+              addNewMessage(newMessage);
+            }
           }
           break;
 
@@ -319,7 +308,7 @@ const WebChatPage: React.FC = () => {
           console.log('Unhandled SSE event type:', sseData.type);
       }
     }
-  }, [sseData, selectedConversation, selectedConversationData]);
+  }, [sseData, selectedConversation, selectedConversationData, updateConversationList, addNewMessage]);
 
   const handleSendMessage = async (message: string) => {
     if (!selectedConversationData || !message.trim()) return;
