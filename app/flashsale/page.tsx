@@ -1003,6 +1003,20 @@ export default function FlashSalePage() {
         .slice(0, duplicateProgress.total);
     }, [duplicateProgress]);
 
+    if (!duplicateProgress) return null;
+
+    return (
+      <div className="mt-4 space-y-2 max-h-[300px] overflow-y-auto pr-2">
+        {sortedProgressDetails.map((detail) => (
+          <ProgressItem 
+            key={detail.flash_sale_id} 
+            detail={detail}
+          />
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
       {/* Header yang lebih compact untuk mobile */}
@@ -1679,5 +1693,4 @@ export default function FlashSalePage() {
       <DeleteConfirmDialog />
     </div>
   );
-  }
 }
