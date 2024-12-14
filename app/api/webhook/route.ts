@@ -120,8 +120,8 @@ async function processWebhookData(webhookData: any) {
 }
 
 async function handleChat(data: any) {
-  const messageType = data.content?.message_type;
-  if (messageType === 'text') {
+  
+  if (data.data.type === 'message') {
     const chatData = {
       type: 'new_message',
       conversation_id: data.content.conversation_id,
