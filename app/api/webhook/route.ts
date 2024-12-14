@@ -21,31 +21,80 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const stream = new ReadableStream({
-    start(controller) {
-      clients.add(controller);
-      req.signal.addEventListener('abort', () => {
-        clients.delete(controller);
-      });
-    },
-  });
+  try {
+    const stream = new ReadableStream({
+      start(controller) {
+        clients.add(controller);
+        
+        // Kirim data inisial ketika koneksi terbentuk
+        const initialData = {
+          type: 'connection_established',
+          timestamp: Date.now(),
+          message: 'Koneksi SSE berhasil dibuat'
+        };
+        
+        const event = [
+          `id: ${Date.now()}`,
+          `data: ${JSON.stringify(initialData)}`,
+          '\n'
+        ].join('\n');
+        
+        controller.enqueue(event);
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
-  });
+        // Set up heartbeat
+        const heartbeatInterval = setInterval(() => {
+          const heartbeat = {
+            type: 'heartbeat',
+            timestamp: Date.now()
+          };
+          
+          const heartbeatEvent = [
+            `id: ${Date.now()}`,
+            `data: ${JSON.stringify(heartbeat)}`,
+            '\n'
+          ].join('\n');
+          
+          controller.enqueue(heartbeatEvent);
+        }, 30000); // Kirim heartbeat setiap 30 detik
+
+        req.signal.addEventListener('abort', () => {
+          clearInterval(heartbeatInterval);
+          clients.delete(controller);
+        });
+      },
+      cancel(controller) {
+        clients.delete(controller);
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  } catch (error) {
+    console.error('Error dalam membuat SSE connection:', error);
+    return new Response('Error', { status: 500 });
+  }
 }
 
 function sendEventToAll(data: any) {
-  const event = `data: ${JSON.stringify(data)}\n\n`;
+  const eventId = Date.now().toString();
+  const event = [
+    `id: ${eventId}`,
+    `retry: 10000`,
+    `data: ${JSON.stringify(data)}`,
+    '\n'
+  ].join('\n');
+
   clients.forEach(client => {
     try {
       client.enqueue(event);
     } catch (error) {
-      console.error('Error mengirim event ke klien:', error);
+      console.error('Error mengirim event:', error);
       clients.delete(client);
     }
   });
@@ -160,4 +209,19 @@ async function handleOther(data: any) {
 async function handleDocumentUpdate(data: any) {
   console.log('Menangani pembaruan dokumen', data);
   await updateDocumentStatus(data.data.ordersn, data.data.package_number);
+}
+
+// Sebaiknya tambahkan pembersihan klien yang tidak aktif
+function cleanupInactiveClients() {
+  clients.forEach(client => {
+    if (!client.desiredSize) {
+      clients.delete(client);
+    }
+  });
+}
+
+function startHeartbeat() {
+  setInterval(() => {
+    sendEventToAll({ type: 'heartbeat', timestamp: Date.now() });
+  }, 30000); // Kirim heartbeat setiap 30 detik
 }

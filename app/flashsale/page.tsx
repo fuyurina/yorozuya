@@ -254,6 +254,128 @@ const FlashSaleCard = ({
   );
 };
 
+// Komponen untuk dialog mobile
+const MobileCreateFlashSaleDialog = ({
+  isOpen,
+  onClose,
+  selectedShop,
+  shops,
+  onShopChange,
+  timeSlots,
+  selectedTimeSlot,
+  onTimeSlotSelect,
+  onConfirm
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedShop?: number;
+  shops: Array<{ shop_id: number; shop_name: string }>;
+  onShopChange: (value: string) => void;
+  timeSlots: TimeSlot[];
+  selectedTimeSlot?: TimeSlot;
+  onTimeSlotSelect: (slot: TimeSlot) => void;
+  onConfirm: () => void;
+}) => {
+  console.log('Mobile dialog timeSlots:', timeSlots); // Untuk debugging
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="p-0 dark:border-gray-800 dark:bg-gray-950">
+        {/* Header */}
+        <div className="p-4 border-b dark:border-gray-800">
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold dark:text-white">
+              Buat Flash Sale Baru
+            </h2>
+            <Select
+              value={selectedShop?.toString()}
+              onValueChange={onShopChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Pilih Toko" />
+              </SelectTrigger>
+              <SelectContent>
+                {shops.map(shop => (
+                  <SelectItem key={shop.shop_id} value={shop.shop_id.toString()}>
+                    {shop.shop_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Warning jika toko belum dipilih */}
+        {!selectedShop && (
+          <div className="px-4 py-3 bg-yellow-50 dark:bg-yellow-900/30 border-b dark:border-gray-800">
+            <div className="flex items-center gap-2 text-sm text-yellow-800 dark:text-yellow-200">
+              <AlertTriangle className="h-4 w-4" />
+              <span>Silakan pilih toko terlebih dahulu</span>
+            </div>
+          </div>
+        )}
+
+        {/* Daftar slot waktu */}
+        <div className="p-4 max-h-[400px] overflow-y-auto">
+          {timeSlots.length === 0 ? (
+            <div className="text-center py-4 text-gray-500">
+              Tidak ada slot waktu tersedia
+            </div>
+          ) : (
+            <RadioGroup
+              value={selectedTimeSlot?.timeslot_id.toString()}
+              onValueChange={(value) => {
+                const slot = timeSlots.find(s => s.timeslot_id === parseInt(value));
+                if (slot) onTimeSlotSelect(slot);
+              }}
+              className="space-y-2"
+            >
+              {timeSlots.map((slot) => (
+                <div
+                  key={slot.timeslot_id}
+                  className="flex items-center p-3 rounded-md border dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                >
+                  <RadioGroupItem
+                    value={slot.timeslot_id.toString()}
+                    id={`slot-${slot.timeslot_id}`}
+                    className="mr-3"
+                  />
+                  <div>
+                    <p className="text-sm font-medium dark:text-gray-200">
+                      {dayjs(slot.start_time * 1000).format('DD/MM/YYYY')}
+                    </p>
+                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                      {dayjs(slot.start_time * 1000).format('HH:mm')} - {dayjs(slot.end_time * 1000).format('HH:mm')}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </RadioGroup>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 p-4 border-t dark:border-gray-800">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="dark:border-gray-700 dark:text-gray-300"
+          >
+            Batal
+          </Button>
+          <Button
+            onClick={onConfirm}
+            disabled={!selectedTimeSlot}
+            className="bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90"
+          >
+            Buat Flash Sale
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export default function FlashSalePage() {
   const [loading, setLoading] = useState(false);
   const [flashSales, setFlashSales] = useState<FlashSale[]>([]);
@@ -288,6 +410,8 @@ export default function FlashSalePage() {
   const [deletingFlashSale, setDeletingFlashSale] = useState<number | null>(null);
   const [isDeletingSingle, setIsDeletingSingle] = useState(false);
   const [stepStatuses, setStepStatuses] = useState<Record<number, StepStatus>>({});
+  const [isDesktopDialogOpen, setIsDesktopDialogOpen] = useState(false);
+  const [isMobileDialogOpen, setIsMobileDialogOpen] = useState(false);
 
   // Tambahkan fungsi helper untuk mengambil slot waktu
   const fetchTimeSlots = async (shopId: number) => {
@@ -319,8 +443,12 @@ export default function FlashSalePage() {
       try {
         const shops = await getAllShops();
         if (shops && shops.length > 0) {
-          setShops(shops);
-          setSelectedShop(shops[0].shop_id);
+          // Urutkan toko berdasarkan nama secara ascending
+          const sortedShops = shops.sort((a, b) => 
+            a.shop_name.localeCompare(b.shop_name, 'id', { sensitivity: 'base' })
+          );
+          setShops(sortedShops);
+          setSelectedShop(sortedShops[0].shop_id);
         }
       } catch (error) {
         toast.error('Gagal mengambil daftar toko', {
@@ -376,11 +504,16 @@ export default function FlashSalePage() {
     setSelectedDialogShop(shopId);
     setSelectedTimeSlot(undefined);
     setDate(undefined);
-    setTimeSlots([]);
     
     try {
       const slots = await fetchTimeSlots(shopId);
       setTimeSlotsByDate(slots);
+      
+      // Tambahkan ini untuk mengatur timeSlots untuk tampilan mobile
+      const allSlots = Object.values(slots).flat();
+      setTimeSlots(allSlots);
+      
+      console.log('Mobile time slots:', allSlots); // Untuk debugging
     } catch (error) {
       toast.error('Error', {
         description: 'Gagal mengambil slot waktu yang tersedia'
@@ -400,13 +533,23 @@ export default function FlashSalePage() {
     setSelectedDialogShop(selectedShop);
     setSelectedTimeSlot(undefined);
     setDate(undefined);
-    setTimeSlots([]);
+    setTimeSlots([]); // Reset timeSlots
     
     setCalendarLoading(true);
     try {
       const slots = await fetchTimeSlots(selectedShop);
       setTimeSlotsByDate(slots);
-      setIsCreateDialogOpen(true);
+
+      // Tambahkan ini untuk mengatur timeSlots awal untuk tampilan mobile
+      const allSlots = Object.values(slots).flat();
+      setTimeSlots(allSlots);
+      
+      // Buka dialog berdasarkan ukuran layar
+      if (window.innerWidth >= 768) { // md breakpoint
+        setIsDesktopDialogOpen(true);
+      } else {
+        setIsMobileDialogOpen(true);
+      }
     } catch (error) {
       toast.error('Error', {
         description: 'Gagal mengambil slot waktu yang tersedia'
@@ -417,9 +560,13 @@ export default function FlashSalePage() {
   };
 
   const handleDateChange = (selectedDate: Date | undefined) => {
-    if (!selectedDate) return;
-    setDate(selectedDate);
+    if (!selectedDate) {
+      setTimeSlots([]); // Reset timeSlots jika tidak ada tanggal yang dipilih
+      setDate(undefined);
+      return;
+    }
     
+    setDate(selectedDate);
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
     const slotsForDate = timeSlotsByDate[dateKey] || [];
     setTimeSlots(slotsForDate);
@@ -1344,7 +1491,8 @@ export default function FlashSalePage() {
         </div>
       </div>
 
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      {/* Dialog untuk desktop */}
+      <Dialog open={isDesktopDialogOpen} onOpenChange={setIsDesktopDialogOpen}>
         <DialogContent className="sm:max-w-[900px] p-0 dark:border-gray-800 dark:bg-gray-950">
           <div className="p-6 pb-4 border-b dark:border-gray-800">
             <div className="flex items-center justify-between gap-4 pr-8">
@@ -1422,46 +1570,41 @@ export default function FlashSalePage() {
             {/* Kolom Slot Waktu */}
             <div className="p-6 border-t dark:border-gray-800 h-[600px] flex flex-col">
               <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Sesi Flash Sale</h3>
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Kuota Produk</h3>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {!date 
+                    ? "Pilih tanggal terlebih dahulu"
+                    : timeSlots.length > 0 
+                      ? "Sesi Flash Sale" 
+                      : "Tidak ada slot waktu tersedia"}
+                </h3>
               </div>
-              <RadioGroup
-                value={selectedTimeSlot?.timeslot_id.toString()}
-                onValueChange={(value) => {
-                  const slot = timeSlots.find(s => s.timeslot_id === parseInt(value));
-                  if (slot) {
-                    setSelectedTimeSlot(slot);
-                  }
-                }}
-                className="space-y-2.5 overflow-y-auto pr-2 custom-scrollbar"
-              >
-                {timeSlots.map((slot) => {
-                  const isSelected = selectedSlots.includes(slot.timeslot_id);
-                  return (
+              
+              {date ? (
+                <RadioGroup
+                  value={selectedTimeSlot?.timeslot_id.toString()}
+                  onValueChange={(value) => {
+                    const slot = timeSlots.find(s => s.timeslot_id === parseInt(value));
+                    if (slot) {
+                      setSelectedTimeSlot(slot);
+                    }
+                  }}
+                  className="space-y-2.5 overflow-y-auto pr-2 custom-scrollbar"
+                >
+                  {timeSlots.map((slot) => (
                     <div
                       key={slot.timeslot_id}
                       className={`flex items-center justify-between p-3 rounded-md border ${
-                        isSelected 
+                        selectedTimeSlot?.timeslot_id === slot.timeslot_id
                           ? 'border-primary bg-primary/5 dark:bg-primary/10' 
                           : 'border-gray-200 dark:border-gray-800'
                       } hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer`}
-                      onClick={() => {
-                        if (isSelected) {
-                          setSelectedSlots(selectedSlots.filter(id => id !== slot.timeslot_id));
-                        } else if (selectedSlots.length < 20) {
-                          setSelectedSlots([...selectedSlots, slot.timeslot_id]);
-                        } else {
-                          toast.warning('Maksimal 20 Slot', {
-                            description: 'Anda hanya dapat memilih maksimal 20 slot waktu'
-                          });
-                        }
-                      }}
+                      onClick={() => setSelectedTimeSlot(slot)}
                     >
                       <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => {}}
-                          className="pointer-events-none invisible"
+                        <RadioGroupItem 
+                          value={slot.timeslot_id.toString()} 
+                          id={`slot-${slot.timeslot_id}`}
+                          onClick={(e) => e.stopPropagation()}
                         />
                         <div>
                           <p className="text-sm font-medium dark:text-gray-200">
@@ -1473,16 +1616,21 @@ export default function FlashSalePage() {
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-              </RadioGroup>
+                  ))}
+                </RadioGroup>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground">
+                  <CalendarDays className="h-8 w-8 mb-2 text-gray-400" />
+                  <p>Silakan pilih tanggal di kalender</p>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="flex items-center justify-end gap-3 p-6 border-t dark:border-gray-800 mt-4">
             <Button
               variant="outline"
-              onClick={() => setIsCreateDialogOpen(false)}
+              onClick={() => setIsDesktopDialogOpen(false)}
               className="px-6 dark:border-gray-700 dark:text-gray-300"
             >
               Batal
@@ -1496,6 +1644,19 @@ export default function FlashSalePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog untuk mobile */}
+      <MobileCreateFlashSaleDialog
+        isOpen={isMobileDialogOpen}
+        onClose={() => setIsMobileDialogOpen(false)}
+        selectedShop={selectedDialogShop}
+        shops={shops}
+        onShopChange={handleDialogShopChange}
+        timeSlots={timeSlots}
+        selectedTimeSlot={selectedTimeSlot}
+        onTimeSlotSelect={(slot) => setSelectedTimeSlot(slot)}
+        onConfirm={handleConfirmTimeSlot}
+      />
 
       <Dialog open={showStatusConfirmDialog} onOpenChange={setShowStatusConfirmDialog}>
         <DialogContent>

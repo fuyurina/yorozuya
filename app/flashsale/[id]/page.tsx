@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox"
-import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Trash2, Store, Clock, Package } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -127,6 +127,11 @@ const formatRupiah = (amount: number) => {
   }).format(amount);
 };
 
+// Tambahkan fungsi helper untuk membulatkan ke ratusan terdekat
+const roundToHundreds = (num: number) => {
+  return Math.round(num / 100) * 100;
+};
+
 export default function FlashSaleDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -217,11 +222,11 @@ export default function FlashSaleDetailPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <Card className="bg-white shadow-sm border-0">
+        <Card className="bg-white dark:bg-gray-800/50 rounded-none">
           <CardContent className="flex items-center justify-center h-[200px]">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-              <p className="text-gray-600">Memuat data flash sale...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-200 mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-gray-200">Memuat data flash sale...</p>
             </div>
           </CardContent>
         </Card>
@@ -425,7 +430,7 @@ export default function FlashSaleDetailPage() {
     }
   };
 
-  // Fungsi untuk mass update
+  // Modifikasi fungsi handleMassUpdate
   const handleMassUpdate = (field: 'promotion_price' | 'stock' | 'discount', value: number) => {
     if (selectedModels.size === 0) return;
 
@@ -441,7 +446,8 @@ export default function FlashSaleDetailPage() {
             
             // Hitung harga diskon jika tipe update adalah discount
             if (field === 'discount') {
-              updateValue = Math.floor(model.original_price * (1 - value / 100));
+              // Hitung harga setelah diskon dan bulatkan ke ratusan terdekat
+              updateValue = roundToHundreds(model.original_price * (1 - value / 100));
             }
 
             return {
@@ -942,101 +948,105 @@ export default function FlashSaleDetailPage() {
     }
   };
 
+  // Tambahkan fungsi helper untuk menghitung diskon
+  const calculateDiscount = (originalPrice: number, promoPrice: number) => {
+    if (!originalPrice || !promoPrice) return 0;
+    const discount = ((originalPrice - promoPrice) / originalPrice) * 100;
+    return Math.round(discount); // Bulatkan ke angka terdekat
+  };
+
   // Render komponen
   return (
-    <div className="p-6">
-      <Card className="bg-white shadow-sm border-0">
-        <CardContent className="pt-6">
-          {/* Info Flash Sale */}
-          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">Detail Flash Sale</h2>
+    
+      <Card className="bg-white dark:bg-gray-800/50 rounded-none">
+        <CardContent className="pt-6 px-4 sm:px-6">
+          {/* Info Flash Sale - Responsif Grid */}
+          <div className="bg-white dark:bg-gray-800/80 rounded-lg shadow-sm border dark:border-gray-700/50 p-3 sm:p-4 mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+              <h2 className="text-lg font-semibold dark:text-gray-200">Detail Flash Sale</h2>
+              <Badge 
+                variant="secondary" 
+                className="bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-3 py-0.5 text-xs"
+              >
+                Aktif
+              </Badge>
+            </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {/* Kolom 1 */}
-              <div className="space-y-4">
+            {/* Grid yang responsif */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Kolom Kiri */}
+              <div className="space-y-3">
                 <div>
-                  <label className="text-sm text-gray-500 block mb-1">ID Flash Sale</label>
-                  <p className="font-medium">{flashSaleId}</p>
+                  <label className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">ID Flash Sale</label>
+                  <p className="text-sm font-mono dark:text-gray-200">{flashSaleId}</p>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500 block mb-1">ID Time Slot</label>
-                  <p className="font-medium">{flashSaleData?.timeslot_id}</p>
+                  <label className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">ID Time Slot</label>
+                  <p className="text-sm font-mono dark:text-gray-200">{flashSaleData?.timeslot_id}</p>
                 </div>
               </div>
 
-              {/* Kolom 2 */}
-              <div className="space-y-4">
+              {/* Kolom Tengah */}
+              <div className="space-y-3">
                 <div>
-                  <label className="text-sm text-gray-500 block mb-1">Toko</label>
-                  <p className="font-medium">{shopName}</p>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <Store className="w-4 h-4 text-gray-400" />
+                    <label className="text-xs text-gray-500 dark:text-gray-400">Toko</label>
+                  </div>
+                  <p className="text-sm dark:text-gray-200">{shopName}</p>
                 </div>
+                
                 <div>
-                  <label className="text-sm text-gray-500 block mb-1">Status</label>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${Number(flashSaleData?.status) === 1 ? 'bg-green-500' : 'bg-red-500'}`} />
-                    <span className={`font-medium ${Number(flashSaleData?.status) === 1 ? 'text-green-600' : 'text-red-600'}`}>
-                      {Number(flashSaleData?.status) === 1 ? 'Aktif' : 'Nonaktif'}
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <Clock className="w-4 h-4 text-gray-400" />
+                    <label className="text-xs text-gray-500 dark:text-gray-400">Waktu Flash Sale</label>
+                  </div>
+                  <p className="text-sm dark:text-gray-200">
+                    {flashSaleData && format(new Date(flashSaleData.start_time * 1000), "MMMM do, yyyy")}
+                    <span className="text-gray-500 dark:text-gray-400 ml-2">
+                      {flashSaleData && `${formatTime(flashSaleData.start_time)} - ${formatTime(flashSaleData.end_time)}`}
                     </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Kolom 3 */}
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm text-gray-500 block mb-1">Waktu Flash Sale</label>
-                  <p className="font-medium">
-                    {flashSaleData && `${format(new Date(flashSaleData.start_time * 1000), "PPP")}`}
-                    <br />
-                    {flashSaleData && `${formatTime(flashSaleData.start_time)} - ${formatTime(flashSaleData.end_time)}`}
                   </p>
                 </div>
               </div>
 
-              {/* Kolom 4 */}
-              <div className="space-y-4">
+              {/* Kolom Kanan */}
+              <div className="space-y-3">
                 <div>
-                  <label className="text-sm text-gray-500 block mb-1">Total Produk</label>
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <p className="font-medium">{flashSaleData?.item_count ?? 0}</p>
-                      <span className="text-sm text-gray-500">Total</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{flashSaleData?.enabled_item_count ?? 0}</p>
-                      <span className="text-sm text-gray-500">Aktif</span>
-                    </div>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <Package className="w-4 h-4 text-gray-400" />
+                    <label className="text-xs text-gray-500 dark:text-gray-400">Total Produk</label>
                   </div>
+                  <p className="text-sm font-medium dark:text-gray-200">{flashSaleData?.item_count ?? 0} Produk</p>
                 </div>
+                
                 <div>
-                  <label className="text-sm text-gray-500 block mb-1">Tipe</label>
-                  <p className="font-medium">
-                    {Number(flashSaleData?.type) === 1 ? 'Regular Flash Sale' : 'Special Flash Sale'}
-                  </p>
+                  <label className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">Status Produk</label>
+                  <p className="text-sm font-medium dark:text-gray-200">{flashSaleData?.enabled_item_count ?? 0} Aktif</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Mass Update Controls */}
-          <div className="flex items-center gap-4 p-5 bg-white rounded-lg shadow-sm border mb-6">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">
+          {/* Mass Update Controls - Responsif */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3 sm:p-5 bg-white dark:bg-gray-800/95 rounded-lg shadow-sm border dark:border-gray-700/50 mb-6">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Mass Update
               </span>
               <Badge 
                 variant="secondary" 
-                className="bg-gray-100 text-gray-700 hover:bg-gray-100"
+                className="bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600/50 w-[140px] flex items-center justify-center"
               >
                 {selectedModels.size} model terpilih
               </Badge>
             </div>
 
-            <div className="h-4 w-px bg-gray-200 mx-2" />
+            <div className="hidden sm:block h-4 w-px bg-gray-200 dark:bg-gray-700/50 mx-2" />
 
-            <div className="flex items-center gap-3 flex-1">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full">
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <Select 
                     onValueChange={(value: 'fixed' | 'percentage') => {
                       setUpdateType(value);
@@ -1044,19 +1054,19 @@ export default function FlashSaleDetailPage() {
                     }}
                     value={updateType}
                   >
-                    <SelectTrigger className="h-9 text-sm bg-white">
-                      <SelectValue placeholder="Tipe harga promo" />
+                    <SelectTrigger className="h-9 text-sm bg-white dark:bg-gray-700/50 dark:text-gray-200 w-full sm:w-[100px] shrink-0">
+                      <SelectValue placeholder="Harga" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="fixed">Harga Tetap</SelectItem>
-                      <SelectItem value="percentage">Persentase Diskon</SelectItem>
+                      <SelectItem value="fixed">Harga</SelectItem>
+                      <SelectItem value="percentage">Diskon</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Input
                     type="number"
-                    placeholder={updateType === 'fixed' ? "Masukkan harga" : "Masukkan %"}
-                    className="h-9 text-sm w-32"
+                    placeholder={updateType === 'fixed' ? "Harga" : "%"}
+                    className="h-9 text-sm w-full sm:w-32 dark:bg-gray-700/50 dark:border-gray-600/50 dark:text-gray-200 dark:placeholder-gray-400"
                     value={promoPrice || ''}
                     min={0}
                     max={updateType === 'percentage' ? 100 : undefined}
@@ -1071,7 +1081,7 @@ export default function FlashSaleDetailPage() {
                   <Input
                     type="number"
                     placeholder="Stok"
-                    className="h-9 text-sm w-32"
+                    className="h-9 text-sm w-full sm:w-32 dark:bg-gray-700/50 dark:border-gray-600/50 dark:text-gray-200 dark:placeholder-gray-400"
                     value={stockValue || ''}
                     onChange={(e) => {
                       const value = parseInt(e.target.value);
@@ -1096,19 +1106,19 @@ export default function FlashSaleDetailPage() {
                       }
                     }}
                     disabled={selectedModels.size === 0}
-                    className="h-9 bg-black text-white hover:bg-black/90"
+                    className="h-9 w-full sm:w-auto bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800"
                   >
                     Update
                   </Button>
                 </div>
               </div>
 
-              <div className="h-4 w-px bg-gray-200 mx-2" />
+              <div className="hidden sm:block h-4 w-px bg-gray-200 dark:bg-gray-700/50 mx-2" />
 
-              <div className="flex items-center gap-2 ml-auto">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:ml-auto">
                 <Button
                   onClick={() => handleMassActivation(true)}
-                  className="h-9 bg-emerald-500 text-white hover:bg-emerald-600"
+                  className="h-9 w-full sm:w-auto bg-emerald-500 text-white hover:bg-emerald-600"
                   disabled={selectedModels.size === 0}
                 >
                   Aktifkan
@@ -1116,7 +1126,7 @@ export default function FlashSaleDetailPage() {
 
                 <Button
                   onClick={() => handleMassActivation(false)}
-                  className="h-9 bg-rose-500 text-white hover:bg-rose-600"
+                  className="h-9 w-full sm:w-auto bg-rose-500 text-white hover:bg-rose-600"
                   disabled={selectedModels.size === 0}
                 >
                   Nonaktifkan
@@ -1124,7 +1134,7 @@ export default function FlashSaleDetailPage() {
 
                 <Button
                   onClick={handleDeleteItems}
-                  className="h-9 bg-red-600 text-white hover:bg-red-700"
+                  className="h-9 w-full sm:w-auto bg-red-600 text-white hover:bg-red-700"
                   disabled={selectedModels.size === 0 || isDeleting}
                 >
                   {isDeleting ? (
@@ -1148,197 +1158,228 @@ export default function FlashSaleDetailPage() {
             <Button
               type="button"
               onClick={handleAddProduct}
-              className="bg-black text-white hover:bg-black/90"
+              className="bg-black dark:bg-gray-700/90 text-white hover:bg-black/90 dark:hover:bg-gray-600/90 dark:border-gray-600/50"
             >
               + Tambah Produk
             </Button>
           </div>
 
-          {/* Table */}
-          <Table className="border rounded-lg overflow-hidden">
-            <TableHeader className="bg-gray-50">
-              <TableRow>
-                <TableHead className="w-[5%]">
-                  <Checkbox
-                    checked={flashSaleData?.models && flashSaleData.models.length > 0 && 
-                      flashSaleData.models.every(model => 
-                        selectedModels.has(`${model.item_id}-${model.model_id}`)
-                      )}
-                    onCheckedChange={toggleAllItems}
-                  />
-                </TableHead>
-                <TableHead className="w-[25%] font-medium">Nama Produk</TableHead>
-                <TableHead className="w-[15%] font-medium">Harga Normal</TableHead>
-                <TableHead className="w-[15%] font-medium">Harga Saat Ini</TableHead>
-                <TableHead className="w-[15%] font-medium">Harga Promo</TableHead>
-                <TableHead className="w-[10%] font-medium">Stok Tersedia</TableHead>
-                <TableHead className="w-[10%] font-medium">Stok Flash Sale</TableHead>
-                <TableHead className="w-[10%] font-medium">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {flashSaleData?.items.map((item: any) => {
-                const itemModels = flashSaleData.models.filter(
-                  (model: any) => model.item_id === item.item_id
-                );
-                
-                return (
-                  <React.Fragment key={item.item_id}>
-                    {/* Item row */}
-                    <TableRow className="bg-gray-50">
-                      <TableCell colSpan={8}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2">
-                              <Checkbox
-                                checked={itemModels.every(model => 
-                                  selectedModels.has(`${item.item_id}-${model.model_id}`)
-                                )}
-                                onCheckedChange={() => toggleAllModels(item.item_id, itemModels)}
-                              />
-                              <button 
-                                onClick={() => {
-                                  setCollapsedItems(prev => {
-                                    const next = new Set(prev);
-                                    if (next.has(item.item_id)) {
-                                      next.delete(item.item_id);
-                                    } else {
-                                      next.add(item.item_id);
-                                    }
-                                    return next;
-                                  });
-                                }}
-                                type="button"
-                                className="p-0.5 hover:bg-gray-200 rounded-sm transition-colors"
-                              >
-                                {collapsedItems.has(item.item_id) ? (
-                                  <ChevronRight className="h-4 w-4" />
+          {/* Table responsif dengan scroll horizontal */}
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <Table className="border dark:border-gray-700/50 rounded-lg min-w-[800px]">
+              <TableHeader className="bg-gray-50 dark:bg-gray-800/90">
+                <TableRow className="border-b dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                  <TableHead className="font-medium dark:text-gray-300">
+                    <Checkbox
+                      checked={flashSaleData?.models && flashSaleData.models.length > 0 && 
+                        flashSaleData.models.every(model => 
+                          selectedModels.has(`${model.item_id}-${model.model_id}`)
+                        )}
+                      onCheckedChange={toggleAllItems}
+                    />
+                  </TableHead>
+                  <TableHead className="font-medium dark:text-gray-300">Nama Produk</TableHead>
+                  <TableHead className="font-medium dark:text-gray-300">Harga Normal</TableHead>
+                  <TableHead className="font-medium dark:text-gray-300">Harga Saat Ini</TableHead>
+                  <TableHead className="font-medium dark:text-gray-300">Harga Promo</TableHead>
+                  <TableHead className="font-medium dark:text-gray-300">Diskon %</TableHead>
+                  <TableHead className="font-medium dark:text-gray-300">Stok Tersedia</TableHead>
+                  <TableHead className="font-medium dark:text-gray-300">Stok Flash Sale</TableHead>
+                  <TableHead className="font-medium dark:text-gray-300">Status</TableHead>
+                  
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {flashSaleData?.items.map((item: any) => {
+                  const itemModels = flashSaleData.models.filter(
+                    (model: any) => model.item_id === item.item_id
+                  );
+                  
+                  return (
+                    <React.Fragment key={item.item_id}>
+                      {/* Item row */}
+                      <TableRow className="border-b dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/90">
+                        <TableCell colSpan={9}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={itemModels.every(model => 
+                                    selectedModels.has(`${item.item_id}-${model.model_id}`)
+                                  )}
+                                  onCheckedChange={() => toggleAllModels(item.item_id, itemModels)}
+                                />
+                                <button 
+                                  onClick={() => {
+                                    setCollapsedItems(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(item.item_id)) {
+                                        next.delete(item.item_id);
+                                      } else {
+                                        next.add(item.item_id);
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                  type="button"
+                                  className="p-0.5 hover:bg-gray-200 rounded-sm transition-colors"
+                                >
+                                  {collapsedItems.has(item.item_id) ? (
+                                    <ChevronRight className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                  )}
+                                </button>
+                              </div>
+                              <div className="relative w-8 h-8">
+                                <img 
+                                  src={`https://down-id.img.susercontent.com/${item.image}`}
+                                  alt={item.item_name}
+                                  className="object-cover rounded-md w-full h-full"
+                                  onError={(e) => {
+                                    e.currentTarget.src = '/placeholder-image.jpg';
+                                  }}
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{item.item_name}</span>
+                                {isItemRegistered(item.item_id) ? (
+                                  <span className="px-2 py-0.5 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full">
+                                    Terdaftar
+                                  </span>
                                 ) : (
-                                  <ChevronDown className="h-4 w-4" />
+                                  <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-400 rounded-full">
+                                    Belum Terdaftar
+                                  </span>
                                 )}
-                              </button>
+                              </div>
                             </div>
-                            <div className="relative w-8 h-8">
-                              <img 
-                                src={`https://down-id.img.susercontent.com/${item.image}`}
-                                alt={item.item_name}
-                                className="object-cover rounded-md w-full h-full"
-                                onError={(e) => {
-                                  e.currentTarget.src = '/placeholder-image.jpg';
-                                }}
-                              />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{item.item_name}</span>
-                              {isItemRegistered(item.item_id) ? (
-                                <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">
-                                  Terdaftar
-                                </span>
+                            
+                            <Button
+                              onClick={() => handleDeleteSingleItem(item.item_id)}
+                              variant="ghost"
+                              className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              disabled={isDeleting}
+                            >
+                              {isDeleting && itemToDelete === item.item_id ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2" />
                               ) : (
-                                <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
-                                  Belum Terdaftar
-                                </span>
+                                <Trash2 className="h-4 w-4 mr-1" />
                               )}
-                            </div>
+                              {isDeleting && itemToDelete === item.item_id ? 'Menghapus...' : 'Hapus'}
+                            </Button>
                           </div>
-                          
-                          <Button
-                            onClick={() => handleDeleteSingleItem(item.item_id)}
-                            variant="ghost"
-                            className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            disabled={isDeleting}
-                          >
-                            {isDeleting && itemToDelete === item.item_id ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2" />
-                            ) : (
-                              <Trash2 className="h-4 w-4 mr-1" />
-                            )}
-                            {isDeleting && itemToDelete === item.item_id ? 'Menghapus...' : 'Hapus'}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-
-                    {/* Model rows */}
-                    {!collapsedItems.has(item.item_id) && itemModels.map((model: any) => (
-                      <TableRow key={`${model.item_id}-${model.model_id}`}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedModels.has(`${model.item_id}-${model.model_id}`)}
-                            onCheckedChange={() => toggleModelSelection(model.item_id, model.model_id)}
-                            disabled={model.stock === 0}
-                          />
-                        </TableCell>
-                        <TableCell>{model.model_name}</TableCell>
-                        <TableCell>{formatRupiah(model.original_price)}</TableCell>
-                        <TableCell>{formatRupiah(model.promotion_price_with_tax || model.promotion_price)}</TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            value={model.input_promotion_price || model.promotion_price_with_tax}
-                            className="w-28 h-9"
-                            disabled={activatedModels.has(`${model.item_id}-${model.model_id}`)}
-                            onChange={(e) => {
-                              const value = parseInt(e.target.value);
-                              if (!isNaN(value)) {
-                                const updatedModels = flashSaleData.models.map((m: any) => {
-                                  if (m.item_id === model.item_id && m.model_id === model.model_id) {
-                                    return { ...m, input_promotion_price: value };
-                                  }
-                                  return m;
-                                });
-                                setFlashSaleData({ ...flashSaleData, models: updatedModels });
-                              }
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>{model.stock}</TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            value={model.campaign_stock}
-                            className="w-24 h-9"
-                            disabled={activatedModels.has(`${model.item_id}-${model.model_id}`)}
-                            onChange={(e) => {
-                              const value = parseInt(e.target.value);
-                              if (!isNaN(value)) {
-                                const updatedModels = flashSaleData.models.map((m: any) => {
-                                  if (m.item_id === model.item_id && m.model_id === model.model_id) {
-                                    return { ...m, campaign_stock: value };
-                                  }
-                                  return m;
-                                });
-                                setFlashSaleData({ ...flashSaleData, models: updatedModels });
-                              }
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Switch
-                            checked={model.status === 1}
-                            onCheckedChange={(checked) => 
-                              handleActivateSingleModel(
-                                model.item_id, 
-                                model.model_id, 
-                                checked
-                              )
-                            }
-                          />
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </React.Fragment>
-                );
-              })}
-            </TableBody>
-          </Table>
+
+                      {/* Model rows */}
+                      {!collapsedItems.has(item.item_id) && 
+                        [...itemModels] // Buat copy array untuk diurutkan
+                          .sort((a, b) => a.model_name.localeCompare(b.model_name)) // Urutkan berdasarkan model_name
+                          .map((model: any) => (
+                            <TableRow className="border-b dark:border-gray-700/50">
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedModels.has(`${model.item_id}-${model.model_id}`)}
+                                  onCheckedChange={() => toggleModelSelection(model.item_id, model.model_id)}
+                                  disabled={model.stock === 0}
+                                />
+                              </TableCell>
+                              <TableCell>{model.model_name}</TableCell>
+                              <TableCell>{formatRupiah(model.original_price)}</TableCell>
+                              <TableCell>{formatRupiah(model.promotion_price_with_tax || model.promotion_price)}</TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  value={model.input_promotion_price || model.promotion_price_with_tax}
+                                  className="w-28 h-9 dark:bg-gray-700/50 dark:border-gray-600/50 dark:text-gray-200 dark:placeholder-gray-400 dark:focus:border-blue-500/70 dark:focus:ring-blue-500/20"
+                                  disabled={activatedModels.has(`${model.item_id}-${model.model_id}`)}
+                                  onChange={(e) => {
+                                    const value = parseInt(e.target.value);
+                                    if (!isNaN(value)) {
+                                      const updatedModels = flashSaleData.models.map((m: any) => {
+                                        if (m.item_id === model.item_id && m.model_id === model.model_id) {
+                                          return { ...m, input_promotion_price: value };
+                                        }
+                                        return m;
+                                      });
+                                      setFlashSaleData({ ...flashSaleData, models: updatedModels });
+                                    }
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                {/* Kolom Diskon % */}
+                                {model.input_promotion_price ? (
+                                  <span className="text-emerald-500 dark:text-emerald-400 font-medium">
+                                    {calculateDiscount(model.original_price, model.input_promotion_price)}%
+                                  </span>
+                                ) : (
+                                  <span className="text-emerald-500 dark:text-emerald-400 font-medium">
+                                    {calculateDiscount(model.original_price, model.promotion_price_with_tax)}%
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell>{model.stock}</TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  value={model.campaign_stock}
+                                  className="w-24 h-9 dark:bg-gray-700/50 dark:border-gray-600/50 dark:text-gray-200 dark:placeholder-gray-400 dark:focus:border-blue-500/70 dark:focus:ring-blue-500/20"
+                                  disabled={activatedModels.has(`${model.item_id}-${model.model_id}`)}
+                                  onChange={(e) => {
+                                    const value = parseInt(e.target.value);
+                                    if (!isNaN(value)) {
+                                      const updatedModels = flashSaleData.models.map((m: any) => {
+                                        if (m.item_id === model.item_id && m.model_id === model.model_id) {
+                                          return { ...m, campaign_stock: value };
+                                        }
+                                        return m;
+                                      });
+                                      setFlashSaleData({ ...flashSaleData, models: updatedModels });
+                                    }
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Switch
+                                  checked={model.status === 1}
+                                  onCheckedChange={(checked) => 
+                                    handleActivateSingleModel(
+                                      model.item_id, 
+                                      model.model_id, 
+                                      checked
+                                    )
+                                  }
+                                  className="
+                                    data-[state=checked]:bg-blue-600 
+                                    data-[state=unchecked]:bg-gray-700/50
+                                    dark:data-[state=checked]:bg-blue-500/90
+                                    dark:data-[state=unchecked]:bg-gray-600/40
+                                    dark:border-gray-600/50
+                                    hover:data-[state=checked]:bg-blue-600/90
+                                    hover:data-[state=unchecked]:bg-gray-600/60
+                                    transition-colors
+                                    duration-200
+                                  "
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))
+                      }
+                    </React.Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
 
           {/* Tambahkan Dialog Produk */}
           <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
-            <DialogContent className="sm:max-w-[900px]">
+            <DialogContent className="sm:max-w-[900px] dark:bg-gray-800/95 dark:backdrop-blur-sm">
               <DialogHeader>
                 <div className="flex justify-between items-center">
-                  <DialogTitle>Pilih Produk</DialogTitle>
+                  <DialogTitle className="dark:text-gray-200">Pilih Produk</DialogTitle>
                   <Button
                     variant="outline"
                     size="sm"
@@ -1383,7 +1424,7 @@ export default function FlashSaleDetailPage() {
                   placeholder="Cari produk..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 dark:bg-gray-700/50 dark:border-gray-600/50 dark:text-gray-200 dark:placeholder-gray-400 dark:focus:border-blue-500/70 dark:focus:ring-blue-500/20"
                 />
               </div>
 
@@ -1414,7 +1455,7 @@ export default function FlashSaleDetailPage() {
                       return (
                         <TableRow 
                           key={product.item_id} 
-                          className={`cursor-pointer hover:bg-gray-50 ${isExisting ? 'opacity-50' : ''}`}
+                          className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 ${isExisting ? 'opacity-50' : ''}`}
                           onClick={() => !isExisting && handleProductSelect(product.item_id)}
                         >
                           <TableCell className="w-[50px]">
@@ -1455,8 +1496,8 @@ export default function FlashSaleDetailPage() {
                 </Table>
               </div>
 
-              <div className="flex justify-between items-center gap-3 mt-4 pt-4 border-t">
-                <span className="text-sm text-gray-600">
+              <div className="flex justify-between items-center gap-3 mt-4 pt-4 border-t dark:border-gray-700/50">
+                <span className="text-sm text-gray-600 dark:text-gray-400">
                   {selectedProductIds.size} produk terpilih
                 </span>
                 <div className="flex gap-3">
@@ -1472,7 +1513,7 @@ export default function FlashSaleDetailPage() {
                   <Button
                     onClick={handleConfirmProducts}
                     disabled={selectedProductIds.size === 0}
-                    className="bg-black text-white hover:bg-black/90"
+                    className="bg-black dark:bg-gray-700/90 text-white hover:bg-black/90 dark:hover:bg-gray-600/90 dark:border-gray-600/50"
                   >
                     Tambahkan Produk
                   </Button>
@@ -1483,10 +1524,10 @@ export default function FlashSaleDetailPage() {
 
           {/* Tambahkan Alert Dialog */}
           <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-            <AlertDialogContent>
+            <AlertDialogContent className="dark:bg-gray-800/95 dark:backdrop-blur-sm">
               <AlertDialogHeader>
-                <AlertDialogTitle>Konfirmasi Penghapusan</AlertDialogTitle>
-                <AlertDialogDescription>
+                <AlertDialogTitle className="dark:text-gray-200">Konfirmasi Penghapusan</AlertDialogTitle>
+                <AlertDialogDescription className="dark:text-gray-400">
                   {Array.isArray(itemToDelete) ? (
                     <>
                       Apakah Anda yakin ingin menghapus {itemToDelete.length} item yang dipilih dari flash sale ini?
@@ -1523,6 +1564,6 @@ export default function FlashSaleDetailPage() {
           </AlertDialog>
         </CardContent>
       </Card>
-    </div>
+    
   );
 }

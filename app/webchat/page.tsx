@@ -29,7 +29,7 @@ interface Conversation {
   unread_count: number;
 }
 
-// Hapus interface Message karena tidak digunakan
+// Perbaiki interface Message untuk menangani content yang mungkin undefined
 interface Message {
   id: string;
   sender: 'buyer' | 'seller';
@@ -97,10 +97,50 @@ interface Order {
   tracking_number: string;
 }
 
+// Tambahkan interface untuk tipe konten
+interface MessageContent {
+  text?: string;
+  url?: string;
+  thumb_url?: string;
+  thumb_height?: number;
+  thumb_width?: number;
+}
+
+// Definisikan base SSE interface
+interface SSEData {
+  type: 'new_message' | 'connection_established' | 'heartbeat' | 'mark_as_read';
+  timestamp: number;
+  message?: string;
+}
+
+// Interface untuk konten pesan
+interface MessageContent {
+  text?: string;
+  url?: string;
+  thumb_url?: string;
+  thumb_height?: number;
+  thumb_width?: number;
+}
+
+// Interface untuk data pesan SSE
+interface SSEMessageData extends SSEData {
+  type: 'new_message';
+  message_id: string;
+  conversation_id: string;
+  sender: number;
+  sender_name?: string;
+  message_type?: 'text' | 'image';
+  content?: string | MessageContent;
+}
+
+// Type guard untuk mengecek apakah data adalah SSEMessageData
+function isSSEMessageData(data: SSEData): data is SSEMessageData {
+  return data.type === 'new_message' && 'message_id' in data;
+}
+
 const WebChatPage: React.FC = () => {
   const [selectedShop, setSelectedShop] = useState<number | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [newMessage, setNewMessage] = useState(''); // Tambahkan state untuk pesan baru
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isMobileView, setIsMobileView] = useState(false);
   const [showConversationList, setShowConversationList] = useState(true);
@@ -129,7 +169,7 @@ const WebChatPage: React.FC = () => {
 
   const { sendMessage, isLoading: isSendingMessage, error: sendMessageError } = useSendMessage();
 
-  const { data: sseData, error: sseError } = useSSE('api/webhook'); // Ganti dengan URL SSE yang sesuai
+  const { data: sseData, error: sseError, isConnected: sseConnected } = useSSE('http://localhost:10000/api/webhook');
 
   const { markAsRead, isLoading: isMarkingAsRead, error: markAsReadError } = useMarkAsRead();
 
@@ -184,25 +224,102 @@ const WebChatPage: React.FC = () => {
     }
   }, [sseData]); // Hapus updateConversationList dari dependency array
 
-  // Ubah useEffect untuk memperbarui pesan dalam percakapan yang dipilih
+  // Perbaiki handling SSE data dengan type guard
   useEffect(() => {
-    if (sseData && sseData.type === 'new_message' && sseData.conversation_id === selectedConversation) {
-      const newMessage: Message = {
-        id: sseData.message_id,
-        sender: sseData.sender === selectedConversationData?.to_id ? 'buyer' : 'seller',
-        type: sseData.message_type,
-        content: sseData.message_type === 'text' ? sseData.content.text : '',
-        imageUrl: sseData.message_type === 'image' ? sseData.content.url : undefined,
-        imageThumb: sseData.message_type === 'image' ? {
-          url: sseData.content.thumb_url || sseData.content.url,
-          height: sseData.content.thumb_height,
-          width: sseData.content.thumb_width
-        } : undefined,
-        time: new Date(sseData.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      addNewMessage(newMessage);
+    if (sseData) {
+      switch (sseData.type) {
+        case 'new_message':
+          if (isSSEMessageData(sseData) && sseData.conversation_id === selectedConversation) {
+            if (!sseData.message_id || !sseData.content) {
+              console.error('Invalid message data:', sseData);
+              return;
+            }
+
+            let messageContent: string;
+            if (typeof sseData.content === 'string') {
+              messageContent = sseData.content;
+            } else if (typeof sseData.content === 'object' && sseData.content !== null) {
+              messageContent = (sseData.content as MessageContent).text || '';
+            } else {
+              messageContent = '';
+            }
+
+            const newMessage: Message = {
+              id: sseData.message_id,
+              sender: sseData.sender === selectedConversationData?.to_id ? 'buyer' : 'seller',
+              type: sseData.message_type || 'text',
+              content: messageContent,
+              time: new Date(sseData.timestamp * 1000).toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })
+            };
+
+            // Handle image type
+            if (sseData.message_type === 'image' && 
+                typeof sseData.content === 'object' && 
+                sseData.content !== null) {
+              const imageContent = sseData.content as MessageContent;
+              if ('url' in imageContent) {
+                newMessage.imageUrl = imageContent.url;
+                if (imageContent.thumb_url || imageContent.url) {
+                  newMessage.imageThumb = {
+                    url: imageContent.thumb_url || imageContent.url || '',
+                    height: imageContent.thumb_height || 0,
+                    width: imageContent.thumb_width || 0
+                  };
+                }
+              }
+            }
+
+            addNewMessage(newMessage);
+          }
+          
+          if (isSSEMessageData(sseData)) {
+            let messageContent: string;
+            if (typeof sseData.content === 'string') {
+              messageContent = sseData.content;
+            } else if (typeof sseData.content === 'object' && sseData.content !== null) {
+              const contentObj = sseData.content as MessageContent;
+              messageContent = contentObj.text || '';
+            } else {
+              messageContent = '';
+            }
+
+            updateConversationList({
+              type: 'new_message',
+              conversation_id: sseData.conversation_id,
+              message: {
+                content: messageContent,
+                sender_id: sseData.sender,
+                timestamp: sseData.timestamp
+              }
+            });
+          }
+          break;
+
+        case 'connection_established':
+          console.log('SSE Connection established successfully:', sseData.message);
+          break;
+
+        case 'heartbeat':
+          console.log('Heartbeat received at:', new Date(sseData.timestamp).toLocaleString());
+          break;
+
+        case 'mark_as_read':
+          if ('conversation_id' in sseData) {
+            updateConversationList({
+              type: 'mark_as_read',
+              conversation_id: sseData.conversation_id
+            });
+          }
+          break;
+
+        default:
+          console.log('Unhandled SSE event type:', sseData.type);
+      }
     }
-  }, [sseData, selectedConversation]);
+  }, [sseData, selectedConversation, selectedConversationData]);
 
   const handleSendMessage = async (message: string) => {
     if (!selectedConversationData || !message.trim()) return;
@@ -413,6 +530,30 @@ const WebChatPage: React.FC = () => {
     }
   }, [conversations]);
 
+  // Tambahkan error handling untuk SSE
+  useEffect(() => {
+    if (sseError) {
+      console.error('SSE Error:', sseError);
+      // Tambahkan notifikasi error jika diperlukan
+    }
+  }, [sseError]);
+
+  // Tambahkan useEffect untuk monitoring
+  useEffect(() => {
+    console.log('SSE Connection Status:', {
+      isConnected: sseConnected,
+      hasError: !!sseError,
+      errorMessage: sseError
+    });
+  }, [sseConnected, sseError]);
+
+  // Monitor data yang masuk
+  useEffect(() => {
+    if (sseData) {
+      console.log('New SSE Data Received in WebChat:', sseData);
+    }
+  }, [sseData]);
+
   return (
     <div className={`flex h-full w-full overflow-hidden ${isFullScreenChat ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       {/* Daftar Percakapan */}
@@ -556,6 +697,15 @@ const WebChatPage: React.FC = () => {
               ) : (
                 <p className="text-muted-foreground text-sm">Pilih percakapan untuk memulai chat</p>
               )}
+              {/* Tambahkan indikator status koneksi */}
+              <div className="ml-auto flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${
+                  sseConnected ? 'bg-green-500' : 'bg-red-500'
+                }`} />
+                <span className="text-xs text-muted-foreground">
+                  {sseConnected ? 'Terhubung' : 'Terputus'}
+                </span>
+              </div>
             </div>
           </div>
 
