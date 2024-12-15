@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from "@/lib/supabase"
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
-import { toast } from "sonner"
+
 
 
 export type OrderItem = {
@@ -110,15 +110,7 @@ export const useDashboard = () => {
         const newOrder = payload.new as OrderItem;
         
         if (newOrder.order_status === 'READY_TO_SHIP') {
-          // Play sound
-          const audio = new Audio('/notif1.mp3');
-          audio.play().catch(console.error); // Handle jika browser block autoplay
           
-          toast.success('Pesanan Baru!', {
-            description: `Pesanan baru dari ${newOrder.buyer_username || 'Pembeli'}`,
-          });
-          
-          console.log('Pesanan baru READY_TO_SHIP terdeteksi:', newOrder.order_sn);
           
           setDashboardData(prevData => {
             const newSummary = { ...prevData.summary };
