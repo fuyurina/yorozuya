@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect } from 'react'
 import { useSSE } from '@/app/services/SSEService'
 import { toast } from 'sonner'
