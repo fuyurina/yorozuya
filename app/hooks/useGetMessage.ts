@@ -77,29 +77,30 @@ export function useConversationMessages(conversationId: string | null, shopId: n
 
     const handleSSEMessage = (event: CustomEvent) => {
       const data = event.detail;
+      console.log('SSE Message received:', data);
       
-      if (data.type === 'new_message' && data.conversationId === conversationId) {
+      if (data.type === 'new_message' && data.conversation_id === conversationId) {
+        console.log('New message for current conversation:', data);
         const newMessage: Message = {
-          id: data.messageId,
-          sender: data.fromShopId === shopId ? 'seller' : 'buyer',
-          type: data.messageType,
-          content: data.messageType === 'text' ? data.content.text : '',
-          imageUrl: data.messageType === 'image' ? data.content.url : undefined,
-          imageThumb: data.messageType === 'image' ? {
-            url: data.content.thumbUrl || data.content.url,
-            height: data.content.thumbHeight,
-            width: data.content.thumbWidth
-          } : undefined,
+          id: data.message_id,
+          sender: data.shop_id === shopId ? 'seller' : 'buyer',
+          type: 'text',
+          content: data.content.text || '',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
 
-        setMessages(prevMessages => [...prevMessages, newMessage]);
+        setMessagesState(prevMessages => {
+          console.log('Updating messages with new message:', newMessage);
+          return [...prevMessages, newMessage];
+        });
       }
     };
 
+    console.log('Setting up SSE listener for conversation:', conversationId);
     window.addEventListener('sse-message', handleSSEMessage as EventListener);
 
     return () => {
+      console.log('Cleaning up SSE listener for conversation:', conversationId);
       window.removeEventListener('sse-message', handleSSEMessage as EventListener);
     };
   }, [conversationId, shopId]);
