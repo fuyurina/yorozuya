@@ -329,12 +329,15 @@ const WebChatPage: React.FC = () => {
     }
   }, [handleScroll]);
 
-  // Tambahkan state untuk menyimpan order_sn dari URL
-  const [pendingOrderSn, setPendingOrderSn] = useState<string | null>(null);
+  // Tambahkan state untuk menandai URL sudah diproses
+  const [urlProcessed, setUrlProcessed] = useState(false);
 
   // Modifikasi useEffect untuk handle URL params
   useEffect(() => {
     const handleUrlParams = async () => {
+      // Jika URL sudah diproses, skip
+      if (urlProcessed) return;
+
       const urlParams = new URLSearchParams(window.location.search);
       const userId = urlParams.get('user_id');
       const orderSn = urlParams.get('order_sn');
@@ -350,6 +353,7 @@ const WebChatPage: React.FC = () => {
       
       if (targetConversation) {
         handleConversationSelect(targetConversation);
+        setUrlProcessed(true); // Tandai URL sudah diproses
       } else if (orderSn) {
         try {
           const response = await fetch('/api/msg/initialize', {
@@ -371,14 +375,11 @@ const WebChatPage: React.FC = () => {
           const data = await response.json();
           
           if (data.success) {
-            // Trigger update conversation list
             updateConversationList({
               type: 'refresh'
             });
             
-            // Tunggu sebentar untuk memastikan data sudah diupdate
             setTimeout(() => {
-              // Cari ulang conversation berdasarkan userId
               const newTargetConversation = conversations.find(
                 conv => conv.to_id.toString() === userId && 
                 (!shopId || conv.shop_id.toString() === shopId)
@@ -386,19 +387,21 @@ const WebChatPage: React.FC = () => {
               
               if (newTargetConversation) {
                 handleConversationSelect(newTargetConversation);
+                setUrlProcessed(true); // Tandai URL sudah diproses
               }
             }, 500);
           }
         } catch (error) {
           console.error('Error memulai percakapan:', error);
+          setUrlProcessed(true); // Tandai URL sudah diproses meskipun error
         }
       }
     };
 
-    if (conversations.length > 0) {
+    if (conversations.length > 0 && !urlProcessed) {
       handleUrlParams();
     }
-  }, [conversations]);
+  }, [conversations, urlProcessed]); // Tambahkan urlProcessed ke dependencies
 
   useEffect(() => {
     if (!selectedConversation) return;
