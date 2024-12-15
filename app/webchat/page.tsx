@@ -136,7 +136,7 @@ const WebChatPage: React.FC = () => {
     error, 
     loadMoreMessages, 
     hasMoreMessages,
-    addNewMessage 
+ 
   } = useConversationMessages(selectedConversation, selectedShop || 0);
 
   const selectedConversationData = useMemo(() => 
@@ -288,17 +288,17 @@ const WebChatPage: React.FC = () => {
 
   useEffect(() => {
     if (selectedConversation && messages.length > 0 && !isLoading) {
-      const selectedConv = conversations.find(conv => conv.conversation_id === selectedConversation);
-      if (selectedConv && 
-          typeof selectedConv.unread_count === 'number' && 
-          selectedConv.unread_count > 0 &&
-          selectedConv.latest_message_from_id === selectedConv.to_id) { // Tambah kondisi ini
-        const timeoutId = setTimeout(() => {
-          handleMarkAsRead(selectedConversation);
-        }, 500);
-        
-        return () => clearTimeout(timeoutId);
-      }
+        const selectedConv = conversations.find(conv => conv.conversation_id === selectedConversation);
+        if (selectedConv && 
+            typeof selectedConv.unread_count === 'number' && 
+            selectedConv.unread_count > 0 &&
+            selectedConv.latest_message_from_id === selectedConv.to_id) {
+            const timeoutId = setTimeout(() => {
+                handleMarkAsRead(selectedConversation);
+            }, 500);
+            
+            return () => clearTimeout(timeoutId);
+        }
     }
   }, [selectedConversation, messages, isLoading]);
 
