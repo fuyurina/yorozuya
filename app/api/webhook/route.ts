@@ -145,6 +145,7 @@ async function handleChat(data: any) {
     const messageContent = data.data.content; // Simpan reference ke content
     const chatData = {
       type: 'new_message',
+      message_type: messageContent.message_type,
       conversation_id: messageContent.conversation_id,
       message_id: messageContent.message_id,
       sender: messageContent.from_id,

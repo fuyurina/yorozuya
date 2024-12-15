@@ -4,6 +4,7 @@ import { useSSE } from '@/app/services/SSEService';
 
 interface SSEMessageData {
   type: string;
+  message_type: string;
   conversation_id: string;
   message_id: string;
   sender: number;

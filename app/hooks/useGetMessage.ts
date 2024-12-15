@@ -83,9 +83,15 @@ export function useConversationMessages(conversationId: string | null, shopId: n
         console.log('New message for current conversation:', data);
         const newMessage: Message = {
           id: data.message_id,
-          sender: data.shop_id === shopId ? 'seller' : 'buyer',
-          type: 'text',
-          content: data.content.text || '',
+          sender: 'buyer',
+          type: data.message_type,
+          content: data.message_type === 'text' ? data.content.text : '',
+          imageUrl: data.message_type === 'image' ? data.content.url : undefined,
+          imageThumb: data.message_type === 'image' ? {
+            url: data.content.thumb_url || data.content.url,
+            height: data.content.thumb_height,
+            width: data.content.thumb_width
+          } : undefined,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
 
