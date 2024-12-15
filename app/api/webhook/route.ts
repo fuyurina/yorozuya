@@ -174,6 +174,18 @@ async function handleOrder(data: any) {
     );
 
     if (orderData.status === 'READY_TO_SHIP') {
+      const notificationData = {
+        type: 'new_order',
+        order_sn: orderData.ordersn,
+        shop_id: data.shop_id,
+        shop_name: data.shop_name,
+        status: orderData.status,
+        buyer_name: orderData.buyer_username,
+        total_amount: orderData.total_amount,
+        sku : orderData.sku
+      };
+      
+      sendEventToAll(notificationData);
       await withRetry(
         () => prosesOrder(data.shop_id, orderData.ordersn),
         3,
