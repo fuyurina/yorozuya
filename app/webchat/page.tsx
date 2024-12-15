@@ -400,6 +400,46 @@ const WebChatPage: React.FC = () => {
     }
   }, [conversations]);
 
+  useEffect(() => {
+    if (!selectedConversation) return;
+
+    const handleSSEMessage = (event: CustomEvent) => {
+      const data = event.detail;
+      console.log('SSE Message received:', data); // Tambahkan log ini
+      
+      // Cek apakah pesan untuk conversation ini
+      if (data.type === 'new_message' && data.conversationId === selectedConversation) {
+        console.log('New message for current conversation:', data); // Tambahkan log ini
+        const newMessage: Message = {
+          id: data.messageId,
+          sender: data.fromShopId === selectedShop ? 'seller' : 'buyer',
+          type: data.messageType,
+          content: data.messageType === 'text' ? data.content.text : '',
+          imageUrl: data.messageType === 'image' ? data.content.url : undefined,
+          imageThumb: data.messageType === 'image' ? {
+            url: data.content.thumbUrl || data.content.url,
+            height: data.content.thumbHeight,
+            width: data.content.thumbWidth
+          } : undefined,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setMessages(prevMessages => {
+          console.log('Updating messages with new message:', newMessage); // Tambahkan log ini
+          return [...prevMessages, newMessage];
+        });
+      }
+    };
+
+    console.log('Setting up SSE listener for conversation:', selectedConversation); // Tambahkan log ini
+    window.addEventListener('sse-message', handleSSEMessage as EventListener);
+
+    return () => {
+      console.log('Cleaning up SSE listener for conversation:', selectedConversation); // Tambahkan log ini
+      window.removeEventListener('sse-message', handleSSEMessage as EventListener);
+    };
+  }, [selectedConversation, selectedShop]);
+
   return (
     <div className={`flex h-full w-full overflow-hidden ${isFullScreenChat ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       {/* Daftar Percakapan */}
