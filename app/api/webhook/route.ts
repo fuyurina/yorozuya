@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { upsertOrderData, upsertOrderItems, upsertLogisticData, trackingUpdate, updateDocumentStatus, withRetry } from '@/app/services/databaseOperations';
 import { prosesOrder } from '@/app/services/prosesOrder';
 import { getOrderDetail } from '@/app/services/shopeeService';
+import { redis } from '@/app/services/redis';
 
 // Simpan semua koneksi SSE aktif
 const clients = new Set<ReadableStreamDefaultController>();
@@ -142,7 +143,20 @@ async function processWebhookData(webhookData: any) {
 
 async function handleChat(data: any) {
   if (data.data.type === 'message') {
-    const messageContent = data.data.content; // Simpan reference ke content
+    const messageContent = data.data.content;
+    
+    // Ambil data auto_ship untuk mendapatkan nama toko
+    const autoShipData = await redis.get('auto_ship');
+    let shopName = '';
+    
+    if (autoShipData) {
+      const shops = JSON.parse(autoShipData);
+      const shop = shops.find((s: any) => s.shop_id === data.shop_id);
+      if (shop) {
+        shopName = shop.shop_name;
+      }
+    }
+
     const chatData = {
       type: 'new_message',
       message_type: messageContent.message_type,
@@ -154,8 +168,10 @@ async function handleChat(data: any) {
       receiver_name: messageContent.to_user_name,
       content: messageContent.content,
       timestamp: messageContent.created_timestamp,
-      shop_id: data.shop_id
+      shop_id: data.shop_id,
+      shop_name: shopName
     };
+    
     console.log('Received chat message from Shopee', chatData);
     sendEventToAll(chatData);
   }
@@ -166,23 +182,33 @@ async function handleOrder(data: any) {
   const orderData = data.data;
   
   try {
+    const autoShipData = await redis.get('auto_ship');
+    let shopName = '';
+    
+    if (autoShipData) {
+      const shops = JSON.parse(autoShipData);
+      const shop = shops.find((s: any) => s.shop_id === data.shop_id);
+      if (shop) {
+        shopName = shop.shop_name;
+      }
+    }
+
     // Tambahkan retry untuk updateOrderStatus
     await withRetry(
       () => updateOrderStatus(data.shop_id, orderData.ordersn, orderData.status, orderData.update_time),
-      5, // Tambah jumlah retry
-      2000 // Mulai dengan delay 2 detik
+      5,
+      2000
     );
 
     if (orderData.status === 'READY_TO_SHIP') {
       const notificationData = {
         type: 'new_order',
         order_sn: orderData.ordersn,
-        shop_id: data.shop_id,
-        shop_name: data.shop_name,
         status: orderData.status,
         buyer_name: orderData.buyer_username,
         total_amount: orderData.total_amount,
-        sku : orderData.sku
+        sku: orderData.sku,
+        shop_name: shopName
       };
       
       sendEventToAll(notificationData);
@@ -194,7 +220,6 @@ async function handleOrder(data: any) {
     }
   } catch (error) {
     console.error(`Gagal memproses order ${orderData.ordersn}:`, error);
-    // Tambahkan monitoring/alert di sini
   }
 }
 

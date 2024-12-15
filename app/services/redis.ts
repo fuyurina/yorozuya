@@ -36,8 +36,7 @@ const redis = globalForRedis.redis || new Redis({
     const delay = Math.min(times * 50, 2000);
     return delay;
   },
-  enableReadyCheck: false,
-  lazyConnect: true
+  enableReadyCheck: false
 });
 
 // Simpan instance di global object untuk development
@@ -60,9 +59,19 @@ redis.on('connect', () => {
 
 export async function checkRedisConnection(): Promise<void> {
   try {
-    await redis.connect();
-    await redis.ping();
-    console.log('Koneksi Redis berhasil');
+    // Cek status koneksi terlebih dahulu
+    if (redis.status === 'ready') {
+      await redis.ping();
+      console.log('Koneksi Redis sudah tersedia');
+      return;
+    }
+    
+    // Jika belum terhubung, lakukan koneksi
+    if (redis.status === 'wait') {
+      await redis.connect();
+      await redis.ping();
+      console.log('Koneksi Redis berhasil dibuat');
+    }
   } catch (error) {
     console.error('Gagal terhubung ke Redis:', error);
     throw error;
@@ -71,15 +80,15 @@ export async function checkRedisConnection(): Promise<void> {
 
 // Fungsi untuk memastikan koneksi Redis tersedia
 export async function ensureConnection() {
-  if (!redis.status || redis.status === 'wait') {
-    try {
+  try {
+    if (redis.status === 'wait') {
       await redis.connect();
-    } catch (error) {
-      console.error('Gagal menghubungkan ke Redis:', error);
-      throw error;
     }
+    return redis;
+  } catch (error) {
+    console.error('Gagal menghubungkan ke Redis:', error);
+    throw error;
   }
-  return redis;
 }
 
 export { redis };

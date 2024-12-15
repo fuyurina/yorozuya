@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useSSE } from '@/app/services/SSEService';
 
 interface SSEMessageData {
+  shop_name: string;
   type: string;
   message_type: string;
   conversation_id: string;
@@ -70,7 +71,7 @@ export const useConversationList = () => {
         setConversations(prevConversations => {
           const updatedConversations = [...prevConversations];
           
-          const shop_name = messageData.receiver_name;  // Nama toko selalu dari receiver_name
+          const shop_name = messageData.shop_name;  // Nama toko selalu dari receiver_name
 
           const existingConversationIndex = updatedConversations.findIndex(
             conv => conv.conversation_id === messageData.conversation_id
