@@ -5,6 +5,8 @@ import {Sidebar} from "@/components/layout/Sidebar"
 import dynamic from 'next/dynamic'
 import { Toaster } from 'sonner';
 import Providers from "./services/Providers"
+import { SSEProvider } from './services/SSEService';
+import { GlobalNotification } from '@/components/GlobalNotification';
 
 import type { Viewport } from 'next'
 
@@ -51,17 +53,20 @@ export default function RootLayout({ children }: RootLayoutProps) {
           enableSystem
           disableTransitionOnChange
         >
-          <Providers>
-          <div className="flex flex-1 overflow-hidden">
-            <Sidebar />
-            <div className="flex flex-col flex-1 overflow-hidden md:pl-[56px]">
-              <Header />
-              <main className="flex-1 overflow-auto">
-                <Providers>{children}</Providers>
-              </main>
+          <SSEProvider>
+            <Providers>
+              <GlobalNotification />
+              <div className="flex flex-1 overflow-hidden">
+                <Sidebar />
+                <div className="flex flex-col flex-1 overflow-hidden md:pl-[56px]">
+                  <Header />
+                  <main className="flex-1 overflow-auto">
+                    <Providers>{children}</Providers>
+                  </main>
+                </div>
               </div>
-            </div>
-          </Providers>
+            </Providers>
+          </SSEProvider>
         </ThemeProvider>
         <Toaster />
       </body>

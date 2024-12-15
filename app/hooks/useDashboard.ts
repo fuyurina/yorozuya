@@ -3,7 +3,6 @@ import { supabase } from "@/lib/supabase"
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { toast } from "sonner"
-import { useSSE } from '@/app/hooks/useSSE';
 
 
 export type OrderItem = {
@@ -87,8 +86,6 @@ const fetchAdsData = async () => {
 
 
 export const useDashboard = () => {
-  const { data: sseData, error: sseError } = useSSE('/api/webhook');
-  
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     summary: {
       pesananPerToko: {},
@@ -419,39 +416,6 @@ export const useDashboard = () => {
       channels.logisticChannel.unsubscribe();
     };
   }, []);
-
-  useEffect(() => {
-    console.log('SSE Data received:', sseData);
-    
-    if (sseData) {
-      const eventData = sseData;
-      console.log('SSE data:', eventData);
-      
-      if (eventData.type === 'new_message') {
-        console.log('New message detected:', eventData);
-        
-        const audio = new Audio('/notif1.mp3');
-        audio.play().catch(error => console.error('Audio play error:', error));
-        
-        const messageContent = typeof eventData.content === 'string' ? eventData.content : 'Pesan baru';
-        
-        toast.message('Pesan Baru!', {
-          description: `${eventData.sender_name} mengirim: ${messageContent}`,
-          action: {
-            label: "Buka Chat",
-            onClick: () => window.open('/chat', '_blank')
-          },
-          duration: 5000
-        });
-      }
-    }
-  }, [sseData]);
-
-  useEffect(() => {
-    if (sseError) {
-      console.error('SSE Connection Error:', sseError);
-    }
-  }, [sseError]);
 
   return dashboardData;
 };

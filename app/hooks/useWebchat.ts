@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useSSE } from '@/app/services/SSEService';
 
 interface SSEMessageData {
   type: string;
@@ -47,7 +48,7 @@ export const useConversationList = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [connectionId, setConnectionId] = useState<string | null>(null);
+  const { lastMessage, isConnected } = useSSE();
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -68,9 +69,9 @@ export const useConversationList = () => {
         setConversations(prevConversations => {
           const updatedConversations = [...prevConversations];
           
-          const shop_name = messageData.shop_id === messageData.receiver 
-            ? messageData.receiver_name 
-            : messageData.sender_name;
+          const shop_name = messageData.sender === messageData.shop_id 
+            ? messageData.receiver_name  // Nama customer selalu menjadi shop_name
+            : messageData.sender_name;   // Jika customer yang mengirim, ambil nama pengirim
 
           const existingConversationIndex = updatedConversations.findIndex(
             conv => conv.conversation_id === messageData.conversation_id
@@ -146,75 +147,25 @@ export const useConversationList = () => {
     }
   }, [fetchConversations]);
 
-  const connectSSE = useCallback(() => {
-    try {
-      const url = new URL('/api/webhook', window.location.origin);
-      if (connectionId) {
-        url.searchParams.append('connectionId', connectionId);
-      }
-
-      const eventSource = new EventSource(url.toString());
-      let retryCount = 0;
-      const maxRetries = 5;
-
-      eventSource.onopen = () => {
-        console.log('SSE connection established');
-        retryCount = 0;
-      };
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          switch (data.type) {
-            case 'connection_established':
-              setConnectionId(data.connectionId);
-              break;
-            case 'new_message':
-              updateConversationList({ type: 'new_message', data });
-              break;
-            case 'heartbeat':
-              console.log('Heartbeat received:', data.timestamp);
-              break;
-          }
-        } catch (err) {
-          console.error('Error parsing SSE message:', err);
-        }
-      };
-
-      eventSource.onerror = (err) => {
-        console.error('SSE connection error:', err);
-        if (retryCount < maxRetries) {
-          retryCount++;
-          setTimeout(() => {
-            eventSource.close();
-            connectSSE();
-          }, 1000 * Math.pow(2, retryCount));
-        }
-      };
-
-      return () => {
-        eventSource.close();
-      };
-    } catch (err) {
-      console.error('Error setting up SSE:', err);
+  // Mendengarkan pesan dari SSE global
+  useEffect(() => {
+    if (lastMessage?.type === 'new_message') {
+      updateConversationList({ 
+        type: 'new_message', 
+        data: lastMessage 
+      });
     }
-  }, [connectionId, updateConversationList]);
+  }, [lastMessage, updateConversationList]);
 
   useEffect(() => {
     fetchConversations();
-    const cleanup = connectSSE();
-    
-    return () => {
-      cleanup?.();
-    };
-  }, [fetchConversations, connectSSE]);
+  }, [fetchConversations]);
 
   return { 
     conversations, 
     isLoading, 
     error,
-    connectionId, 
+    isConnected, 
     updateConversationList
   };
 };
