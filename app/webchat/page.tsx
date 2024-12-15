@@ -9,7 +9,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, User, CheckCircle2, ChevronLeft, Filter, ShoppingBag, MessageSquare } from "lucide-react"
 import { useSendMessage } from '@/app/hooks/useSendMessage';
 
-import { useSSE } from '@/app/hooks/useSSE';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useMarkAsRead } from '@/app/hooks/useMarkAsRead';
@@ -107,41 +106,6 @@ interface MessageContent {
   file_server_id?: number;
 }
 
-// Definisikan base SSE interface
-interface SSEData {
-  type: 'new_message' | 'connection_established' | 'heartbeat' | 'mark_as_read';
-  timestamp: number;
-  message?: string;
-}
-
-// Interface untuk konten pesan
-interface MessageContent {
-  text?: string;
-  url?: string;
-  thumb_url?: string;
-  thumb_height?: number;
-  thumb_width?: number;
-}
-
-// Perbaiki interface SSEMessageData
-interface SSEMessageData extends SSEData {
-  type: 'new_message';
-  message_id: string;
-  conversation_id: string;
-  sender: number;
-  sender_name?: string;
-  receiver?: number;
-  receiver_name?: string;
-  shop_id?: number;
-  message_type?: 'text' | 'image';
-  content?: string | MessageContent;
-}
-
-// Type guard untuk mengecek apakah data adalah SSEMessageData
-function isSSEMessageData(data: SSEData): data is SSEMessageData {
-  return data.type === 'new_message' && 'message_id' in data;
-}
-
 // Tambahkan fungsi helper untuk membangun URL gambar lengkap
 const buildImageUrl = (url: string) => {
   // Format URL sesuai standar Shopee CDN
@@ -181,8 +145,6 @@ const WebChatPage: React.FC = () => {
   );
 
   const { sendMessage, isLoading: isSendingMessage, error: sendMessageError } = useSendMessage();
-
-  const { data: sseData, error: sseError, isConnected: sseConnected } = useSSE('api/webhook');
 
   const { markAsRead, isLoading: isMarkingAsRead, error: markAsReadError } = useMarkAsRead();
 
@@ -228,87 +190,6 @@ const WebChatPage: React.FC = () => {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
-
-  // Ubah useEffect untuk memperbarui daftar percakapan
-  useEffect(() => {
-    if (sseData && sseData.type === 'new_message') {
-      console.log('Pesan baru diterima:', sseData);
-      updateConversationList(sseData);
-    }
-  }, [sseData]); // Hapus updateConversationList dari dependency array
-
-  // Perbaiki useEffect untuk handling SSE data
-  useEffect(() => {
-    if (sseData) {
-      switch (sseData.type) {
-        case 'new_message':
-          if (isSSEMessageData(sseData)) {
-            const content = sseData.content as MessageContent;
-            
-            // Tentukan tipe pesan dan kontennya
-            const messageType = content.url ? 'image' : 'text';
-            const messageContent = content.text || '';
-            
-            // Update conversation list
-            updateConversationList({
-              type: 'new_message',
-              conversation_id: sseData.conversation_id,
-              message: {
-                content: messageContent,
-                sender_id: sseData.sender,
-                timestamp: sseData.timestamp
-              }
-            });
-
-            // Tambah pesan baru jika conversation aktif
-            if (sseData.conversation_id === selectedConversation) {
-              const newMessage: Message = {
-                id: sseData.message_id,
-                sender: sseData.sender === selectedConversationData?.to_id ? 'buyer' : 'seller',
-                type: messageType,
-                content: messageContent,
-                time: new Date(sseData.timestamp).toLocaleTimeString([], { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                }),
-                // Tambahkan properti gambar dengan URL yang sudah diformat
-                ...(messageType === 'image' && {
-                  imageUrl: buildImageUrl(content.url || ''),
-                  imageThumb: {
-                    url: buildImageUrl(content.thumb_url || ''),
-                    height: content.thumb_height || 0,
-                    width: content.thumb_width || 0
-                  }
-                })
-              };
-
-              addNewMessage(newMessage);
-            }
-          }
-          break;
-
-        case 'connection_established':
-          console.log('SSE Connection established successfully:', sseData.message);
-          break;
-
-        case 'heartbeat':
-          console.log('Heartbeat received at:', new Date(sseData.timestamp).toLocaleString());
-          break;
-
-        case 'mark_as_read':
-          if ('conversation_id' in sseData) {
-            updateConversationList({
-              type: 'mark_as_read',
-              conversation_id: sseData.conversation_id
-            });
-          }
-          break;
-
-        default:
-          console.log('Unhandled SSE event type:', sseData.type);
-      }
-    }
-  }, [sseData, selectedConversation, selectedConversationData, updateConversationList, addNewMessage]);
 
   const handleSendMessage = async (message: string) => {
     if (!selectedConversationData || !message.trim()) return;
@@ -519,30 +400,6 @@ const WebChatPage: React.FC = () => {
     }
   }, [conversations]);
 
-  // Tambahkan error handling untuk SSE
-  useEffect(() => {
-    if (sseError) {
-      console.error('SSE Error:', sseError);
-      // Tambahkan notifikasi error jika diperlukan
-    }
-  }, [sseError]);
-
-  // Tambahkan useEffect untuk monitoring
-  useEffect(() => {
-    console.log('SSE Connection Status:', {
-      isConnected: sseConnected,
-      hasError: !!sseError,
-      errorMessage: sseError
-    });
-  }, [sseConnected, sseError]);
-
-  // Monitor data yang masuk
-  useEffect(() => {
-    if (sseData) {
-      console.log('New SSE Data Received in WebChat:', sseData);
-    }
-  }, [sseData]);
-
   return (
     <div className={`flex h-full w-full overflow-hidden ${isFullScreenChat ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       {/* Daftar Percakapan */}
@@ -686,15 +543,6 @@ const WebChatPage: React.FC = () => {
               ) : (
                 <p className="text-muted-foreground text-sm">Pilih percakapan untuk memulai chat</p>
               )}
-              {/* Tambahkan indikator status koneksi */}
-              <div className="ml-auto flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${
-                  sseConnected ? 'bg-green-500' : 'bg-red-500'
-                }`} />
-                <span className="text-xs text-muted-foreground">
-                  {sseConnected ? 'Terhubung' : 'Terputus'}
-                </span>
-              </div>
             </div>
           </div>
 

@@ -6,6 +6,8 @@ import { getOrderDetail } from '@/app/services/shopeeService';
 // Simpan semua koneksi SSE aktif
 const clients = new Set<ReadableStreamDefaultController>();
 
+const connectionAttempts = new Map<string, { count: number, firstAttempt: number }>();
+
 export async function POST(req: NextRequest) {
   // Segera kirim respons 200
   const res = NextResponse.json({ received: true }, { status: 200 });
@@ -21,6 +23,25 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const ip = req.ip || 'unknown';
+  const now = Date.now();
+  
+  // Cek dan update connection attempts
+  const attempts = connectionAttempts.get(ip) || { count: 0, firstAttempt: now };
+  
+  if (now - attempts.firstAttempt < 60000) { // Window 1 menit
+    if (attempts.count > 10) { // Maksimal 10 koneksi per menit
+      return new Response('Too Many Requests', { status: 429 });
+    }
+    connectionAttempts.set(ip, {
+      count: attempts.count + 1,
+      firstAttempt: attempts.firstAttempt
+    });
+  } else {
+    // Reset jika sudah lewat 1 menit
+    connectionAttempts.set(ip, { count: 1, firstAttempt: now });
+  }
+
   try {
     const stream = new ReadableStream({
       start(controller) {
