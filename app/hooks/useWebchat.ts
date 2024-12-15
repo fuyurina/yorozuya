@@ -69,9 +69,7 @@ export const useConversationList = () => {
         setConversations(prevConversations => {
           const updatedConversations = [...prevConversations];
           
-          const shop_name = messageData.sender === messageData.shop_id 
-            ? messageData.receiver_name  // Nama customer selalu menjadi shop_name
-            : messageData.sender_name;   // Jika customer yang mengirim, ambil nama pengirim
+          const shop_name = messageData.receiver_name;  // Nama toko selalu dari receiver_name
 
           const existingConversationIndex = updatedConversations.findIndex(
             conv => conv.conversation_id === messageData.conversation_id

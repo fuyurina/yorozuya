@@ -72,6 +72,38 @@ export function useConversationMessages(conversationId: string | null, shopId: n
     fetchMessages();
   }, [fetchMessages]);
 
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const handleSSEMessage = (event: CustomEvent) => {
+      const data = event.detail;
+      
+      if (data.type === 'new_message' && data.conversationId === conversationId) {
+        const newMessage: Message = {
+          id: data.messageId,
+          sender: data.fromShopId === shopId ? 'seller' : 'buyer',
+          type: data.messageType,
+          content: data.messageType === 'text' ? data.content.text : '',
+          imageUrl: data.messageType === 'image' ? data.content.url : undefined,
+          imageThumb: data.messageType === 'image' ? {
+            url: data.content.thumbUrl || data.content.url,
+            height: data.content.thumbHeight,
+            width: data.content.thumbWidth
+          } : undefined,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setMessages(prevMessages => [...prevMessages, newMessage]);
+      }
+    };
+
+    window.addEventListener('sse-message', handleSSEMessage as EventListener);
+
+    return () => {
+      window.removeEventListener('sse-message', handleSSEMessage as EventListener);
+    };
+  }, [conversationId, shopId]);
+
   const loadMoreMessages = useCallback(() => {
     if (nextOffset) {
       fetchMessages(nextOffset);
