@@ -365,16 +365,19 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     orderSn: string;
     shopName: string;
     carrier: string;
+    trackingNumber: string;
   }[]>([]);
 
   // Tambahkan state untuk dialog failed orders
   const [isFailedOrdersDialogOpen, setIsFailedOrdersDialogOpen] = useState(false);
 
   // Update fungsi handleBulkPrint
-  const handleBulkPrint = async () => {
-    const ordersToPrint = tableState.selectedOrders.length > 0 
-      ? orders.filter(order => tableState.selectedOrders.includes(order.order_sn))
-      : orders.filter(order => isOrderCheckable(order));
+  const handleBulkPrint = async (specificOrders?: OrderItem[]) => {
+    const ordersToPrint = specificOrders || (
+      tableState.selectedOrders.length > 0 
+        ? orders.filter(order => tableState.selectedOrders.includes(order.order_sn))
+        : orders.filter(order => isOrderCheckable(order))
+    );
 
     if (ordersToPrint.length === 0) {
       toast.info('Tidak ada dokumen yang dapat dicetak');
@@ -383,7 +386,11 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
     let totalSuccess = 0;
     let totalFailed = 0;
-
+    const shopReports: {
+      shopName: string;
+      success: number;
+      failed: number;
+    }[] = [];
     const newFailedOrders: typeof failedOrders = [];
 
     try {
@@ -399,6 +406,8 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
       for (const [shopId, shopOrders] of Object.entries(ordersByShop)) {
         const shopName = shopOrders[0].shop_name;
+        let shopSuccess = 0;
+        let shopFailed = 0;
         const blobs: Blob[] = [];
 
         setDocumentBulkProgress(prev => ({
@@ -437,16 +446,24 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               blobs.push(blob);
             }
             
-            totalSuccess += carrierOrders.length - failedOrders.length;
+            // Update counters
+            const successCount = carrierOrders.length - failedOrders.length;
+            shopSuccess += successCount;
+            shopFailed += failedOrders.length;
+            totalSuccess += successCount;
             totalFailed += failedOrders.length;
 
             // Tambahkan failed orders ke array
             failedOrders.forEach(failedOrderSn => {
-              newFailedOrders.push({
-                orderSn: failedOrderSn,
-                shopName,
-                carrier
-              });
+              const orderData = carrierOrders.find(o => o.order_sn === failedOrderSn);
+              if (orderData) {
+                newFailedOrders.push({
+                  orderSn: failedOrderSn,
+                  shopName,
+                  carrier,
+                  trackingNumber: orderData.tracking_number || '-'
+                });
+              }
             });
 
             setDocumentBulkProgress(prev => ({
@@ -456,6 +473,9 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
           } catch (error) {
             console.error(`Error downloading documents for carrier ${carrier}:`, error);
+            
+            // Update counters for failed batch
+            shopFailed += carrierOrders.length;
             totalFailed += carrierOrders.length;
             
             // Tambahkan semua order yang gagal karena error
@@ -463,13 +483,21 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               newFailedOrders.push({
                 orderSn: order.order_sn,
                 shopName,
-                carrier
+                carrier,
+                trackingNumber: order.tracking_number || '-'
               });
             });
             
             continue;
           }
         }
+
+        // Tambahkan laporan untuk toko ini
+        shopReports.push({
+          shopName,
+          success: shopSuccess,
+          failed: shopFailed
+        });
 
         if (blobs.length > 0) {
           try {
@@ -498,19 +526,17 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         }
       }
 
-      // Set failed orders dan tampilkan dialog jika ada yang gagal
+      // Set laporan akhir
+      setPrintReport({
+        totalSuccess,
+        totalFailed,
+        shopReports
+      });
+      setIsPrintReportOpen(true);
+
+      // Set failed orders jika ada
       if (newFailedOrders.length > 0) {
         setFailedOrders(newFailedOrders);
-        setIsFailedOrdersDialogOpen(true);
-      }
-
-      // Tampilkan ringkasan hasil
-      if (totalSuccess > 0 && totalFailed > 0) {
-        toast.info(`Proses selesai: ${totalSuccess} dokumen berhasil dicetak, ${totalFailed} dokumen gagal`);
-      } else if (totalSuccess > 0) {
-        toast.success(`Berhasil mencetak ${totalSuccess} dokumen`);
-      } else {
-        toast.error('Gagal mencetak semua dokumen');
       }
 
     } catch (error) {
@@ -1062,6 +1088,22 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     event.stopPropagation(); // Mencegah trigger handleUsernameClick
     window.open(`/webchat?user_id=${userId}&shop_id=${shopId}&order_sn=${orderSn}`, '_blank');
   };
+
+  // Tambahkan state untuk dialog laporan
+  const [isPrintReportOpen, setIsPrintReportOpen] = useState(false);
+  const [printReport, setPrintReport] = useState<{
+    totalSuccess: number;
+    totalFailed: number;
+    shopReports: {
+      shopName: string;
+      success: number;
+      failed: number;
+    }[];
+  }>({
+    totalSuccess: 0,
+    totalFailed: 0,
+    shopReports: []
+  });
 
   return (
     <div className="w-full">
@@ -1720,72 +1762,150 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Dialog Failed Orders */}
-      <AlertDialog 
-        open={isFailedOrdersDialogOpen} 
-        onOpenChange={setIsFailedOrdersDialogOpen}
-      >
-        <AlertDialogContent className="max-w-2xl dark:bg-gray-800 dark:border-gray-700">
+      {/* Dialog Laporan Pencetakan */}
+      <AlertDialog open={isPrintReportOpen} onOpenChange={setIsPrintReportOpen}>
+        <AlertDialogContent className="max-w-4xl dark:bg-gray-800 dark:border-gray-700">
           <AlertDialogHeader>
             <AlertDialogTitle className="dark:text-white">
-              Daftar Pesanan Gagal Cetak ({failedOrders.length})
+              Laporan Hasil Pencetakan
             </AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-300">
-              Berikut adalah daftar pesanan yang gagal dicetak. Anda dapat mencoba mencetak ulang secara manual.
+              <div className="mt-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                    <div className="text-2xl font-bold text-green-700 dark:text-green-400">
+                      {printReport.totalSuccess}
+                    </div>
+                    <div className="text-sm text-green-600 dark:text-green-300">
+                      Berhasil Dicetak
+                    </div>
+                  </div>
+                  <div className="p-4 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                    <div className="text-2xl font-bold text-red-700 dark:text-red-400">
+                      {printReport.totalFailed}
+                    </div>
+                    <div className="text-sm text-red-600 dark:text-red-300">
+                      Gagal Dicetak
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <h4 className="font-medium mb-2 dark:text-white">Detail per Toko:</h4>
+                  <div className="space-y-2">
+                    {printReport.shopReports.map((report, index) => (
+                      <div 
+                        key={index}
+                        className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
+                      >
+                        <div className="font-medium dark:text-white">{report.shopName}</div>
+                        <div className="text-sm mt-1 space-x-4">
+                          <span className="text-green-600 dark:text-green-400">
+                            Berhasil: {report.success}
+                          </span>
+                          <span className="text-red-600 dark:text-red-400">
+                            Gagal: {report.failed}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Daftar Pesanan Gagal */}
+                {failedOrders.length > 0 && (
+                  <div className="mt-6">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium dark:text-white">
+                        Daftar Pesanan Gagal Cetak ({failedOrders.length}):
+                      </h4>
+                      <Button
+                        onClick={() => {
+                          // Filter order data yang gagal
+                          const failedOrdersData = orders.filter(order => 
+                            failedOrders.some(failed => failed.orderSn === order.order_sn)
+                          );
+                          // Gunakan fungsi handleBulkPrint yang sudah ada dengan data yang difilter
+                          handleBulkPrint(failedOrdersData);
+                        }}
+                        size="sm"
+                        className="h-8 bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-800"
+                      >
+                        <Printer size={14} className="mr-2" />
+                        Cetak Ulang Semua
+                      </Button>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto border rounded-lg">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="dark:border-gray-700">
+                            <TableHead className="font-bold text-xs dark:text-white">#</TableHead>
+                            <TableHead className="font-bold text-xs dark:text-white">No. Pesanan</TableHead>
+                            <TableHead className="font-bold text-xs dark:text-white">No. Resi</TableHead>
+                            <TableHead className="font-bold text-xs dark:text-white">Toko</TableHead>
+                            <TableHead className="font-bold text-xs dark:text-white">Kurir</TableHead>
+                            <TableHead className="font-bold text-xs dark:text-white w-[100px] text-center">Aksi</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {failedOrders.map((order, index) => {
+                            const orderData = orders.find(o => o.order_sn === order.orderSn);
+                            return (
+                              <TableRow key={order.orderSn} className="dark:border-gray-700">
+                                <TableCell className="text-xs dark:text-gray-300">{index + 1}</TableCell>
+                                <TableCell className="text-xs dark:text-gray-300">
+                                  <div className="flex items-center gap-1.5">
+                                    <span>{order.orderSn}</span>
+                                    {orderData?.cod && (
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-600 text-white dark:bg-red-500">
+                                        COD
+                                      </span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-xs dark:text-gray-300">
+                                  {order.trackingNumber || 'Belum tersedia'}
+                                </TableCell>
+                                <TableCell className="text-xs dark:text-gray-300">{order.shopName}</TableCell>
+                                <TableCell className="text-xs dark:text-gray-300">{order.carrier}</TableCell>
+                                <TableCell className="text-center">
+                                  {orderData && (
+                                    <Button
+                                      onClick={() => handleDownloadDocument(orderData)}
+                                      disabled={isLoadingForOrder(order.orderSn)}
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      {isLoadingForOrder(order.orderSn) ? (
+                                        <RefreshCcw size={12} className="animate-spin" />
+                                      ) : (
+                                        <Printer size={12} className="text-primary hover:text-primary/80" />
+                                      )}
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
-          <div className="max-h-[400px] overflow-y-auto mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow className="dark:border-gray-700">
-                  <TableHead className="font-bold text-xs dark:text-white">#</TableHead>
-                  <TableHead className="font-bold text-xs dark:text-white">No. Pesanan</TableHead>
-                  <TableHead className="font-bold text-xs dark:text-white">Toko</TableHead>
-                  <TableHead className="font-bold text-xs dark:text-white">Kurir</TableHead>
-                  <TableHead className="font-bold text-xs dark:text-white w-[100px] text-center">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {failedOrders.map((order, index) => {
-                  const orderData = orders.find(o => o.order_sn === order.orderSn);
-                  return (
-                    <TableRow key={order.orderSn} className="dark:border-gray-700">
-                      <TableCell className="text-xs dark:text-gray-300">{index + 1}</TableCell>
-                      <TableCell className="text-xs dark:text-gray-300">{order.orderSn}</TableCell>
-                      <TableCell className="text-xs dark:text-gray-300">{order.shopName}</TableCell>
-                      <TableCell className="text-xs dark:text-gray-300">{order.carrier}</TableCell>
-                      <TableCell className="text-center">
-                        {orderData && (
-                          <Button
-                            onClick={() => handleDownloadDocument(orderData)}
-                            disabled={isLoadingForOrder(order.orderSn)}
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                          >
-                            {isLoadingForOrder(order.orderSn) ? (
-                              <RefreshCcw size={12} className="animate-spin" />
-                            ) : (
-                              <Printer size={12} className="text-primary hover:text-primary/80" />
-                            )}
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-
-          <AlertDialogFooter className="mt-4">
-            <AlertDialogCancel 
-              className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 dark:border-gray-600"
-              onClick={() => setFailedOrders([])} // Clear failed orders when closing
+          <AlertDialogFooter>
+            <AlertDialogAction 
+              onClick={() => {
+                setIsPrintReportOpen(false);
+                setFailedOrders([]); // Clear failed orders when closing
+              }}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               Tutup
-            </AlertDialogCancel>
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
