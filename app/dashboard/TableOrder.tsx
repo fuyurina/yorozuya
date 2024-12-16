@@ -1764,87 +1764,117 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
       {/* Dialog Laporan Pencetakan */}
       <AlertDialog open={isPrintReportOpen} onOpenChange={setIsPrintReportOpen}>
-        <AlertDialogContent className="max-w-4xl dark:bg-gray-800 dark:border-gray-700">
+        <AlertDialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col dark:bg-gray-800 dark:border-gray-700">
           <AlertDialogHeader>
             <AlertDialogTitle className="dark:text-white">
               Laporan Hasil Pencetakan
             </AlertDialogTitle>
-            <AlertDialogDescription className="dark:text-gray-300">
-              <div className="mt-4 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                    <div className="text-2xl font-bold text-green-700 dark:text-green-400">
-                      {printReport.totalSuccess}
+            
+            {/* Tambahkan div dengan overflow-y-auto untuk area yang bisa di-scroll */}
+            <AlertDialogDescription className="dark:text-gray-300 overflow-y-auto">
+              <div className="space-y-4 pr-2"> {/* Tambahkan padding-right untuk jarak dari scrollbar */}
+                {/* Statistik tetap di atas dan tidak ikut scroll */}
+                <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 pt-4 pb-2">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                      <div className="text-xl font-bold text-green-700 dark:text-green-400">
+                        {printReport.totalSuccess}
+                      </div>
+                      <div className="text-xs text-green-600 dark:text-green-300">
+                        Berhasil
+                      </div>
                     </div>
-                    <div className="text-sm text-green-600 dark:text-green-300">
-                      Berhasil Dicetak
+                    <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                      <div className="text-xl font-bold text-red-700 dark:text-red-400">
+                        {printReport.totalFailed}
+                      </div>
+                      <div className="text-xs text-red-600 dark:text-red-300">
+                        Gagal
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-4 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                    <div className="text-2xl font-bold text-red-700 dark:text-red-400">
-                      {printReport.totalFailed}
-                    </div>
-                    <div className="text-sm text-red-600 dark:text-red-300">
-                      Gagal Dicetak
+                    <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <div className="text-xl font-bold text-blue-700 dark:text-blue-400">
+                        {printReport.totalSuccess + printReport.totalFailed}
+                      </div>
+                      <div className="text-xs text-blue-600 dark:text-blue-300">
+                        Total
+                      </div>
                     </div>
                   </div>
                 </div>
 
+                {/* Detail per Toko dalam container yang bisa di-scroll */}
                 <div className="mt-4">
-                  <h4 className="font-medium mb-2 dark:text-white">Detail per Toko:</h4>
-                  <div className="space-y-2">
-                    {printReport.shopReports.map((report, index) => (
-                      <div 
-                        key={index}
-                        className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
-                      >
-                        <div className="font-medium dark:text-white">{report.shopName}</div>
-                        <div className="text-sm mt-1 space-x-4">
-                          <span className="text-green-600 dark:text-green-400">
-                            Berhasil: {report.success}
-                          </span>
-                          <span className="text-red-600 dark:text-red-400">
-                            Gagal: {report.failed}
-                          </span>
+                  <h4 className="font-medium mb-2 dark:text-white sticky top-[100px] bg-white dark:bg-gray-800 py-2 z-10">
+                    Detail per Toko ({printReport.shopReports.length}):
+                  </h4>
+                  
+                  {/* Tambahkan container dengan fixed height dan scroll */}
+                  <div className="max-h-[400px] overflow-y-auto pr-2"> {/* Tambah padding-right untuk jarak dari scrollbar */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {printReport.shopReports.map((report, index) => (
+                        <div 
+                          key={index}
+                          className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="font-medium text-sm dark:text-white truncate">
+                            {report.shopName}
+                          </div>
+                          <div className="text-xs mt-2 space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600 dark:text-gray-400">Berhasil:</span>
+                              <span className="text-green-600 dark:text-green-400 font-medium">
+                                {report.success}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600 dark:text-gray-400">Gagal:</span>
+                              <span className="text-red-600 dark:text-red-400 font-medium">
+                                {report.failed}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600 dark:text-gray-400">Total:</span>
+                              <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                {report.success + report.failed}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 {/* Daftar Pesanan Gagal */}
                 {failedOrders.length > 0 && (
-                  <div className="mt-6">
+                  <div className="mt-4">
                     <div className="flex justify-between items-center mb-2">
                       <h4 className="font-medium dark:text-white">
-                        Daftar Pesanan Gagal Cetak ({failedOrders.length}):
+                        Daftar Pesanan Gagal ({failedOrders.length}):
                       </h4>
                       <Button
                         onClick={() => {
-                          // Filter order data yang gagal
                           const failedOrdersData = orders.filter(order => 
                             failedOrders.some(failed => failed.orderSn === order.order_sn)
                           );
-                          // Gunakan fungsi handleBulkPrint yang sudah ada dengan data yang difilter
                           handleBulkPrint(failedOrdersData);
                         }}
                         size="sm"
-                        className="h-8 bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-800"
+                        className="h-7 bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-800"
                       >
-                        <Printer size={14} className="mr-2" />
-                        Cetak Ulang Semua
+                        <Printer size={14} className="mr-1" />
+                        Cetak Ulang
                       </Button>
                     </div>
-                    <div className="max-h-[300px] overflow-y-auto border rounded-lg">
+                    <div className="max-h-[200px] overflow-y-auto border rounded-lg">
                       <Table>
                         <TableHeader>
                           <TableRow className="dark:border-gray-700">
-                            <TableHead className="font-bold text-xs dark:text-white">#</TableHead>
-                            <TableHead className="font-bold text-xs dark:text-white">No. Pesanan</TableHead>
-                            <TableHead className="font-bold text-xs dark:text-white">No. Resi</TableHead>
-                            <TableHead className="font-bold text-xs dark:text-white">Toko</TableHead>
-                            <TableHead className="font-bold text-xs dark:text-white">Kurir</TableHead>
-                            <TableHead className="font-bold text-xs dark:text-white w-[100px] text-center">Aksi</TableHead>
+                            <TableHead className="font-bold text-xs dark:text-white w-[300px]">No. Pesanan</TableHead>
+                            <TableHead className="font-bold text-xs dark:text-white w-[300px]">Toko</TableHead>
+                            <TableHead className="font-bold text-xs dark:text-white w-[200px]">Kurir</TableHead>
+                            <TableHead className="font-bold text-xs dark:text-white w-[60px] text-center">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1852,23 +1882,25 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                             const orderData = orders.find(o => o.order_sn === order.orderSn);
                             return (
                               <TableRow key={order.orderSn} className="dark:border-gray-700">
-                                <TableCell className="text-xs dark:text-gray-300">{index + 1}</TableCell>
-                                <TableCell className="text-xs dark:text-gray-300">
-                                  <div className="flex items-center gap-1.5">
-                                    <span>{order.orderSn}</span>
+                                <TableCell className="text-xs dark:text-gray-300 py-2">
+                                  <div className="flex items-center gap-1">
+                                    <span className="truncate">{order.orderSn}</span>
                                     {orderData?.cod && (
-                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-600 text-white dark:bg-red-500">
+                                      <span className="px-1 py-0.5 rounded text-[10px] font-medium bg-red-600 text-white dark:bg-red-500 shrink-0">
                                         COD
                                       </span>
                                     )}
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-xs dark:text-gray-300">
-                                  {order.trackingNumber || 'Belum tersedia'}
+                                <TableCell className="text-xs dark:text-gray-300 py-2">
+                                  <span className="truncate block">{order.shopName}</span>
                                 </TableCell>
-                                <TableCell className="text-xs dark:text-gray-300">{order.shopName}</TableCell>
-                                <TableCell className="text-xs dark:text-gray-300">{order.carrier}</TableCell>
-                                <TableCell className="text-center">
+                                <TableCell className="text-xs dark:text-gray-300 py-2">
+                                  <span className="text-gray-500 dark:text-gray-400">
+                                    {order.carrier}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-center py-2">
                                   {orderData && (
                                     <Button
                                       onClick={() => handleDownloadDocument(orderData)}
@@ -1896,11 +1928,11 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="border-t dark:border-gray-700">
             <AlertDialogAction 
               onClick={() => {
                 setIsPrintReportOpen(false);
-                setFailedOrders([]); // Clear failed orders when closing
+                setFailedOrders([]);
               }}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
