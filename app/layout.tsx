@@ -68,7 +68,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             </Providers>
           </SSEProvider>
         </ThemeProvider>
-        <Toaster />
+        <Toaster richColors expand={false} />
       </body>
     </html>
   )
