@@ -15,7 +15,7 @@ export function GlobalNotification() {
       const audio = new Audio('/chat.mp3');
       audio.play();
       
-      toast.info(`${lastMessage.sender_name} - ${lastMessage.shop_name}`, {
+      toast.info(`${lastMessage.shop_name}`, {
         icon: <MessageSquare className="w-4 h-4" />,
         description: (
           <>
@@ -27,7 +27,7 @@ export function GlobalNotification() {
           label: "Balas",
           onClick: () => {
             const params = new URLSearchParams();
-            params.set('user_id', lastMessage.to_id.toString());
+            params.set('user_id', lastMessage.sender.toString());
             params.set('shop_id', lastMessage.shop_id.toString());
             router.push(`/webchat?${params.toString()}`, { scroll: false });
           }
