@@ -15,11 +15,11 @@ export function GlobalNotification() {
       const audio = new Audio('/notif1.mp3');
       audio.play();
       
-      toast(
+      toast.info(
         <div className="flex items-start gap-3">
           <MessageCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
           <div>
-            <h3 className="font-semibold text-base">Chat Baru</h3>
+            <h3 className="font-semibold text-base">{lastMessage.shop_name}</h3>
             <p className="font-medium text-gray-900">{lastMessage.sender_name}</p>
             <p className="text-gray-600">{lastMessage.content?.text || ''}</p>
           </div>
@@ -43,13 +43,13 @@ export function GlobalNotification() {
       const audio = new Audio('/notif1.mp3');
       audio.play();
       
-      toast(
+      toast.success(
         <div className="flex items-start gap-3">
           <Store className="w-5 h-5 text-blue-500 flex-shrink-0" />
           <div>
-            <h3 className="font-semibold text-base">Pesanan Baru</h3>
-            <p className="font-medium text-gray-900">{lastMessage.shop_name}</p>
-            <p className="text-gray-600">No. Pesanan: {lastMessage.order_sn}</p>
+            <h3 className="font-semibold text-base">{lastMessage.shop_name}</h3>
+            <p className="font-medium text-gray-900">{lastMessage.order_sn}</p>
+            
           </div>
         </div>,
         {
