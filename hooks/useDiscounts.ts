@@ -30,7 +30,10 @@ export const useDiscounts = () => {
   const fetchDiscounts = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/discount');
+      setError(null);
+      const response = await fetch('/api/discount', {
+        cache: 'no-store'
+      });
       const data: DiscountResponse = await response.json();
       
       if (data.success) {
