@@ -11,20 +11,7 @@ interface OrderItem {
   shipping_carrier: string | null;
 }
 
-interface CreateDocumentItem {
-  order_sn: string;
-  tracking_number?: string;
-}
 
-// Fungsi helper untuk mendapatkan tracking number
-async function getOrderTrackingNumber(shopId: number, orderSn: string): Promise<string | null> {
-  const response = await getShopeeTrackingNumber(shopId, orderSn);
-  
-  if (response?.response?.tracking_number) {
-    return response.response.tracking_number;
-  }
-  return null;
-}
 
 export async function GET(req: NextRequest) {
   try {
@@ -55,7 +42,7 @@ export async function GET(req: NextRequest) {
         if (response instanceof Buffer) {
           pdfBlobs.push(response);
           remainingOrders = remainingOrders.filter(sn => !currentBatch.includes(sn));
-        } else if (response.error === 'logistics.package_print_failed') {
+        } else if (response.error === 'logistics.package_print_failed' || response.error === 'logistics.shipping_document_should_print_first' || response.error === 'logistics.package_print_failed') {
           const failedOrderMatch = response.message.match(/order_sn: (\w+) print failed/);
           if (failedOrderMatch) {
             const failedOrderSn = failedOrderMatch[1];
