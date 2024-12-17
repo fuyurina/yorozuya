@@ -72,6 +72,7 @@ export const useDashboard = () => {
   const FETCH_INTERVAL = 60000; // 1 menit dalam milidetik
   const MAX_AGE = 24 * 60 * 60 * 1000; // 24 jam dalam milidetik
   const LAST_FETCH_KEY = 'ads_last_fetch_time';
+  const CACHED_ADS_DATA_KEY = 'cached_ads_data';
 
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     summary: {
@@ -403,10 +404,13 @@ export const useDashboard = () => {
     // Hapus data yang sudah lebih dari 24 jam
     if (now - lastFetch > MAX_AGE) {
       localStorage.removeItem(LAST_FETCH_KEY);
+      localStorage.removeItem(CACHED_ADS_DATA_KEY);
     }
 
     if (now - lastFetch < FETCH_INTERVAL) {
-      return null;
+      // Kembalikan data yang tersimpan di cache
+      const cachedData = localStorage.getItem(CACHED_ADS_DATA_KEY);
+      return cachedData ? JSON.parse(cachedData) : null;
     }
 
     try {
@@ -416,6 +420,8 @@ export const useDashboard = () => {
         throw new Error('Gagal mengambil data iklan');
       }
       const data = await response.json();
+      // Simpan data ke cache
+      localStorage.setItem(CACHED_ADS_DATA_KEY, JSON.stringify(data));
       return data;
     } catch (error) {
       console.error('Error saat mengambil data iklan:', error);
