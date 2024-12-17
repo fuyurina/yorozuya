@@ -1103,3 +1103,63 @@ export async function getItemPromotion(
     };
   }
 }
+
+export async function getShopPerformance(shopId: number): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    const result = await shopeeApi.getShopPerformance(shopId, accessToken);
+
+    if (result.error) {
+      console.error(`Error saat mengambil performa toko: ${JSON.stringify(result)}`);
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal mengambil performa toko'
+      };
+    }
+
+    console.info(`Berhasil mengambil performa toko ${shopId}`);
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+  } catch (error) {
+    console.error('Kesalahan saat mengambil performa toko:', error);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
+
+export async function getShopPenalty(shopId: number): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    const result = await shopeeApi.getShopPenalty(shopId, accessToken);
+
+    if (result.error) {
+      console.error(`Error saat mengambil informasi penalti toko: ${JSON.stringify(result)}`);
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal mengambil informasi penalti toko'
+      };
+    }
+
+    console.info(`Berhasil mengambil informasi penalti untuk toko ${shopId}`);
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+  } catch (error) {
+    console.error('Kesalahan saat mengambil informasi penalti toko:', error);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}

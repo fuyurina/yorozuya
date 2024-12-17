@@ -216,6 +216,131 @@ const MobileSelect = React.memo(({
 
 MobileSelect.displayName = 'MobileSelect';
 
+// Buat komponen FilterContent yang dapat digunakan ulang
+const FilterContent = React.memo(({ 
+  tableState, 
+  setTableState, 
+  shops, 
+  availableCouriers 
+}: {
+  tableState: TableState;
+  setTableState: (value: React.SetStateAction<TableState>) => void;
+  shops: string[];
+  availableCouriers: string[];
+}) => (
+  <div className="grid gap-4">
+    {/* 1. Filter Toko */}
+    <div className="space-y-2">
+      <h4 className="font-medium leading-none">Pilih Toko</h4>
+      <div className="grid gap-2">
+        {shops.map((shop) => (
+          <div key={shop} className="flex items-center space-x-2">
+            <Checkbox
+              id={`shop-${shop}`}
+              checked={tableState.selectedShops.includes(shop)}
+              onCheckedChange={(checked) => {
+                setTableState(prev => ({
+                  ...prev,
+                  selectedShops: checked
+                    ? [...prev.selectedShops, shop]
+                    : prev.selectedShops.filter(s => s !== shop)
+                }));
+              }}
+            />
+            <label htmlFor={`shop-${shop}`} className="text-sm">
+              {shop}
+            </label>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* 2. Filter Status Print */}
+    <div className="space-y-2">
+      <h4 className="font-medium leading-none">Status Print</h4>
+      <Select 
+        value={tableState.printStatus}
+        onValueChange={(value: typeof tableState.printStatus) => 
+          setTableState(prev => ({ ...prev, printStatus: value }))
+        }
+      >
+        <SelectTrigger className="h-8 text-xs">
+          <SelectValue placeholder="Pilih status print" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Semua</SelectItem>
+          <SelectItem value="printed">Sudah Print</SelectItem>
+          <SelectItem value="unprinted">Belum Print</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    {/* 3. Filter Kurir */}
+    <div className="space-y-2">
+      <h4 className="font-medium leading-none">Kurir</h4>
+      <div className="grid gap-2">
+        {availableCouriers.map((courier) => (
+          <div key={courier} className="flex items-center space-x-2">
+            <Checkbox
+              id={`courier-${courier}`}
+              checked={tableState.selectedCouriers.includes(courier)}
+              onCheckedChange={(checked) => {
+                setTableState(prev => ({
+                  ...prev,
+                  selectedCouriers: checked
+                    ? [...prev.selectedCouriers, courier]
+                    : prev.selectedCouriers.filter(c => c !== courier)
+                }));
+              }}
+            />
+            <label htmlFor={`courier-${courier}`} className="text-sm">
+              {courier}
+            </label>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* 4. Filter Jenis Pembayaran */}
+    <div className="space-y-2">
+      <h4 className="font-medium leading-none">Jenis Pembayaran</h4>
+      <Select 
+        value={tableState.paymentType}
+        onValueChange={(value: typeof tableState.paymentType) => 
+          setTableState(prev => ({ ...prev, paymentType: value }))
+        }
+      >
+        <SelectTrigger className="h-8 text-xs">
+          <SelectValue placeholder="Pilih jenis pembayaran" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Semua</SelectItem>
+          <SelectItem value="cod">COD</SelectItem>
+          <SelectItem value="non_cod">Non-COD</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    {/* 5. Tombol Reset Filter */}
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setTableState(prev => ({
+        ...prev,
+        selectedShops: [],
+        printStatus: 'all',
+        selectedCouriers: [],
+        paymentType: 'all'
+      }))}
+      className="mt-2"
+    >
+      Reset Filter
+    </Button>
+  </div>
+));
+
+FilterContent.displayName = 'FilterContent';
+
 export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTableProps) {
   // 3. Gabungkan state yang berkaitan
   const [tableState, setTableState] = useState<TableState>({
@@ -1072,31 +1197,23 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                     <Filter size={14} />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-72" align="end">
-                  <div className="grid gap-4">
-                    <div className="space-y-2">
-                      <h4 className="font-medium leading-none">Pilih Toko</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Pilih toko yang ingin ditampilkan
-                      </p>
-                    </div>
-                    <div className="grid gap-2">
-                      {shops.map((shop) => (
-                        <div key={shop} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`mobile-shop-${shop}`}
-                            checked={tableState.selectedShops.includes(shop)}
-                            onCheckedChange={(checked) => handleShopFilter(shop)}
-                          />
-                          <label
-                            htmlFor={`mobile-shop-${shop}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {shop}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
+                <PopoverContent 
+                  className="w-72" 
+                  align="end"
+                  side="bottom"
+                  sideOffset={5}
+                  style={{
+                    maxHeight: 'calc(80vh - 190px)',
+                    overflowY: 'auto'
+                  }}
+                >
+                  <div className="p-1">
+                    <FilterContent 
+                      tableState={tableState}
+                      setTableState={setTableState}
+                      shops={shops}
+                      availableCouriers={availableCouriers}
+                    />
                   </div>
                 </PopoverContent>
               </Popover>
@@ -1163,114 +1280,15 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                 <PopoverContent 
                   className="w-80" 
                   align="end" 
-                  alignOffset={-10}
+                  alignOffset={-10} 
                   sideOffset={5}
                 >
-                  <div className="grid gap-4">
-                    <div className="space-y-2">
-                      <h4 className="font-medium leading-none">Toko</h4>
-                      <div className="grid gap-2">
-                        {shops.map((shop) => (
-                          <div key={shop} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`shop-${shop}`}
-                              checked={tableState.selectedShops.includes(shop)}
-                              onCheckedChange={(checked) => handleShopFilter(shop)}
-                            />
-                            <label htmlFor={`shop-${shop}`} className="text-sm">
-                              {shop}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Filter Status Print */}
-                    <div className="space-y-2">
-                      <h4 className="font-medium leading-none">Status Print</h4>
-                      <div className="grid gap-2">
-                        <Select 
-                          value={tableState.printStatus}
-                          onValueChange={(value: typeof tableState.printStatus) => 
-                            setTableState(prev => ({ ...prev, printStatus: value }))
-                          }
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Pilih status print" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Semua</SelectItem>
-                            <SelectItem value="printed">Sudah Print</SelectItem>
-                            <SelectItem value="unprinted">Belum Print</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Filter Kurir */}
-                    <div className="space-y-2">
-                      <h4 className="font-medium leading-none">Kurir</h4>
-                      <div className="grid gap-2">
-                        {availableCouriers.map((courier) => (
-                          <div key={courier} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`courier-${courier}`}
-                              checked={tableState.selectedCouriers.includes(courier)}
-                              onCheckedChange={(checked) => {
-                                setTableState(prev => ({
-                                  ...prev,
-                                  selectedCouriers: checked
-                                    ? [...prev.selectedCouriers, courier]
-                                    : prev.selectedCouriers.filter(c => c !== courier)
-                                }));
-                              }}
-                            />
-                            <label htmlFor={`courier-${courier}`} className="text-sm">
-                              {courier}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Filter Jenis Pembayaran */}
-                    <div className="space-y-2">
-                      <h4 className="font-medium leading-none">Jenis Pembayaran</h4>
-                      <div className="grid gap-2">
-                        <Select 
-                          value={tableState.paymentType}
-                          onValueChange={(value: typeof tableState.paymentType) => 
-                            setTableState(prev => ({ ...prev, paymentType: value }))
-                          }
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Pilih jenis pembayaran" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Semua</SelectItem>
-                            <SelectItem value="cod">COD</SelectItem>
-                            <SelectItem value="non_cod">Non-COD</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Tombol Reset Filter */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setTableState(prev => ({
-                        ...prev,
-                        selectedShops: [],
-                        printStatus: 'all',
-                        selectedCouriers: [],
-                        paymentType: 'all'
-                      }))}
-                      className="mt-2"
-                    >
-                      Reset Filter
-                    </Button>
-                  </div>
+                  <FilterContent 
+                    tableState={tableState}
+                    setTableState={setTableState}
+                    shops={shops}
+                    availableCouriers={availableCouriers}
+                  />
                 </PopoverContent>
               </Popover>
             </div>

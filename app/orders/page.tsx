@@ -611,7 +611,7 @@ export default function OrdersPage() {
       </div>
 
       <Card className="shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 ">
           <div>
             <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
               <PopoverTrigger asChild>
@@ -637,9 +637,9 @@ export default function OrdersPage() {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto h-auto p-0" align="center">
                 <div className="space-y-3 p-3">
-                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+                  <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2">
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -708,7 +708,7 @@ export default function OrdersPage() {
                       onSelect={handleDateSelect}
                       numberOfMonths={1}
                       locale={id}
-                      className="sm:hidden block"
+                      className="sm:hidden block w-full [&_table]:w-full [&_table]:mx-auto [&_.rdp-cell]:w-[40px] [&_.rdp-cell]:h-[40px] [&_.rdp-head_th]:w-[40px] [&_.rdp-head_th]:h-[20px] [&_.rdp-button]:w-[40px] [&_.rdp-button]:h-[25px] flex justify-center"
                     />
                   </div>
                   <div className="flex justify-end border-t pt-3">

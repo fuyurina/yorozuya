@@ -2150,6 +2150,74 @@ export class ShopeeAPI {
         throw error;
     }
   }
+
+  async getShopPerformance(shopId: number, accessToken: string): Promise<any> {
+    const url = 'https://partner.shopeemobile.com/api/v2/account_health/get_shop_performance';
+    const path = '/api/v2/account_health/get_shop_performance';
+    const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+    const params = new URLSearchParams({
+        partner_id: this.partnerId.toString(),
+        timestamp: timest.toString(),
+        sign,
+        shop_id: shopId.toString(),
+        access_token: accessToken
+    });
+
+    const fullUrl = `${url}?${params.toString()}`;
+    const headers = { 'Content-Type': 'application/json' };
+
+    console.info(`Mengirim permintaan untuk mendapatkan performa toko: URL=${fullUrl}`);
+
+    try {
+        const response = await axios.get(fullUrl, { headers });
+        console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+        return response.data;
+    } catch (error) {
+        console.error('Kesalahan saat mengambil performa toko:', error);
+        if (axios.isAxiosError(error) && error.response) {
+            console.error('Error Response:', {
+                status: error.response.status,
+                data: error.response.data
+            });
+        }
+        throw error;
+    }
+}
+
+async getShopPenalty(shopId: number, accessToken: string): Promise<any> {
+  const url = 'https://partner.shopeemobile.com/api/v2/account_health/shop_penalty';
+  const path = '/api/v2/account_health/shop_penalty';
+  const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+  const params = new URLSearchParams({
+    partner_id: this.partnerId.toString(),
+    timestamp: timest.toString(),
+    sign,
+    shop_id: shopId.toString(),
+    access_token: accessToken
+  });
+
+  const fullUrl = `${url}?${params.toString()}`;
+  const headers = { 'Content-Type': 'application/json' };
+
+  console.info(`Mengirim permintaan untuk mendapatkan informasi penalti toko: URL=${fullUrl}`);
+
+  try {
+    const response = await axios.get(fullUrl, { headers });
+    console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+    return response.data;
+  } catch (error) {
+    console.error('Kesalahan saat mengambil informasi penalti toko:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('Error Response:', {
+        status: error.response.status,
+        data: error.response.data
+      });
+    }
+    throw error;
+  }
+}
 }
 
 export default ShopeeAPI;
