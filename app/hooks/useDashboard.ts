@@ -68,24 +68,11 @@ async function getOrderDetails(order_sn: string, shop_id: string, retries = 3): 
   return null;
 }
 
-const fetchAdsData = async () => {
-  try {
-    const response = await fetch(`/api/ads?_timestamp=${Date.now()}`);
-    if (!response.ok) {
-      throw new Error('Gagal mengambil data iklan');
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error saat mengambil data iklan:', error);
-    return null;
-  }
-};
-
-
-
-
 export const useDashboard = () => {
+  const FETCH_INTERVAL = 60000; // 1 menit dalam milidetik
+  const MAX_AGE = 24 * 60 * 60 * 1000; // 24 jam dalam milidetik
+  const LAST_FETCH_KEY = 'ads_last_fetch_time';
+
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     summary: {
       pesananPerToko: {},
@@ -408,6 +395,33 @@ export const useDashboard = () => {
       channels.logisticChannel.unsubscribe();
     };
   }, []);
+
+  const fetchAdsData = async () => {
+    const now = Date.now();
+    const lastFetch = Number(localStorage.getItem(LAST_FETCH_KEY)) || 0;
+
+    // Hapus data yang sudah lebih dari 24 jam
+    if (now - lastFetch > MAX_AGE) {
+      localStorage.removeItem(LAST_FETCH_KEY);
+    }
+
+    if (now - lastFetch < FETCH_INTERVAL) {
+      return null;
+    }
+
+    try {
+      localStorage.setItem(LAST_FETCH_KEY, now.toString());
+      const response = await fetch(`/api/ads?_timestamp=${now}`);
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data iklan');
+      }
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error saat mengambil data iklan:', error);
+      return null;
+    }
+  };
 
   return dashboardData;
 };

@@ -371,19 +371,8 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
   // Tambahkan state untuk dialog failed orders
   const [isFailedOrdersDialogOpen, setIsFailedOrdersDialogOpen] = useState(false);
 
-  // Update fungsi handleBulkPrint
-  const handleBulkPrint = async (specificOrders?: OrderItem[]) => {
-    const ordersToPrint = specificOrders || (
-      tableState.selectedOrders.length > 0 
-        ? orders.filter(order => tableState.selectedOrders.includes(order.order_sn))
-        : orders.filter(order => isOrderCheckable(order))
-    );
-
-    if (ordersToPrint.length === 0) {
-      toast.info('Tidak ada dokumen yang dapat dicetak');
-      return;
-    }
-
+  // Buat fungsi helper untuk proses pencetakan dan laporan
+  const processPrintingAndReport = async (ordersToPrint: OrderItem[]) => {
     let totalSuccess = 0;
     let totalFailed = 0;
     const shopReports: {
@@ -446,14 +435,12 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               blobs.push(blob);
             }
             
-            // Update counters
             const successCount = carrierOrders.length - failedOrders.length;
             shopSuccess += successCount;
             shopFailed += failedOrders.length;
             totalSuccess += successCount;
             totalFailed += failedOrders.length;
 
-            // Tambahkan failed orders ke array
             failedOrders.forEach(failedOrderSn => {
               const orderData = carrierOrders.find(o => o.order_sn === failedOrderSn);
               if (orderData) {
@@ -473,12 +460,9 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
           } catch (error) {
             console.error(`Error downloading documents for carrier ${carrier}:`, error);
-            
-            // Update counters for failed batch
             shopFailed += carrierOrders.length;
             totalFailed += carrierOrders.length;
             
-            // Tambahkan semua order yang gagal karena error
             carrierOrders.forEach(order => {
               newFailedOrders.push({
                 orderSn: order.order_sn,
@@ -487,12 +471,10 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                 trackingNumber: order.tracking_number || '-'
               });
             });
-            
             continue;
           }
         }
 
-        // Tambahkan laporan untuk toko ini
         shopReports.push({
           shopName,
           success: shopSuccess,
@@ -526,7 +508,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         }
       }
 
-      // Set laporan akhir
       setPrintReport({
         totalSuccess,
         totalFailed,
@@ -534,7 +515,6 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       });
       setIsPrintReportOpen(true);
 
-      // Set failed orders jika ada
       if (newFailedOrders.length > 0) {
         setFailedOrders(newFailedOrders);
       }
@@ -550,6 +530,22 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         currentShop: ''
       });
     }
+  };
+
+  // Update fungsi handleBulkPrint
+  const handleBulkPrint = async (specificOrders?: OrderItem[]) => {
+    const ordersToPrint = specificOrders || (
+      tableState.selectedOrders.length > 0 
+        ? orders.filter(order => tableState.selectedOrders.includes(order.order_sn))
+        : orders.filter(order => isOrderCheckable(order))
+    );
+
+    if (ordersToPrint.length === 0) {
+      toast.info('Tidak ada dokumen yang dapat dicetak');
+      return;
+    }
+
+    await processPrintingAndReport(ordersToPrint);
   };
 
   const checkboxRef = useRef<HTMLButtonElement>(null);
@@ -906,116 +902,8 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       return;
     }
 
-    let totalSuccess = 0;
-    let totalFailed = 0;
-
-    try {
-      // Kelompokkan berdasarkan shop_id
-      const ordersByShop = unprintedOrders.reduce((groups: { [key: number]: OrderItem[] }, order) => {
-        const shopId = order.shop_id;
-        if (!groups[shopId]) {
-          groups[shopId] = [];
-        }
-        groups[shopId].push(order);
-        return groups;
-      }, {});
-
-      for (const [shopId, shopOrders] of Object.entries(ordersByShop)) {
-        const shopName = shopOrders[0].shop_name;
-        const blobs: Blob[] = [];
-
-        // Update progress dengan nama toko
-        setDocumentBulkProgress(prev => ({
-          ...prev,
-          currentShop: shopName
-        }));
-
-        const ordersByCarrier = shopOrders.reduce((groups: { [key: string]: OrderItem[] }, order) => {
-          const carrier = order.shipping_carrier || 'unknown';
-          if (!groups[carrier]) {
-            groups[carrier] = [];
-          }
-          groups[carrier].push(order);
-          return groups;
-        }, {});
-
-        for (const [carrier, carrierOrders] of Object.entries(ordersByCarrier)) {
-          setDocumentBulkProgress(prev => ({
-            ...prev,
-            currentCarrier: carrier,
-            currentShop: shopName,
-            total: unprintedOrders.length
-          }));
-
-          const orderParams = carrierOrders.map(order => ({
-            order_sn: order.order_sn,
-            package_number: order.package_number,
-            shipping_document_type: "THERMAL_AIR_WAYBILL" as const,
-            shipping_carrier: order.shipping_carrier
-          }));
-
-          try {
-            const { blob, failedOrders } = await downloadDocument(parseInt(shopId.toString()), orderParams);
-            
-            if (blob) {
-              blobs.push(blob);
-            }
-            
-            totalSuccess += carrierOrders.length - failedOrders.length;
-            totalFailed += failedOrders.length;
-
-            setDocumentBulkProgress(prev => ({
-              ...prev,
-              processed: prev.processed + carrierOrders.length
-            }));
-
-          } catch (error) {
-            console.error(`Error downloading documents for carrier ${carrier}:`, error);
-            toast.error(`Gagal mengunduh dokumen untuk ${carrier}`);
-          }
-        }
-
-        if (blobs.length > 0) {
-          try {
-            const mergedPDF = await mergePDFs(blobs);
-            const pdfUrl = URL.createObjectURL(mergedPDF);
-            
-            const newWindow = window.open('', '_blank');
-            if (newWindow) {
-              newWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                  <head><title>${shopName} - Belum Print</title></head>
-                  <body style="margin:0;padding:0;height:100vh;">
-                    <embed src="${pdfUrl}" type="application/pdf" width="100%" height="100%">
-                  </body>
-                </html>
-              `);
-              newWindow.document.close();
-            }
-
-            setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
-          } catch (error) {
-            console.error(`Error merging PDFs for shop ${shopName}:`, error);
-            toast.error(`Gagal menggabungkan PDF untuk ${shopName}`);
-          }
-        }
-      }
-
-      toast.success('Proses pencetakan selesai');
-
-    } catch (error) {
-      console.error('Gagal mencetak dokumen:', error);
-      toast.error('Gagal mencetak dokumen');
-    } finally {
-      setDocumentBulkProgress({
-        processed: 0,
-        total: 0,
-        currentCarrier: '',
-        currentShop: ''
-      });
-    }
-  }, [orders, downloadDocument]);
+    await processPrintingAndReport(unprintedOrders);
+  }, [orders]);
 
   // Fungsi untuk menangani aksi pembatalan
   const handleCancellationAction = useCallback(async (orderSn: string, action: 'ACCEPT' | 'REJECT') => {
