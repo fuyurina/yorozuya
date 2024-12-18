@@ -294,3 +294,510 @@
 2024-11-07 02:44:28,266 - INFO - ==========================================Program dimulai==========================================
 2024-11-07 02:44:28,648 - INFO - Total chats ditemukan: 0
 2024-11-07 02:44:28,652 - INFO - ==========================================Program selesai==========================================
+2024-12-19 00:50:58,315 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 00:51:11,062 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 00:51:11,067 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 00:51:11,741 - INFO - Total chats ditemukan: 11
+2024-12-19 00:51:11,743 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:51:11,744 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:51:11,745 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:51:11,745 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:51:11,745 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:51:11,746 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:51:11,746 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:51:11,746 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:51:11,750 - INFO - ==========================================Program selesai==========================================
+2024-12-19 00:51:12,644 - INFO - Ada invoice 24121972DEMT3R
+2024-12-19 00:51:12,692 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 00:51:12,948 - INFO - Berhasil memeriksa keluhan untuk user_id 201888184
+2024-12-19 00:51:13,134 - INFO - Berhasil memeriksa keluhan untuk user_id 1320913564
+2024-12-19 00:51:13,250 - INFO - Berhasil memeriksa perubahan untuk user_id 201888184
+2024-12-19 00:51:13,251 - INFO - {'ada_keluhan': False, 'ada_perubahan': False}
+2024-12-19 00:51:13,257 - INFO - Berhasil memeriksa perubahan untuk user_id 1320913564
+2024-12-19 00:51:13,257 - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-12-19 00:51:13,257 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-12-19 00:51:13,257 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241214SUDDU1HK, Status pesanan: COMPLETED
+2024-12-19 00:51:13,645 - INFO - 👤 0hoh5xk9ny: afeaf
+2024-12-19 00:51:13,646 - INFO - 🤖 AI: Halo kak! Ada yang bisa saya bantu hari ini? 😊
+2024-12-19 00:51:14,197 - INFO - ✅ Pesan berhasil dikirim ke 0hoh5xk9ny
+2024-12-19 00:51:14,461 - INFO - 👤 siskamandasariayoo: Maaf sy cancel y
+Krn mau model lain 🙏
+2024-12-19 00:51:14,461 - INFO - 🤖 AI: Pesanan yang sudah masuk tidak bisa dibatalkan, kak. Namun, jika ingin mengganti warna atau ukuran, silakan chat kami ya. Terima kasih!
+2024-12-19 00:51:14,944 - INFO - ✅ Pesan berhasil dikirim ke siskamandasariayoo
+2024-12-19 00:53:52,634 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 00:54:05,883 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 00:54:05,887 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 00:54:06,948 - INFO - Total chats ditemukan: 11
+2024-12-19 00:54:06,949 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:54:06,949 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:54:06,949 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:54:06,949 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:54:06,949 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:54:06,949 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:54:06,949 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:54:06,949 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:54:06,950 - INFO - ==========================================Program selesai==========================================
+2024-12-19 00:54:07,823 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 00:54:08,062 - INFO - Berhasil memeriksa keluhan untuk user_id 1320913564
+2024-12-19 00:54:08,219 - INFO - Berhasil memeriksa perubahan untuk user_id 1320913564
+2024-12-19 00:54:08,219 - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-12-19 00:54:08,220 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-12-19 00:54:08,220 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241214SUDDU1HK, Status pesanan: COMPLETED
+2024-12-19 00:54:09,098 - INFO - 👤 0hoh5xk9ny: feaf
+2024-12-19 00:54:09,099 - INFO - 🤖 AI: Hai kak! Jika ada yang ingin ditanyakan, silakan sampaikan ya! 😊
+2024-12-19 00:54:09,491 - INFO - 👤 dieck07: Produk ini ready?
+2024-12-19 00:54:09,491 - INFO - 🤖 AI: Pesanan kakak akan dikirim setiap sore, perkiraan sampai 2-3 hari menggunakan reguler, tergantung dari ekspedisi. Semoga cepat sampai ya!
+2024-12-19 00:54:09,639 - INFO - ✅ Pesan berhasil dikirim ke 0hoh5xk9ny
+2024-12-19 00:54:10,000 - INFO - ✅ Pesan berhasil dikirim ke dieck07
+2024-12-19 00:57:56,200 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 00:58:09,176 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 00:58:09,181 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 00:58:09,798 - INFO - Total chats ditemukan: 9
+2024-12-19 00:58:09,798 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:58:09,799 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:58:09,799 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:58:09,800 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:58:09,800 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:58:09,800 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:58:09,800 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:58:09,801 - ERROR - Error processing chat: 'NoneType' object has no attribute 'get'
+2024-12-19 00:58:09,803 - INFO - ==========================================Program selesai==========================================
+2024-12-19 00:58:10,555 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 00:58:10,801 - INFO - Berhasil memeriksa keluhan untuk user_id madityaaditya968
+2024-12-19 00:58:10,972 - INFO - Berhasil memeriksa perubahan untuk user_id madityaaditya968
+2024-12-19 00:58:10,973 - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-12-19 00:58:10,973 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-12-19 00:58:10,973 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241214SUDDU1HK, Status pesanan: COMPLETED
+2024-12-19 01:06:29,092 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 01:06:42,189 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 01:06:42,195 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 01:06:42,923 - INFO - Total chats ditemukan: 10
+2024-12-19 01:06:43,354 - INFO - Pesan terakhir adalah dari toko, skip balasan untuk menghindari duplikasi
+2024-12-19 01:06:43,376 - INFO - Pesan terakhir adalah dari toko, skip balasan untuk menghindari duplikasi
+2024-12-19 01:06:43,383 - INFO - Pesan terakhir adalah dari toko, skip balasan untuk menghindari duplikasi
+2024-12-19 01:06:43,439 - INFO - Pesan terakhir adalah dari toko, skip balasan untuk menghindari duplikasi
+2024-12-19 01:06:43,538 - INFO - Pesan terakhir adalah dari toko, skip balasan untuk menghindari duplikasi
+2024-12-19 01:06:43,556 - INFO - Pesan terakhir adalah dari toko, skip balasan untuk menghindari duplikasi
+2024-12-19 01:06:43,729 - INFO - Pesan terakhir adalah dari toko, skip balasan untuk menghindari duplikasi
+2024-12-19 01:06:43,866 - INFO - Pesan terakhir adalah dari toko, skip balasan untuk menghindari duplikasi
+2024-12-19 01:06:43,930 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 01:06:44,173 - INFO - Berhasil memeriksa keluhan untuk user_id madityaaditya968
+2024-12-19 01:06:44,288 - INFO - Berhasil memeriksa perubahan untuk user_id madityaaditya968
+2024-12-19 01:06:44,288 - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-12-19 01:06:44,288 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-12-19 01:06:44,288 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241214SUDDU1HK, Status pesanan: COMPLETED
+2024-12-19 01:06:45,803 - INFO - 👤 andrisetiawan: Kak kalo kebaya+rok udah termaksud obibelt nya kak?
+2024-12-19 01:06:45,803 - INFO - 🤖 AI: Iya kak, kebaya+rok sudah termasuk obi belt/sabuk. Jadi, kakak sudah dapat satu set lengkapnya! Jika ada yang mau ditanyakan lagi, silakan ya. 😊
+2024-12-19 01:06:46,404 - INFO - ✅ Pesan berhasil dikirim ke andrisetiawan
+2024-12-19 01:06:46,411 - INFO - ==========================================Program selesai==========================================
+2024-12-19 01:13:55,854 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 01:14:09,214 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 01:14:09,218 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 01:14:09,902 - INFO - Total chats ditemukan: 9
+2024-12-19 01:14:13,157 - INFO - Pesan terakhir bukan text/image/sticker (type: image_with_text), skip balasan
+2024-12-19 01:14:13,373 - INFO - Ada invoice 241212MVDMH75Q
+2024-12-19 01:14:13,466 - INFO - Ada invoice 241212JG5275G1
+2024-12-19 01:14:13,502 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 01:14:13,819 - INFO - Berhasil memeriksa keluhan untuk user_id novi_lubuklinggau
+2024-12-19 01:14:13,829 - INFO - Berhasil memeriksa keluhan untuk user_id lilis_ritma
+2024-12-19 01:14:13,991 - INFO - Berhasil memeriksa keluhan untuk user_id madityaaditya968
+2024-12-19 01:14:14,068 - INFO - Berhasil memeriksa perubahan untuk user_id novi_lubuklinggau
+2024-12-19 01:14:14,076 - INFO - {'ada_keluhan': False, 'ada_perubahan': False}
+2024-12-19 01:14:14,205 - INFO - Berhasil memeriksa perubahan untuk user_id lilis_ritma
+2024-12-19 01:14:14,206 - INFO - {'ada_keluhan': False, 'ada_perubahan': False}
+2024-12-19 01:14:14,219 - INFO - Berhasil memeriksa perubahan untuk user_id madityaaditya968
+2024-12-19 01:14:14,220 - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-12-19 01:14:14,220 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-12-19 01:14:14,220 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241214SUDDU1HK, Status pesanan: COMPLETED
+2024-12-19 01:14:15,440 - INFO - 👤 dioabizard: Ka ini bisa beli rok ny aja gk?
+2024-12-19 01:14:15,441 - INFO - 🤖 AI: Kak, untuk pembelian kemeja dan rok, bisa banget! Tapi kebaya+rok sudah satu set lengkap, ya. Jadi, kalau mau kemeja dan rok, tinggal tambahkan ke keranjang dan checkout jadi satu paket. Happy shopping! 😊
+2024-12-19 01:14:15,461 - INFO - 👤 fmorenoicik501:  Halo kak 👋, 
+
+Toko kamu Penjualannya masih sedikit? Omset lagi turun? 😢
+
+Coba layanan Jαsα Live Shopee Nonstop 24 Jαm dari Dαpur Buzzer aja! 
+
+Harganya cuma 1.2jt-an perbulan lho!
+
+Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer sekarang untuk informasi selengkapnya.✨
+2024-12-19 01:14:15,461 - INFO - 🤖 AI: Terima kasih atas saran dan perhatian kak! Kami tetap berusaha memberikan yang terbaik untuk pelanggan. Jika ada yang ingin ditanyakan tentang produk kami, silakan tanya ya! 😊
+2024-12-19 01:14:15,536 - INFO - 👤 iinsuriyani116: Assalamu'alaikum
+Kak roknya di atur sendiri atau sudah sudah di jahit langsung?
+2024-12-19 01:14:15,536 - INFO - 🤖 AI: Wa'alaikumussalam, kak! Roknya sudah dijahit langsung dan siap dipakai. Jadi, kakak tinggal pakai saja tanpa perlu repot mengatur lagi. Semoga info ini membantu! 😊
+2024-12-19 01:14:15,790 - INFO - 👤 aricharekat325:  Haii kak 👋,
+
+Kami dari Dαpur Buzzer punya solusi nih buat naikin Penjualan toko kaka dengan cepat, aman, dan real. 
+
+Layanan Jasa Jαsα Live Shopee Nonstop 24 Jαm Harganya cuma 1.2jt-an aja perbulan
+
+Jika tertarik, Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer ya kak. Terima kasih! ✨
+2024-12-19 01:14:15,790 - ERROR - ❌ Gagal mengirim pesan: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:14:15,791 - INFO - 🤖 AI: Hai kak! Terima kasih atas tawarannya, tapi saat ini kami fokus pada penjualan produk di Samidare Batik Official Shop. Jika ada pertanyaan tentang produk kami, jangan ragu untuk tanya ya! 😊✨
+2024-12-19 01:14:15,943 - INFO - 👤 jatidwira97: Ini satu set sesuai di foto rok nyaa ?
+2024-12-19 01:14:15,943 - INFO - 🤖 AI: Kak, untuk kebaya+rok, sudah satu set lengkap sesuai foto, termasuk obi belt. Jadi, kakak bisa langsung tampil cantik! Jika ada pertanyaan lain, silakan tanya ya! 😊
+2024-12-19 01:14:15,988 - INFO - ✅ Pesan berhasil dikirim ke dioabizard
+2024-12-19 01:14:16,050 - INFO - ✅ Pesan berhasil dikirim ke iinsuriyani116
+2024-12-19 01:14:16,166 - ERROR - ❌ Gagal mengirim pesan: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:14:16,265 - INFO - Data keluhan berhasil dimasukkan: [{'id': 475, 'id_pengguna': 'lilis_ritma', 'nama_toko': 'Calyssa Boutique', 'jenis_keluhan': 'Produk Rusak', 'nomor_invoice': '241212JG5275G1', 'create_at': '2024-12-19T01:14:16.203591+07:00', 'status_keluhan': 'BELUM DITANGANI', 'deskripsi_keluhan': 'Payetnya miring', 'status_pesanan': 'TO_CONFIRM_RECEIVE', 'store_id': '1399281672', 'msg_id': '1377253540572088838', 'user_id': 320666828, 'updated_at': '2024-12-18T18:14:16.203591+07:00'}]
+2024-12-19 01:14:16,269 - INFO - 👤 lilis_ritma: Hlo kaa
+Utk kebaya model ini ada warna navy nya ga ya
+2024-12-19 01:14:16,269 - INFO - 🤖 AI: Terima kasih telah memberi tahu kami tentang Produk Rusak. Kami telah mencatat keluhan Anda terkait pesanan dengan nomor invoice 241212JG5275G1 dan akan menanganinya sesegera mungkin. Kakak juga bisa ajukan pengembalian lewat menu pengembalian di halaman pesanan ya kak dan mengikuti prosedur pengembalian dari Shopee.
+2024-12-19 01:14:16,273 - INFO - Data keluhan berhasil dimasukkan: [{'id': 476, 'id_pengguna': 'novi_lubuklinggau', 'nama_toko': 'Zavena Batik Official Shop', 'jenis_keluhan': 'Produk Rusak', 'nomor_invoice': '241212MVDMH75Q', 'create_at': '2024-12-19T01:14:16.285793+07:00', 'status_keluhan': 'BELUM DITANGANI', 'deskripsi_keluhan': 'Selendang kebaya polos tidak ada motif, seperti sisa dasar.', 'status_pesanan': 'TO_CONFIRM_RECEIVE', 'store_id': '832664993', 'msg_id': '176007425615283451', 'user_id': 40979922, 'updated_at': '2024-12-18T18:14:16.285793+07:00'}]
+2024-12-19 01:14:16,275 - INFO - 👤 novi_lubuklinggau: KK kok selendang nya polos tidak ada motif, seperti sisa dasar
+2024-12-19 01:14:16,276 - INFO - 🤖 AI: Terima kasih telah memberi tahu kami tentang Produk Rusak. Kami telah mencatat keluhan Anda terkait pesanan dengan nomor invoice 241212MVDMH75Q dan akan menanganinya sesegera mungkin. Kakak juga bisa ajukan pengembalian lewat menu pengembalian di halaman pesanan ya kak dan mengikuti prosedur pengembalian dari Shopee.
+2024-12-19 01:14:16,558 - INFO - ✅ Pesan berhasil dikirim ke jatidwira97
+2024-12-19 01:14:16,788 - INFO - ✅ Pesan berhasil dikirim ke lilis_ritma
+2024-12-19 01:14:16,796 - INFO - ✅ Pesan berhasil dikirim ke novi_lubuklinggau
+2024-12-19 01:14:16,802 - INFO - ==========================================Program selesai==========================================
+2024-12-19 01:16:26,124 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 01:16:39,016 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 01:16:39,022 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 01:16:39,672 - INFO - Total chats ditemukan: 4
+2024-12-19 01:16:40,244 - INFO - Pesan terakhir bukan text/image/sticker (type: image_with_text), skip balasan
+2024-12-19 01:16:40,429 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 01:16:40,714 - INFO - Berhasil memeriksa keluhan untuk user_id madityaaditya968
+2024-12-19 01:16:40,825 - INFO - Berhasil memeriksa perubahan untuk user_id madityaaditya968
+2024-12-19 01:16:40,825 - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-12-19 01:16:40,826 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-12-19 01:16:40,826 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241214SUDDU1HK, Status pesanan: COMPLETED
+2024-12-19 01:16:41,837 - INFO - 👤 aricharekat325:  Haii kak 👋,
+
+Kami dari Dαpur Buzzer punya solusi nih buat naikin Penjualan toko kaka dengan cepat, aman, dan real. 
+
+Layanan Jasa Jαsα Live Shopee Nonstop 24 Jαm Harganya cuma 1.2jt-an aja perbulan
+
+Jika tertarik, Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer ya kak. Terima kasih! ✨
+2024-12-19 01:16:41,837 - INFO - 🤖 AI: Hai kak! Terima kasih atas tawarannya, tapi saat ini kami fokus pada penjualan produk kami. Jika ada pertanyaan tentang produk atau layanan kami, silakan tanya ya! 😊✨
+2024-12-19 01:16:42,059 - INFO - 👤 fmorenoicik501:  Halo kak 👋, 
+
+Toko kamu Penjualannya masih sedikit? Omset lagi turun? 😢
+
+Coba layanan Jαsα Live Shopee Nonstop 24 Jαm dari Dαpur Buzzer aja! 
+
+Harganya cuma 1.2jt-an perbulan lho!
+
+Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer sekarang untuk informasi selengkapnya.✨
+2024-12-19 01:16:42,060 - INFO - 🤖 AI: Untuk stok masih ready ya kak. Bisa langsung diorder agar bisa kami proses secepatnya :) 
+
+Untuk pembelian couple silahkan tambahkan kemeja dan kebaya ke keranjang kak, nanti checkoutnya bareng jadi satu paket. Terima kasih!
+2024-12-19 01:16:42,206 - ERROR - ❌ Gagal mengirim pesan: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:16:42,416 - ERROR - ❌ Gagal mengirim pesan: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:16:42,425 - INFO - ==========================================Program selesai==========================================
+2024-12-19 01:17:13,494 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 01:17:26,665 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 01:17:26,670 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 01:17:27,228 - INFO - Total chats ditemukan: 4
+2024-12-19 01:17:27,907 - INFO - Pesan terakhir bukan text/image/sticker (type: image_with_text), skip balasan
+2024-12-19 01:17:28,087 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 01:17:28,374 - INFO - Berhasil memeriksa keluhan untuk user_id madityaaditya968
+2024-12-19 01:17:28,527 - INFO - Berhasil memeriksa perubahan untuk user_id madityaaditya968
+2024-12-19 01:17:28,528 - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-12-19 01:17:28,528 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-12-19 01:17:28,528 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241214SUDDU1HK, Status pesanan: COMPLETED
+2024-12-19 01:17:29,484 - INFO - 👤 aricharekat325:  Haii kak 👋,
+
+Kami dari Dαpur Buzzer punya solusi nih buat naikin Penjualan toko kaka dengan cepat, aman, dan real. 
+
+Layanan Jasa Jαsα Live Shopee Nonstop 24 Jαm Harganya cuma 1.2jt-an aja perbulan
+
+Jika tertarik, Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer ya kak. Terima kasih! ✨
+2024-12-19 01:17:29,484 - INFO - 🤖 AI: Hai kak! Terima kasih atas tawarannya. Saat ini kami fokus pada produk dan pelayanan di Samidare Batik Official Shop. Jika ada pertanyaan tentang produk kami, jangan ragu untuk bertanya ya! 😊✨
+2024-12-19 01:17:29,507 - INFO - 👤 fmorenoicik501:  Halo kak 👋, 
+
+Toko kamu Penjualannya masih sedikit? Omset lagi turun? 😢
+
+Coba layanan Jαsα Live Shopee Nonstop 24 Jαm dari Dαpur Buzzer aja! 
+
+Harganya cuma 1.2jt-an perbulan lho!
+
+Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer sekarang untuk informasi selengkapnya.✨
+2024-12-19 01:17:29,508 - INFO - 🤖 AI: Terima kasih atas sarannya, kak! Kami fokus untuk memberikan produk terbaik dan pelayanan memuaskan. Jika ada pertanyaan atau butuh info lebih lanjut tentang produk kami, silakan tanya ya! 😊✨
+2024-12-19 01:17:29,897 - ERROR - ❌ Gagal mengirim pesan ke fmorenoicik501: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:17:29,900 - ERROR - ❌ Gagal mengirim pesan ke aricharekat325: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:17:29,908 - INFO - ==========================================Program selesai==========================================
+2024-12-19 01:34:04,597 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 01:34:17,561 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 01:34:17,565 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 01:34:18,346 - INFO - Total chats ditemukan: 5
+2024-12-19 01:34:18,968 - INFO - Pesan terakhir bukan text/image/sticker (type: image_with_text), skip balasan
+2024-12-19 01:34:19,326 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 01:34:19,566 - INFO - Berhasil memeriksa keluhan untuk user_id madityaaditya968
+2024-12-19 01:34:19,677 - INFO - Berhasil memeriksa perubahan untuk user_id madityaaditya968
+2024-12-19 01:34:19,677 - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-12-19 01:34:19,678 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-12-19 01:34:19,678 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241214SUDDU1HK, Status pesanan: COMPLETED
+2024-12-19 01:34:20,828 - INFO - 👤 andraaabimataa: hllo kak klo untuk bb 50 han bgus nya saya pilih ukuran m atau L ya?
+2024-12-19 01:34:20,828 - INFO - 🤖 AI: Untuk berat badan 50 kg, ukuran L lebih cocok karena bisa muat dengan nyaman. Tapi kalau mau lebih pas, ukuran M juga bisa. Silakan pilih yang sesuai selera kak! 😊
+2024-12-19 01:34:20,899 - INFO - 👤 aricharekat325:  Haii kak 👋,
+
+Kami dari Dαpur Buzzer punya solusi nih buat naikin Penjualan toko kaka dengan cepat, aman, dan real. 
+
+Layanan Jasa Jαsα Live Shopee Nonstop 24 Jαm Harganya cuma 1.2jt-an aja perbulan
+
+Jika tertarik, Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer ya kak. Terima kasih! ✨
+2024-12-19 01:34:20,900 - INFO - 🤖 AI: Hai kak! Terima kasih atas tawarannya. Saat ini, kami fokus pada pelayanan dan produk yang ada di toko. Jika ada pertanyaan tentang produk kami, silakan tanya ya! 😊
+2024-12-19 01:34:20,954 - INFO - 👤 fmorenoicik501:  Halo kak 👋, 
+
+Toko kamu Penjualannya masih sedikit? Omset lagi turun? 😢
+
+Coba layanan Jαsα Live Shopee Nonstop 24 Jαm dari Dαpur Buzzer aja! 
+
+Harganya cuma 1.2jt-an perbulan lho!
+
+Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer sekarang untuk informasi selengkapnya.✨
+2024-12-19 01:34:20,954 - INFO - 🤖 AI: Terima kasih atas sarannya, kak! Kami tetap berusaha memberikan yang terbaik untuk pelanggan. Jika ada yang bisa kami bantu, silakan tanya aja ya! 😊✨
+2024-12-19 01:34:21,264 - ERROR - ❌ Gagal mengirim pesan ke aricharekat325: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:34:21,313 - ERROR - ❌ Gagal mengirim pesan ke fmorenoicik501: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:34:21,702 - INFO - ✅ Pesan berhasil dikirim ke andraaabimataa
+2024-12-19 01:34:21,711 - INFO - ==========================================Program selesai==========================================
+2024-12-19 01:51:06,930 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 01:51:19,674 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 01:51:19,677 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 01:51:20,282 - INFO - Total chats ditemukan: 3
+2024-12-19 01:51:21,228 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 01:51:21,533 - INFO - None
+2024-12-19 01:51:21,533 - ERROR - Unexpected error: 'NoneType' object is not subscriptable
+2024-12-19 01:51:21,533 - ERROR - Raw response: {"error":"","message":"","request_id":"0c20e4e0a351550cc9d9107089293721","response":{"messages":[{"message_id":"2320494149741396338","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Gmna mau balikin, sdah sampai jawa timur, jual sesuai gambar, jd orng gk kecewa, gk berkah tipu\" Orng, klau warn sm, msal hrg murah tipis msih maklum, tp ini sdh beda motif gk sm ky batik di gmbr, ky kain lap ap"},"conversation_id":"4678650530753425409","created_timestamp":1734506293,"region":"ID","status":"user_chat","message_option":16777220,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493561750307185","from_id":1400031750,"to_id":1320913564,"from_shop_id":1399281672,"to_shop_id":1320274870,"message_type":"text","content":{"text":"Kak, mohon maaf atas ketidaknyamanan ini. Untuk masalah produk yang tidak sesuai, bisa langsung ajukan pengembalian dengan alasan \"Bebas Pengembalian atau Berubah Pikiran\". Jika butuh bantuan lebih lanjut, silakan beri tahu ya!"},"conversation_id":"4678650530753425409","created_timestamp":1734506012,"region":"ID","status":"normal","message_option":0,"source":"openapi","source_content":{},"quoted_msg":null},{"message_id":"2320493360308371825","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Gmbr, dan datang y gk SMA huuuu"},"conversation_id":"4678650530753425409","created_timestamp":1734505916,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493331136987505","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"image","content":{"url":"https://img.sp.mms.shopee.sg/id-11134231-7rasc-m3x7a3jezlr6d9","thumb_url":"","thumb_height":889,"thumb_width":400,"file_server_id":0},"conversation_id":"4678650530753425409","created_timestamp":1734505902,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493311832703345","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Tidak sesuai \nPesenan"},"conversation_id":"4678650530753425409","created_timestamp":1734505893,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493299386171761","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Kecwa"},"conversation_id":"4678650530753425409","created_timestamp":1734505887,"region":"ID","status":"user_chat","message_option":16777220,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493298077565297","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"image","content":{"url":"https://img.sp.mms.shopee.sg/id-11134231-7rasc-m3x7a3jey76qd9","thumb_url":"","thumb_height":533,"thumb_width":400,"file_server_id":0},"conversation_id":"4678650530753425409","created_timestamp":1734505887,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null}],"page_result":{"next_offset":"2320493298077565297","page_size":7}}}
+2024-12-19 01:51:22,673 - INFO - 👤 fmorenoicik501:  Halo kak 👋, 
+
+Toko kamu Penjualannya masih sedikit? Omset lagi turun? 😢
+
+Coba layanan Jαsα Live Shopee Nonstop 24 Jαm dari Dαpur Buzzer aja! 
+
+Harganya cuma 1.2jt-an perbulan lho!
+
+Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer sekarang untuk informasi selengkapnya.✨
+2024-12-19 01:51:22,673 - INFO - 🤖 AI: Terima kasih atas saran dan perhatian kak! Kami selalu berusaha memberikan yang terbaik untuk pelanggan. Jika ada pertanyaan atau butuh info lebih lanjut tentang produk kami, jangan ragu untuk tanya ya! 😊
+2024-12-19 01:51:22,817 - INFO - 👤 aricharekat325:  Haii kak 👋,
+
+Kami dari Dαpur Buzzer punya solusi nih buat naikin Penjualan toko kaka dengan cepat, aman, dan real. 
+
+Layanan Jasa Jαsα Live Shopee Nonstop 24 Jαm Harganya cuma 1.2jt-an aja perbulan
+
+Jika tertarik, Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer ya kak. Terima kasih! ✨
+2024-12-19 01:51:22,817 - INFO - 🤖 AI: Hai kak! Terima kasih atas tawarannya, tapi saat ini kami fokus pada produk dan pelayanan di Samidare Batik Official Shop. Jika ada pertanyaan tentang produk kami, silakan tanya ya! 😊✨
+2024-12-19 01:51:23,018 - ERROR - ❌ Gagal mengirim pesan ke fmorenoicik501: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:51:23,167 - ERROR - ❌ Gagal mengirim pesan ke aricharekat325: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:51:23,175 - INFO - ==========================================Program selesai==========================================
+2024-12-19 01:54:29,518 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 01:54:42,469 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 01:54:42,473 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 01:54:43,156 - INFO - Total chats ditemukan: 3
+2024-12-19 01:54:43,916 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 01:54:44,220 - INFO - None
+2024-12-19 01:54:44,221 - ERROR - Unexpected error: 'NoneType' object is not subscriptable
+2024-12-19 01:54:44,221 - ERROR - Raw response: {"error":"","message":"","request_id":"4778e53db35cfac1fa9dbe3911f71021","response":{"messages":[{"message_id":"2320494149741396338","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Gmna mau balikin, sdah sampai jawa timur, jual sesuai gambar, jd orng gk kecewa, gk berkah tipu\" Orng, klau warn sm, msal hrg murah tipis msih maklum, tp ini sdh beda motif gk sm ky batik di gmbr, ky kain lap ap"},"conversation_id":"4678650530753425409","created_timestamp":1734506293,"region":"ID","status":"user_chat","message_option":16777220,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493561750307185","from_id":1400031750,"to_id":1320913564,"from_shop_id":1399281672,"to_shop_id":1320274870,"message_type":"text","content":{"text":"Kak, mohon maaf atas ketidaknyamanan ini. Untuk masalah produk yang tidak sesuai, bisa langsung ajukan pengembalian dengan alasan \"Bebas Pengembalian atau Berubah Pikiran\". Jika butuh bantuan lebih lanjut, silakan beri tahu ya!"},"conversation_id":"4678650530753425409","created_timestamp":1734506012,"region":"ID","status":"normal","message_option":0,"source":"openapi","source_content":{},"quoted_msg":null},{"message_id":"2320493360308371825","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Gmbr, dan datang y gk SMA huuuu"},"conversation_id":"4678650530753425409","created_timestamp":1734505916,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493331136987505","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"image","content":{"url":"https://img.sp.mms.shopee.sg/id-11134231-7rasc-m3x7a3jezlr6d9","thumb_url":"","thumb_height":889,"thumb_width":400,"file_server_id":0},"conversation_id":"4678650530753425409","created_timestamp":1734505902,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493311832703345","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Tidak sesuai \nPesenan"},"conversation_id":"4678650530753425409","created_timestamp":1734505893,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493299386171761","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Kecwa"},"conversation_id":"4678650530753425409","created_timestamp":1734505887,"region":"ID","status":"user_chat","message_option":16777220,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493298077565297","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"image","content":{"url":"https://img.sp.mms.shopee.sg/id-11134231-7rasc-m3x7a3jey76qd9","thumb_url":"","thumb_height":533,"thumb_width":400,"file_server_id":0},"conversation_id":"4678650530753425409","created_timestamp":1734505887,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null}],"page_result":{"next_offset":"2320493298077565297","page_size":7}}}
+2024-12-19 01:54:45,974 - INFO - 👤 fmorenoicik501:  Halo kak 👋, 
+
+Toko kamu Penjualannya masih sedikit? Omset lagi turun? 😢
+
+Coba layanan Jαsα Live Shopee Nonstop 24 Jαm dari Dαpur Buzzer aja! 
+
+Harganya cuma 1.2jt-an perbulan lho!
+
+Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer sekarang untuk informasi selengkapnya.✨
+2024-12-19 01:54:45,975 - INFO - 🤖 AI: Terima kasih atas saran dan perhatian kak! Kami selalu berusaha memberikan yang terbaik. Jika ada yang ingin ditanyakan tentang produk, jangan ragu untuk tanya ya! 😊✨
+2024-12-19 01:54:46,110 - INFO - 👤 aricharekat325:  Haii kak 👋,
+
+Kami dari Dαpur Buzzer punya solusi nih buat naikin Penjualan toko kaka dengan cepat, aman, dan real. 
+
+Layanan Jasa Jαsα Live Shopee Nonstop 24 Jαm Harganya cuma 1.2jt-an aja perbulan
+
+Jika tertarik, Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer ya kak. Terima kasih! ✨
+2024-12-19 01:54:46,111 - INFO - 🤖 AI: Hai kak! Terima kasih atas tawarannya. Saat ini, kami fokus pada penjualan produk di Samidare Batik Official Shop. Jika ada pertanyaan tentang produk kami, jangan ragu untuk bertanya ya! 😊✨
+2024-12-19 01:54:46,366 - ERROR - ❌ Gagal mengirim pesan ke fmorenoicik501: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:54:46,476 - ERROR - ❌ Gagal mengirim pesan ke aricharekat325: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:54:46,486 - INFO - ==========================================Program selesai==========================================
+2024-12-19 01:56:08,647 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 01:56:21,743 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 01:56:21,748 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 01:56:22,618 - INFO - Total chats ditemukan: 3
+2024-12-19 01:56:23,600 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 01:56:23,859 - INFO - Berhasil memeriksa keluhan untuk user_id madityaaditya968
+2024-12-19 01:56:24,058 - INFO - Berhasil memeriksa perubahan untuk user_id madityaaditya968
+2024-12-19 01:56:24,058 - INFO - {'ada_keluhan': True, 'ada_perubahan': False}
+2024-12-19 01:56:24,059 - INFO - Ada keluhan atau perubahan yang sudah tercatat
+2024-12-19 01:56:24,059 - INFO - Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: 241214SUDDU1HK, Status pesanan: COMPLETED
+2024-12-19 01:56:24,881 - INFO - 👤 aricharekat325:  Haii kak 👋,
+
+Kami dari Dαpur Buzzer punya solusi nih buat naikin Penjualan toko kaka dengan cepat, aman, dan real. 
+
+Layanan Jasa Jαsα Live Shopee Nonstop 24 Jαm Harganya cuma 1.2jt-an aja perbulan
+
+Jika tertarik, Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer ya kak. Terima kasih! ✨
+2024-12-19 01:56:24,882 - INFO - 🤖 AI: Hai kak! Terima kasih atas tawarannya, tapi saat ini kami fokus pada produk dan pelayanan di Samidare Batik Official Shop. Semoga sukses dengan layanan yang ditawarkan! ✨
+2024-12-19 01:56:24,898 - INFO - 👤 fmorenoicik501:  Halo kak 👋, 
+
+Toko kamu Penjualannya masih sedikit? Omset lagi turun? 😢
+
+Coba layanan Jαsα Live Shopee Nonstop 24 Jαm dari Dαpur Buzzer aja! 
+
+Harganya cuma 1.2jt-an perbulan lho!
+
+Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer sekarang untuk informasi selengkapnya.✨
+2024-12-19 01:56:24,898 - INFO - 🤖 AI: Terima kasih atas saran dan dukungannya, kak! Kami tetap berusaha memberikan yang terbaik untuk pelanggan. Jika ada yang bisa kami bantu terkait produk, silakan tanya saja ya! 😊
+2024-12-19 01:56:25,287 - ERROR - ❌ Gagal mengirim pesan ke aricharekat325: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:56:25,287 - ERROR - ❌ Gagal mengirim pesan ke fmorenoicik501: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:56:25,302 - INFO - ==========================================Program selesai==========================================
+2024-12-19 01:57:20,133 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 01:57:32,763 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 01:57:32,767 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 01:57:34,043 - INFO - Total chats ditemukan: 3
+2024-12-19 01:57:34,800 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 01:57:35,121 - INFO - None
+2024-12-19 01:57:35,121 - ERROR - Unexpected error: 'NoneType' object is not subscriptable
+2024-12-19 01:57:35,121 - ERROR - Raw response: {"error":"","message":"","request_id":"ce504f84629396cd41f8fedcad8dac21","response":{"messages":[{"message_id":"2320494149741396338","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Gmna mau balikin, sdah sampai jawa timur, jual sesuai gambar, jd orng gk kecewa, gk berkah tipu\" Orng, klau warn sm, msal hrg murah tipis msih maklum, tp ini sdh beda motif gk sm ky batik di gmbr, ky kain lap ap"},"conversation_id":"4678650530753425409","created_timestamp":1734506293,"region":"ID","status":"user_chat","message_option":16777220,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493561750307185","from_id":1400031750,"to_id":1320913564,"from_shop_id":1399281672,"to_shop_id":1320274870,"message_type":"text","content":{"text":"Kak, mohon maaf atas ketidaknyamanan ini. Untuk masalah produk yang tidak sesuai, bisa langsung ajukan pengembalian dengan alasan \"Bebas Pengembalian atau Berubah Pikiran\". Jika butuh bantuan lebih lanjut, silakan beri tahu ya!"},"conversation_id":"4678650530753425409","created_timestamp":1734506012,"region":"ID","status":"normal","message_option":0,"source":"openapi","source_content":{},"quoted_msg":null},{"message_id":"2320493360308371825","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Gmbr, dan datang y gk SMA huuuu"},"conversation_id":"4678650530753425409","created_timestamp":1734505916,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493331136987505","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"image","content":{"url":"https://img.sp.mms.shopee.sg/id-11134231-7rasc-m3x7a3jezlr6d9","thumb_url":"","thumb_height":889,"thumb_width":400,"file_server_id":0},"conversation_id":"4678650530753425409","created_timestamp":1734505902,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493311832703345","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Tidak sesuai \nPesenan"},"conversation_id":"4678650530753425409","created_timestamp":1734505893,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493299386171761","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Kecwa"},"conversation_id":"4678650530753425409","created_timestamp":1734505887,"region":"ID","status":"user_chat","message_option":16777220,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493298077565297","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"image","content":{"url":"https://img.sp.mms.shopee.sg/id-11134231-7rasc-m3x7a3jey76qd9","thumb_url":"","thumb_height":533,"thumb_width":400,"file_server_id":0},"conversation_id":"4678650530753425409","created_timestamp":1734505887,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null}],"page_result":{"next_offset":"2320493298077565297","page_size":7}}}
+2024-12-19 01:57:36,763 - INFO - 👤 aricharekat325:  Haii kak 👋,
+
+Kami dari Dαpur Buzzer punya solusi nih buat naikin Penjualan toko kaka dengan cepat, aman, dan real. 
+
+Layanan Jasa Jαsα Live Shopee Nonstop 24 Jαm Harganya cuma 1.2jt-an aja perbulan
+
+Jika tertarik, Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer ya kak. Terima kasih! ✨
+2024-12-19 01:57:36,763 - INFO - 🤖 AI: Hai kak! Terima kasih atas informasinya. Saat ini kami fokus pada produk dan pelayanan di Samidare Batik Official Shop. Jika ada pertanyaan tentang produk atau bantuan lainnya, silakan tanya ya! 😊✨
+2024-12-19 01:57:37,116 - ERROR - ❌ Gagal mengirim pesan ke aricharekat325: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:57:37,456 - INFO - 👤 fmorenoicik501:  Halo kak 👋, 
+
+Toko kamu Penjualannya masih sedikit? Omset lagi turun? 😢
+
+Coba layanan Jαsα Live Shopee Nonstop 24 Jαm dari Dαpur Buzzer aja! 
+
+Harganya cuma 1.2jt-an perbulan lho!
+
+Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer sekarang untuk informasi selengkapnya.✨
+2024-12-19 01:57:37,457 - INFO - 🤖 AI: Terima kasih atas sarannya, kak! Kami tetap berusaha memberikan yang terbaik untuk pelanggan. Jika ada pertanyaan atau butuh info produk, jangan ragu untuk tanya ya! 😊✨
+2024-12-19 01:57:37,791 - ERROR - ❌ Gagal mengirim pesan ke fmorenoicik501: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 01:57:37,795 - INFO - ==========================================Program selesai==========================================
+2024-12-19 01:59:52,492 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 02:00:05,505 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 02:00:05,511 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 02:00:05,937 - INFO - Total chats ditemukan: 3
+2024-12-19 02:00:06,921 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 02:00:07,330 - INFO - None
+2024-12-19 02:00:07,331 - ERROR - Unexpected error: 'NoneType' object is not subscriptable
+2024-12-19 02:00:07,331 - ERROR - Raw response: {"error":"","message":"","request_id":"77f2639a582e7fd2662d5717388cb121","response":{"messages":[{"message_id":"2320494149741396338","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Gmna mau balikin, sdah sampai jawa timur, jual sesuai gambar, jd orng gk kecewa, gk berkah tipu\" Orng, klau warn sm, msal hrg murah tipis msih maklum, tp ini sdh beda motif gk sm ky batik di gmbr, ky kain lap ap"},"conversation_id":"4678650530753425409","created_timestamp":1734506293,"region":"ID","status":"user_chat","message_option":16777220,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493561750307185","from_id":1400031750,"to_id":1320913564,"from_shop_id":1399281672,"to_shop_id":1320274870,"message_type":"text","content":{"text":"Kak, mohon maaf atas ketidaknyamanan ini. Untuk masalah produk yang tidak sesuai, bisa langsung ajukan pengembalian dengan alasan \"Bebas Pengembalian atau Berubah Pikiran\". Jika butuh bantuan lebih lanjut, silakan beri tahu ya!"},"conversation_id":"4678650530753425409","created_timestamp":1734506012,"region":"ID","status":"normal","message_option":0,"source":"openapi","source_content":{},"quoted_msg":null},{"message_id":"2320493360308371825","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Gmbr, dan datang y gk SMA huuuu"},"conversation_id":"4678650530753425409","created_timestamp":1734505916,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493331136987505","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"image","content":{"url":"https://img.sp.mms.shopee.sg/id-11134231-7rasc-m3x7a3jezlr6d9","thumb_url":"","thumb_height":889,"thumb_width":400,"file_server_id":0},"conversation_id":"4678650530753425409","created_timestamp":1734505902,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493311832703345","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Tidak sesuai \nPesenan"},"conversation_id":"4678650530753425409","created_timestamp":1734505893,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493299386171761","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Kecwa"},"conversation_id":"4678650530753425409","created_timestamp":1734505887,"region":"ID","status":"user_chat","message_option":16777220,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493298077565297","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"image","content":{"url":"https://img.sp.mms.shopee.sg/id-11134231-7rasc-m3x7a3jey76qd9","thumb_url":"","thumb_height":533,"thumb_width":400,"file_server_id":0},"conversation_id":"4678650530753425409","created_timestamp":1734505887,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null}],"page_result":{"next_offset":"2320493298077565297","page_size":7}}}
+2024-12-19 02:00:09,217 - INFO - 👤 fmorenoicik501:  Halo kak 👋, 
+
+Toko kamu Penjualannya masih sedikit? Omset lagi turun? 😢
+
+Coba layanan Jαsα Live Shopee Nonstop 24 Jαm dari Dαpur Buzzer aja! 
+
+Harganya cuma 1.2jt-an perbulan lho!
+
+Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer sekarang untuk informasi selengkapnya.✨
+2024-12-19 02:00:09,218 - INFO - 🤖 AI: Terima kasih atas sarannya, kak! Kami tetap berusaha memberikan yang terbaik untuk pelanggan. Jika ada yang ingin ditanyakan tentang produk kami, silakan ya! 😊
+2024-12-19 02:00:09,287 - INFO - 👤 aricharekat325:  Haii kak 👋,
+
+Kami dari Dαpur Buzzer punya solusi nih buat naikin Penjualan toko kaka dengan cepat, aman, dan real. 
+
+Layanan Jasa Jαsα Live Shopee Nonstop 24 Jαm Harganya cuma 1.2jt-an aja perbulan
+
+Jika tertarik, Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer ya kak. Terima kasih! ✨
+2024-12-19 02:00:09,287 - INFO - 🤖 AI: Hai kak! Terima kasih atas tawarannya. Saat ini, kami fokus pada produk dan pelayanan di Samidare Batik Official Shop. Jika ada pertanyaan tentang produk kami, silakan tanya ya! 😊✨
+2024-12-19 02:00:09,575 - ERROR - ❌ Gagal mengirim pesan ke fmorenoicik501: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 02:00:09,791 - ERROR - ❌ Gagal mengirim pesan ke aricharekat325: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 02:00:09,800 - INFO - ==========================================Program selesai==========================================
+2024-12-19 02:00:24,791 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 02:00:37,687 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 02:00:37,691 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 02:00:38,663 - INFO - Total chats ditemukan: 3
+2024-12-19 02:00:39,761 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 02:00:40,076 - INFO - None
+2024-12-19 02:00:40,077 - ERROR - Unexpected error: 'NoneType' object is not subscriptable
+2024-12-19 02:00:40,077 - ERROR - Raw response: {"error":"","message":"","request_id":"a9bec8aa0ffbbbf3e4146d6bcda0e521","response":{"messages":[{"message_id":"2320494149741396338","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Gmna mau balikin, sdah sampai jawa timur, jual sesuai gambar, jd orng gk kecewa, gk berkah tipu\" Orng, klau warn sm, msal hrg murah tipis msih maklum, tp ini sdh beda motif gk sm ky batik di gmbr, ky kain lap ap"},"conversation_id":"4678650530753425409","created_timestamp":1734506293,"region":"ID","status":"user_chat","message_option":16777220,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493561750307185","from_id":1400031750,"to_id":1320913564,"from_shop_id":1399281672,"to_shop_id":1320274870,"message_type":"text","content":{"text":"Kak, mohon maaf atas ketidaknyamanan ini. Untuk masalah produk yang tidak sesuai, bisa langsung ajukan pengembalian dengan alasan \"Bebas Pengembalian atau Berubah Pikiran\". Jika butuh bantuan lebih lanjut, silakan beri tahu ya!"},"conversation_id":"4678650530753425409","created_timestamp":1734506012,"region":"ID","status":"normal","message_option":0,"source":"openapi","source_content":{},"quoted_msg":null},{"message_id":"2320493360308371825","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Gmbr, dan datang y gk SMA huuuu"},"conversation_id":"4678650530753425409","created_timestamp":1734505916,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493331136987505","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"image","content":{"url":"https://img.sp.mms.shopee.sg/id-11134231-7rasc-m3x7a3jezlr6d9","thumb_url":"","thumb_height":889,"thumb_width":400,"file_server_id":0},"conversation_id":"4678650530753425409","created_timestamp":1734505902,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493311832703345","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Tidak sesuai \nPesenan"},"conversation_id":"4678650530753425409","created_timestamp":1734505893,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493299386171761","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"text","content":{"text":"Kecwa"},"conversation_id":"4678650530753425409","created_timestamp":1734505887,"region":"ID","status":"user_chat","message_option":16777220,"source":"android","source_content":{},"quoted_msg":null},{"message_id":"2320493298077565297","from_id":1320913564,"to_id":1400031750,"from_shop_id":1320274870,"to_shop_id":1399281672,"message_type":"image","content":{"url":"https://img.sp.mms.shopee.sg/id-11134231-7rasc-m3x7a3jey76qd9","thumb_url":"","thumb_height":533,"thumb_width":400,"file_server_id":0},"conversation_id":"4678650530753425409","created_timestamp":1734505887,"region":"ID","status":"user_chat","message_option":4,"source":"android","source_content":{},"quoted_msg":null}],"page_result":{"next_offset":"2320493298077565297","page_size":7}}}
+2024-12-19 02:00:41,860 - INFO - 👤 fmorenoicik501:  Halo kak 👋, 
+
+Toko kamu Penjualannya masih sedikit? Omset lagi turun? 😢
+
+Coba layanan Jαsα Live Shopee Nonstop 24 Jαm dari Dαpur Buzzer aja! 
+
+Harganya cuma 1.2jt-an perbulan lho!
+
+Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer sekarang untuk informasi selengkapnya.✨
+2024-12-19 02:00:41,860 - INFO - 🤖 AI: Terima kasih atas saran dan dukungannya, kak! Kami tetap berusaha memberikan yang terbaik untuk pelanggan. Jika ada pertanyaan atau butuh info lebih lanjut tentang produk, jangan ragu untuk tanya ya! 😊✨
+2024-12-19 02:00:42,227 - ERROR - ❌ Gagal mengirim pesan ke fmorenoicik501: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 02:00:44,230 - INFO - 👤 aricharekat325:  Haii kak 👋,
+
+Kami dari Dαpur Buzzer punya solusi nih buat naikin Penjualan toko kaka dengan cepat, aman, dan real. 
+
+Layanan Jasa Jαsα Live Shopee Nonstop 24 Jαm Harganya cuma 1.2jt-an aja perbulan
+
+Jika tertarik, Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer ya kak. Terima kasih! ✨
+2024-12-19 02:00:44,231 - INFO - 🤖 AI: Hai kak! Terima kasih atas tawarannya. Saat ini kami fokus pada produk dan pelayanan di Samidare Batik Official Shop. Jika ada pertanyaan tentang produk kami, silakan tanya ya! 😊✨
+2024-12-19 02:00:44,591 - ERROR - ❌ Gagal mengirim pesan ke aricharekat325: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 02:00:44,600 - INFO - ==========================================Program selesai==========================================
+2024-12-19 02:02:46,176 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 02:02:59,592 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 02:02:59,597 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 02:03:00,558 - INFO - Total chats ditemukan: 3
+2024-12-19 02:03:01,341 - INFO - Data pesanan: None
+2024-12-19 02:03:01,570 - INFO - Data pesanan: None
+2024-12-19 02:03:01,573 - INFO - Data pesanan: {'data': [{'order_sn': '241214SUDDU1HK', 'buyer_user_id': 1320913564, 'buyer_username': 'madityaaditya968', 'create_time': 1734189235, 'order_status': 'COMPLETED', 'total_amount': 282000, 'shipping_carrier': 'Anteraja Reguler', 'estimated_shipping_fee': 17000, 'actual_shipping_fee_confirmed': True, 'cod': False, 'days_to_ship': 2, 'ship_by_date': 1734368399, 'payment_method': 'ShopeePay', 'fulfillment_flag': 'fulfilled_by_local_seller', 'message_to_seller': '', 'note': '', 'note_update_time': 0, 'order_chargeable_weight_gram': 200, 'pickup_done_time': 1734250795, 'pay_time': 1734189244, 'cancel_by': '', 'cancel_reason': '', 'order_items': [{'item_id': 29167328741, 'item_sku': 'Kinara', 'model_id': 252063629388, 'image_url': 'https://cf.shopee.co.id/file/sg-11134201-7req7-m2hr8r9pxgx633_tn', 'item_name': 'Kebaya Couple Kutu Baru Kinara Series Setelan Kebaya Wisuda Lamaran Tunangan Batik Baju Couple Kondangan Terbaru 2024', 'model_sku': '', 'model_name': 'KEMEJA SAJA (MAROON),L', 'order_item_id': 29167328741, 'model_original_price': 100000, 'model_discounted_price': 70000, 'model_quantity_purchased': 1}, {'item_id': 29167328741, 'item_sku': 'Kinara', 'model_id': 252063629398, 'image_url': 'https://cf.shopee.co.id/file/sg-11134201-7reol-m2hr8rrr72rg36_tn', 'item_name': 'Kebaya Couple Kutu Baru Kinara Series Setelan Kebaya Wisuda Lamaran Tunangan Batik Baju Couple Kondangan Terbaru 2024', 'model_sku': '', 'model_name': 'KEBAYA+ROK (MAROON),M', 'order_item_id': 29167328741, 'model_original_price': 300000, 'model_discounted_price': 210000, 'model_quantity_purchased': 1}], 'tracking_number': '11001076766315', 'shipping_carrier_info': 'Anteraja Reguler', 'shop_id': 1399281672, 'shop_name': 'Calyssa Boutique', 'total_belanja': 280000}]}
+2024-12-19 02:03:01,575 - INFO - Ditemukan invoice: 241214SUDDU1HK, status: COMPLETED
+2024-12-19 02:03:01,575 - INFO - Mencoba cek keluhan untuk user_id: 1320913564, nama: madityaaditya968
+2024-12-19 02:03:01,881 - INFO - Hasil cek keluhan: None
+2024-12-19 02:03:01,886 - INFO - ==========================================Program selesai==========================================
+2024-12-19 02:05:01,719 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 02:05:14,633 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 02:05:14,637 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 02:05:15,196 - INFO - Total chats ditemukan: 3
+2024-12-19 02:05:16,156 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 02:05:16,451 - ERROR - Gagal mengecek keluhan/perubahan: 404
+2024-12-19 02:05:16,454 - INFO - {'ada_keluhan': False, 'ada_perubahan': False}
+2024-12-19 02:05:17,498 - INFO - 👤 fmorenoicik501:  Halo kak 👋, 
+
+Toko kamu Penjualannya masih sedikit? Omset lagi turun? 😢
+
+Coba layanan Jαsα Live Shopee Nonstop 24 Jαm dari Dαpur Buzzer aja! 
+
+Harganya cuma 1.2jt-an perbulan lho!
+
+Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer sekarang untuk informasi selengkapnya.✨
+2024-12-19 02:05:17,499 - INFO - 🤖 AI: Terima kasih atas sarannya, kak! Kami tetap berusaha memberikan yang terbaik untuk pelanggan. Jika ada yang ingin ditanyakan tentang produk kami, silakan ya! 😊✨
+2024-12-19 02:05:17,590 - INFO - 👤 aricharekat325:  Haii kak 👋,
+
+Kami dari Dαpur Buzzer punya solusi nih buat naikin Penjualan toko kaka dengan cepat, aman, dan real. 
+
+Layanan Jasa Jαsα Live Shopee Nonstop 24 Jαm Harganya cuma 1.2jt-an aja perbulan
+
+Jika tertarik, Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer ya kak. Terima kasih! ✨
+2024-12-19 02:05:17,590 - INFO - 🤖 AI: Hai kak! Terima kasih atas tawarannya. Saat ini, kami fokus pada pengembangan produk dan layanan di Samidare Batik Official Shop. Jika ada pertanyaan tentang produk kami, jangan ragu untuk bertanya ya! 😊✨
+2024-12-19 02:05:17,883 - ERROR - ❌ Gagal mengirim pesan ke fmorenoicik501: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 02:05:18,041 - ERROR - ❌ Gagal mengirim pesan ke aricharekat325: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 02:05:18,867 - INFO - Data keluhan berhasil dimasukkan: [{'id': 469, 'id_pengguna': 'madityaaditya968', 'nama_toko': 'Calyssa Boutique', 'jenis_keluhan': 'Produk Rusak', 'nomor_invoice': '241214SUDDU1HK', 'create_at': '2024-12-18T14:19:32.141601+07:00', 'status_keluhan': 'BELUM DITANGANI', 'deskripsi_keluhan': 'Motif batik yang diterima tidak sesuai dengan gambar yang ditampilkan, sangat mengecewakan.', 'status_pesanan': 'COMPLETED', 'store_id': '1399281672', 'msg_id': '4678650530753425409', 'user_id': 1320913564, 'updated_at': '2024-12-18T07:19:32.141601+07:00'}]
+2024-12-19 02:05:18,871 - INFO - 👤 madityaaditya968: 
+2024-12-19 02:05:18,871 - INFO - 🤖 AI: Terima kasih telah memberi tahu kami tentang Produk Rusak. Kami telah mencatat keluhan Anda terkait pesanan dengan nomor invoice 241214SUDDU1HK dan akan menanganinya sesegera mungkin. Kakak juga bisa ajukan pengembalian lewat menu pengembalian di halaman pesanan ya kak dan mengikuti prosedur pengembalian dari Shopee.
+2024-12-19 02:05:19,255 - ERROR - ❌ Gagal mengirim pesan ke madityaaditya968: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 02:05:19,258 - INFO - ==========================================Program selesai==========================================
+2024-12-19 02:05:59,799 - INFO - ==========================================Program dimulai==========================================
+2024-12-19 02:06:12,783 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-19 02:06:12,788 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-19 02:06:13,249 - INFO - Total chats ditemukan: 3
+2024-12-19 02:06:14,084 - INFO - Ada invoice 241214SUDDU1HK
+2024-12-19 02:06:14,386 - ERROR - Gagal mengecek keluhan/perubahan: 404
+2024-12-19 02:06:14,391 - INFO - {'ada_keluhan': False, 'ada_perubahan': False}
+2024-12-19 02:06:18,873 - INFO - 👤 aricharekat325:  Haii kak 👋,
+
+Kami dari Dαpur Buzzer punya solusi nih buat naikin Penjualan toko kaka dengan cepat, aman, dan real. 
+
+Layanan Jasa Jαsα Live Shopee Nonstop 24 Jαm Harganya cuma 1.2jt-an aja perbulan
+
+Jika tertarik, Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer ya kak. Terima kasih! ✨
+2024-12-19 02:06:18,873 - INFO - 🤖 AI: Hai kak! Terima kasih atas tawarannya. Saat ini kami fokus pada produk dan pelayanan di Samidare Batik Official Shop. Jika ada pertanyaan seputar produk kami, silakan tanya ya! 😊
+2024-12-19 02:06:18,876 - INFO - 👤 fmorenoicik501:  Halo kak 👋, 
+
+Toko kamu Penjualannya masih sedikit? Omset lagi turun? 😢
+
+Coba layanan Jαsα Live Shopee Nonstop 24 Jαm dari Dαpur Buzzer aja! 
+
+Harganya cuma 1.2jt-an perbulan lho!
+
+Cek ℐ𝓃𝓈𝓉𝒶𝑔𝓇𝒶𝓂 @dαρurbuzzer sekarang untuk informasi selengkapnya.✨
+2024-12-19 02:06:18,876 - INFO - 🤖 AI: Terima kasih atas saran dan perhatian kak! Kami selalu berusaha memberikan yang terbaik. Jika ada pertanyaan atau butuh info lebih lanjut tentang produk kami, jangan ragu untuk tanya ya! 😊✨
+2024-12-19 02:06:19,550 - ERROR - ❌ Gagal mengirim pesan ke aricharekat325: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 02:06:19,550 - ERROR - ❌ Gagal mengirim pesan ke fmorenoicik501: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 02:06:20,052 - INFO - Data keluhan berhasil dimasukkan: [{'id': 469, 'id_pengguna': 'madityaaditya968', 'nama_toko': 'Calyssa Boutique', 'jenis_keluhan': 'Produk Rusak', 'nomor_invoice': '241214SUDDU1HK', 'create_at': '2024-12-18T14:19:32.141601+07:00', 'status_keluhan': 'BELUM DITANGANI', 'deskripsi_keluhan': 'Motif produk yang diterima tidak sesuai dengan gambar yang ditampilkan, terlihat seperti kain lap.', 'status_pesanan': 'COMPLETED', 'store_id': '1399281672', 'msg_id': '4678650530753425409', 'user_id': 1320913564, 'updated_at': '2024-12-18T07:19:32.141601+07:00'}]
+2024-12-19 02:06:20,055 - INFO - 👤 madityaaditya968: 
+2024-12-19 02:06:20,055 - INFO - 🤖 AI: Terima kasih telah memberi tahu kami tentang Produk Rusak. Kami telah mencatat keluhan Anda terkait pesanan dengan nomor invoice 241214SUDDU1HK dan akan menanganinya sesegera mungkin. Kakak juga bisa ajukan pengembalian lewat menu pengembalian di halaman pesanan ya kak dan mengikuti prosedur pengembalian dari Shopee.
+2024-12-19 02:06:20,422 - ERROR - ❌ Gagal mengirim pesan ke madityaaditya968: 500 Server Error: Internal Server Error for url: https://yorozuya.onrender.com/api/msg/send_message
+2024-12-19 02:06:20,433 - INFO - ==========================================Program selesai==========================================

@@ -28,7 +28,7 @@ def chatbot(conversation, user_id, ada_invoice, nomor_invoice, store_id, convers
 
     if ada_invoice:
         logging.info(f"Ada invoice {nomor_invoice}")
-        hasil_cek = cek_keluhan_dan_perubahan(nomor_invoice)
+        hasil_cek = cek_keluhan_dan_perubahan(user_id_int, user_id)
         logging.info(hasil_cek)
 
         if hasil_cek['ada_keluhan'] or hasil_cek['ada_perubahan']:
@@ -205,10 +205,10 @@ def reply_to_chat(chat, reply_text):
         return response
         
     except Exception as e:
-        logging.error(f"❌ Gagal mengirim pesan: {str(e)}")
+        logging.error(f"❌ Gagal mengirim pesan ke {username}: {str(e)}")
         return None
 
-def box_exec(conversation_id, shop_id, to_name, latest_message, shop_name, unread_count, to_id):
+def box_exec(conversation_id, shop_id, to_name, shop_name, unread_count, to_id):
    
     
     userchat = f"https://yorozuya.onrender.com/api/msg/get_message?conversationId={conversation_id}&shopId={shop_id}&pageSize=25"
@@ -232,10 +232,13 @@ def box_exec(conversation_id, shop_id, to_name, latest_message, shop_name, unrea
         
         # Tambahkan pengecekan pesan terakhir untuk menghindari duplikasi
         last_message = messages[-1] if messages else None
-        if last_message and last_message.get('message_type') != 'text':
-            logging.info(f"Pesan terakhir adalah dari toko, skip balasan untuk menghindari duplikasi")
-            return
+        if last_message:
+            message_type = last_message.get('message_type')
+            if message_type not in ['text', 'image', 'sticker', 'video', "image_with_text"]:
+                logging.info(f"Pesan terakhir  bukan text/image/sticker/video/image_with_text (type: {message_type}), skip balasan")
+                return
             
+        
         # Ambil pesan pertama untuk mendapatkan informasi
         first_message = messages[0]
         
@@ -300,7 +303,7 @@ def box_exec(conversation_id, shop_id, to_name, latest_message, shop_name, unrea
         teks_balasan = chatbot(percakapan, chat['to_name'], ada_invoice, nomor_invoice, store_id, conversation_id, int(user_id))
         
         if teks_balasan is not None:
-            logging.info(f"👤 Pembeli: {chat['latest_message_content']['text']}")
+            logging.info(f"👤 {chat['to_name']}: {chat['latest_message_content']['text']}")
             logging.info(f"🤖 AI: {teks_balasan}")
             
             chat_data = {
@@ -317,6 +320,7 @@ def box_exec(conversation_id, shop_id, to_name, latest_message, shop_name, unrea
         else:
             if ada_invoice:
                 logging.info(f"Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: {nomor_invoice}, Status pesanan: {status_pesanan}")
+                return  # Menghentikan proses
             else:
                 logging.info("Tidak ada invoice yang terkait dengan pengguna ini. Chat diproses normal.")
 
@@ -336,47 +340,60 @@ def box_exec(conversation_id, shop_id, to_name, latest_message, shop_name, unrea
 def send_replies():
     try:
         datachat = requests.get("https://yorozuya.onrender.com/api/msg/get_conversation_list?unread=true&limit=20")
-        # Log raw response
         
-        
+        if not datachat.ok:
+            logging.error(f"Gagal mengambil data chat: Status code {datachat.status_code}")
+            return
+            
         data = datachat.json()
+        if not data:
+            logging.info("Tidak ada chat yang perlu diproses")
+            return
+            
         logging.info(f"Total chats ditemukan: {len(data)}")
         
         threads = []
         for chat in data:
-            try:
-                # Log setiap chat yang akan diproses
+            if not chat:
+                logging.error("Ditemukan chat yang kosong/invalid")
+                continue
                 
+            try:
                 conversation_id = chat.get("conversation_id")
                 shop_id = chat.get("shop_id")
-                to_name = chat.get("to_name")
-                latest_message = chat.get("latest_message_content", {}).get("text", "")
-                shop_name = chat.get("shop_name")
-                unread_count = chat.get("unread_count")
+                to_name = chat.get("to_name", "Unknown")
+                shop_name = chat.get("shop_name", "Unknown")
+                unread_count = chat.get("unread_count", 0)
                 to_id = chat.get("to_id")
                 
-                # Validasi data yang diperlukan
                 if not all([conversation_id, shop_id, to_id]):
-                    logging.error(f"Missing required data: conversation_id={conversation_id}, shop_id={shop_id}, to_id={to_id}")
+                    logging.error(f"Data chat tidak lengkap: conversation_id={conversation_id}, shop_id={shop_id}, to_id={to_id}")
                     continue
 
                 thread = threading.Thread(target=box_exec, args=(
                     conversation_id,
                     shop_id,
                     to_name,
-                    latest_message,
                     shop_name,
                     unread_count,
                     to_id
                 ))
                 thread.start()
                 threads.append(thread)
+                
             except Exception as e:
-                logging.error(f"Error processing chat: {e}")
+                logging.error(f"Error processing chat: {str(e)}")
                 continue
 
+        for thread in threads:
+            thread.join()
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error saat mengambil data dari API: {str(e)}")
+    except json.JSONDecodeError as e:
+        logging.error(f"Error saat parsing JSON response: {str(e)}")
     except Exception as e:
-        logging.error(f"Error in send_replies: {e}")
+        logging.error(f"Error tidak terduga dalam send_replies: {str(e)}")
 
 def tangani_keluhan(id_pengguna: str, nama_toko: str, jenis_keluhan: str, deskripsi_keluhan: str, nomor_invoice: str, status_pesanan: str, store_id: str, msg_id: str, user_id: int):
     try:
@@ -400,36 +417,31 @@ def tangani_keluhan(id_pengguna: str, nama_toko: str, jenis_keluhan: str, deskri
         return False
 
 
-def cek_keluhan_dan_perubahan(nomor_invoice: str):
-    ada_keluhan = False
-    ada_perubahan = False
-    
-    # Cek keluhan
+def cek_keluhan_dan_perubahan(user_id: int, id_pengguna: str):
     try:
-        keluhan_result = supabase.table('keluhan') \
-            .select('*') \
-            .eq('nomor_invoice', nomor_invoice) \
-            .execute()
-        ada_keluhan = len(keluhan_result.data) > 0
-        logging.info(f"Berhasil memeriksa keluhan untuk invoice {nomor_invoice}")
-    except Exception as e:
-        logging.error(f"Gagal memeriksa keluhan: {str(e)}")
+        url = f"https://yorozuya.onrender.com/api/cek_perubahan?user_id={user_id}"
+        print(url)
+        response = requests.get(url)
         
-    # Cek perubahan pesanan secara terpisah
-    try:
-        perubahan_result = supabase.table('perubahan_pesanan') \
-            .select('*') \
-            .eq('nomor_invoice', nomor_invoice) \
-            .execute()
-        ada_perubahan = len(perubahan_result.data) > 0
-        logging.info(f"Berhasil memeriksa perubahan untuk invoice {nomor_invoice}")
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                "ada_keluhan": data.get("ada_keluhan", False),
+                "ada_perubahan": data.get("ada_perubahan", False)
+            }
+        else:
+            logging.error(f"Gagal mengecek keluhan/perubahan: {response.status_code}")
+            return {
+                "ada_keluhan": False,
+                "ada_perubahan": False
+            }
+            
     except Exception as e:
-        logging.error(f"Gagal memeriksa perubahan pesanan: {str(e)}")
-
-    return {
-        "ada_keluhan": ada_keluhan,
-        "ada_perubahan": ada_perubahan
-    }
+        logging.error(f"Error saat cek keluhan dan perubahan: {str(e)}")
+        return {
+            "ada_keluhan": False,
+            "ada_perubahan": False
+        }
 
 def ubah_detail_pesanan(id_pengguna: str, nama_toko: str, nomor_invoice: str, detail_perubahan: str, perubahan: dict, status_pesanan: str,store_id:str, msg_id:str, user_id:int):
     try:
