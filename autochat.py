@@ -27,14 +27,35 @@ else:
 def chatbot(conversation, user_id, ada_invoice, nomor_invoice, store_id, conversation_id, user_id_int):
 
     if ada_invoice:
-        logging.info(f"Ada invoice {nomor_invoice}")
+        
         hasil_cek = cek_keluhan_dan_perubahan(user_id_int, user_id)
-        logging.info(hasil_cek)
+        
 
-        if hasil_cek['ada_keluhan'] or hasil_cek['ada_perubahan']:
-            logging.info("Ada keluhan atau perubahan yang sudah tercatat")
-            return None  # Mengembalikan None jika ada keluhan atau perubahan untuk invoice yang ada
-    
+        if hasil_cek['ada_keluhan']:
+            
+            return None
+        elif hasil_cek['ada_perubahan']:
+          
+            detail_perubahan = hasil_cek.get('detail_perubahan', [])
+            
+            if detail_perubahan and len(detail_perubahan) > 0:
+                try:
+                    detail = detail_perubahan[0]
+                    perubahan = detail.get('perubahan', {})
+                    pesan_perubahan = (
+                        f"Sudah ada perubahan pesanan yang tercatat untuk invoice {nomor_invoice}:\n\n"
+                        f"• Detail perubahan: {detail.get('detail_perubahan', 'Tidak ada detail')}\n"
+                        f"• Perubahan warna: {perubahan.get('warna', '-')}\n"
+                        f"• Perubahan ukuran: {perubahan.get('ukuran', '-')}\n\n"
+                        f"Tanyakan apakah kakak ingin mengubah detail pesanan lagi?"
+                    )
+                    conversation.append({"role": "system", "content": pesan_perubahan})
+                except Exception as e:
+                    logging.error(f"Error saat memproses detail perubahan: {str(e)}")
+                    return None
+            else:
+                logging.warning("Data perubahan detail kosong atau tidak valid")
+            return None
 
 
     tools = [
@@ -99,7 +120,7 @@ def chatbot(conversation, user_id, ada_invoice, nomor_invoice, store_id, convers
                         },
                         "nomor_invoice": {
                             "type": "string",
-                            "description": "Nomor invoice terkait perubahan"
+                            "description": "Nomor invoice atau nomor pesanan terkait perubahan"
                         },
                         "status_pesanan": {
                             "type": "string",
@@ -145,6 +166,7 @@ def chatbot(conversation, user_id, ada_invoice, nomor_invoice, store_id, convers
             headers={"Authorization": f"Bearer {openai_api}"},
             json=data
         )
+        print(response.json())
 
         if response.status_code == 200:
             response_data = response.json()["choices"][0]['message']
@@ -201,11 +223,11 @@ def reply_to_chat(chat, reply_text):
         response = requests.post(url, json=payload)
         response.raise_for_status()
         
-        logging.info(f"✅ Pesan berhasil dikirim ke {username}")
+      
         return response
         
     except Exception as e:
-        logging.error(f"❌ Gagal mengirim pesan ke {username}: {str(e)}")
+       
         return None
 
 def box_exec(conversation_id, shop_id, to_name, shop_name, unread_count, to_id):
@@ -220,7 +242,7 @@ def box_exec(conversation_id, shop_id, to_name, shop_name, unread_count, to_id):
         # Periksa struktur response
         if 'response' not in conv_data or 'messages' not in conv_data['response']:
             logging.error("Struktur response tidak sesuai")
-            logging.error(f"Response data: {conv_data}")
+           
             return
             
         messages = conv_data['response']['messages']
@@ -301,8 +323,11 @@ def box_exec(conversation_id, shop_id, to_name, shop_name, unread_count, to_id):
                 })
         
         teks_balasan = chatbot(percakapan, chat['to_name'], ada_invoice, nomor_invoice, store_id, conversation_id, int(user_id))
-        
+        logging.info("==========================================Balasan AI==========================================")
+        logging.info(f"Invoice: {nomor_invoice} - Status pesanan: {status_pesanan}")
+       
         if teks_balasan is not None:
+            
             logging.info(f"👤 {chat['to_name']}: {chat['latest_message_content']['text']}")
             logging.info(f"🤖 AI: {teks_balasan}")
             
@@ -316,10 +341,14 @@ def box_exec(conversation_id, shop_id, to_name, shop_name, unread_count, to_id):
                 'username': to_name
             }
             
-            reply_to_chat(chat_data, teks_balasan)
+            responbalas = reply_to_chat(chat_data, teks_balasan)
+            if responbalas:
+                logging.info(f"✅ Pesan berhasil dikirim ke {chat['to_name']}")
+            else:
+                logging.error(f"❌ Gagal mengirim pesan ke {chat['to_name']}")
         else:
             if ada_invoice:
-                logging.info(f"Tidak ada balasan yang dikirim karena keluhan atau perubahan sudah ada untuk invoice: {nomor_invoice}, Status pesanan: {status_pesanan}")
+                logging.info(f"Tidak ada balasan yang dikirim {chat['to_name']} karena keluhan sudah ada untuk invoice: {nomor_invoice}, Status pesanan: {status_pesanan}")
                 return  # Menghentikan proses
             else:
                 logging.info("Tidak ada invoice yang terkait dengan pengguna ini. Chat diproses normal.")
@@ -420,27 +449,36 @@ def tangani_keluhan(id_pengguna: str, nama_toko: str, jenis_keluhan: str, deskri
 def cek_keluhan_dan_perubahan(user_id: int, id_pengguna: str):
     try:
         url = f"https://yorozuya.onrender.com/api/cek_perubahan?user_id={user_id}"
-        print(url)
         response = requests.get(url)
         
         if response.status_code == 200:
             data = response.json()
             return {
                 "ada_keluhan": data.get("ada_keluhan", False),
-                "ada_perubahan": data.get("ada_perubahan", False)
+                "ada_perubahan": data.get("ada_perubahan", False),
+                "detail_keluhan": data.get("keluhan_detail", []),
+                "detail_perubahan": data.get("perubahan_detail", []),
+                "jumlah_keluhan": data.get("jumlah_keluhan", 0),
+                "jumlah_perubahan": data.get("jumlah_perubahan", 0)
             }
         else:
             logging.error(f"Gagal mengecek keluhan/perubahan: {response.status_code}")
             return {
                 "ada_keluhan": False,
-                "ada_perubahan": False
+                "ada_perubahan": False,
+                "detail_keluhan": [],
+                "detail_perubahan": [],
+                "jumlah_keluhan": 0,
+                "jumlah_perubahan": 0
             }
             
     except Exception as e:
         logging.error(f"Error saat cek keluhan dan perubahan: {str(e)}")
         return {
             "ada_keluhan": False,
-            "ada_perubahan": False
+            "ada_perubahan": False,
+            "detail_keluhan": [],
+            "detail_perubahan": []
         }
 
 def ubah_detail_pesanan(id_pengguna: str, nama_toko: str, nomor_invoice: str, detail_perubahan: str, perubahan: dict, status_pesanan: str,store_id:str, msg_id:str, user_id:int):

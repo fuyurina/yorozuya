@@ -2218,6 +2218,59 @@ async getShopPenalty(shopId: number, accessToken: string): Promise<any> {
     throw error;
   }
 }
+
+async cancelOrder(
+  shopId: number,
+  accessToken: string,
+  orderSn: string,
+  itemList: Array<{
+    item_id: number,
+    model_id: number
+  }>
+): Promise<any> {
+  const url = 'https://partner.shopeemobile.com/api/v2/order/cancel_order';
+  const path = '/api/v2/order/cancel_order';
+  const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+  const params = new URLSearchParams({
+    partner_id: this.partnerId.toString(),
+    timestamp: timest.toString(),
+    sign,
+    shop_id: shopId.toString(),
+    access_token: accessToken
+  });
+
+  // Validasi input
+  if (!itemList || itemList.length === 0) {
+    throw new Error('item_list tidak boleh kosong');
+  }
+
+  const body = {
+    order_sn: orderSn,
+    cancel_reason: 'OUT_OF_STOCK',
+    item_list: itemList
+  };
+
+  const fullUrl = `${url}?${params.toString()}`;
+  const headers = { 'Content-Type': 'application/json' };
+
+  console.info(`Mengirim permintaan untuk membatalkan pesanan: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+  try {
+    const response = await axios.post(fullUrl, body, { headers });
+    console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+    return response.data;
+  } catch (error) {
+    console.error('Kesalahan saat membatalkan pesanan:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('Error Response:', {
+        status: error.response.status,
+        data: error.response.data
+      });
+    }
+    throw error;
+  }
+}
 }
 
 export default ShopeeAPI;

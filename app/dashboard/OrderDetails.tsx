@@ -11,7 +11,17 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Package2, Truck, User, Calendar, Receipt, Store } from 'lucide-react'
+import { Package2, Truck, User, Calendar, Store, PackageX } from 'lucide-react'
+import { toast } from 'sonner'
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface OrderDetailsProps {
   orderSn: string
@@ -45,6 +55,7 @@ interface OrderDetail {
   order_items: OrderItem[]
   total_belanja: number
   cancel_reason?: string
+  shop_id: number
 }
 
 // Tambahkan fungsi untuk menentukan variant badge
@@ -67,6 +78,7 @@ const getStatusBadgeVariant = (status: string) => {
 export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
   const [orderDetails, setOrderDetails] = useState<OrderDetail | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
@@ -100,152 +112,235 @@ export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
     })
   }
 
+  const handleCancelOrder = async () => {
+    if (!orderDetails || !orderSn) return;
+
+    try {
+      const itemList = orderDetails.order_items.map(item => ({
+        item_id: item.item_id,
+        model_id: item.model_id
+      }));
+
+      const response = await fetch('/api/cancel-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          shopId: orderDetails.shop_id,
+          orderSn,
+          itemList
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Pesanan telah dibatalkan');
+        setShowConfirmDialog(false);
+        onClose();
+      } else {
+        toast.error(data.message || 'Gagal membatalkan pesanan');
+      }
+    } catch (error) {
+      toast.error('Terjadi kesalahan saat membatalkan pesanan');
+    }
+  };
+
+  const renderCancelButton = (status: string) => {
+    const allowedStatuses = ['UNPAID', 'READY_TO_SHIP', 'PROCESSED'];
+    
+    if (allowedStatuses.includes(status)) {
+      return (
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={() => setShowConfirmDialog(true)}
+          className="h-6 w-6"
+        >
+          <PackageX className="h-4 w-4 text-destructive stroke-2" />
+        </Button>
+      );
+    }
+    return null;
+  };
+
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-[90%] md:w-[600px]">
-        <SheetHeader className="mb-5">
-          <SheetTitle className="text-lg font-bold">
-            Detail Pesanan
-          </SheetTitle>
-        </SheetHeader>
+    <>
+      <Sheet open={isOpen} onOpenChange={onClose}>
+        <SheetContent className="w-[90%] md:w-[600px]">
+          <SheetHeader className="mb-5">
+            <SheetTitle className="text-lg font-bold">
+              Detail Pesanan
+            </SheetTitle>
+          </SheetHeader>
 
-        <ScrollArea className="h-[calc(100vh-180px)] pr-4">
-          {isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-            </div>
-          ) : orderDetails ? (
-            <div className="space-y-6">
-              {/* Nomor Pesanan */}
-              <div className="bg-muted p-4 rounded-lg">
-                <div className="flex flex-wrap items-center gap-2 justify-between">
-                  <h3 className="text-[11px] md:text-base font-semibold flex items-center gap-2">
-                  
-                    {orderDetails.order_sn}
+          <ScrollArea className="h-[calc(100vh-180px)] pr-4">
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            ) : orderDetails ? (
+              <div className="space-y-6">
+                {/* Nomor Pesanan */}
+                <div className="bg-muted p-4 rounded-lg">
+                  <div className="flex flex-wrap items-center gap-2 justify-between">
+                    <h3 className="text-[10px] md:text-sm font-medium flex items-center gap-2 truncate">
+                      {orderDetails.order_sn}
+                    </h3>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge 
+                        variant="outline" 
+                        className={`text-[10px] md:text-sm ${getStatusBadgeVariant(orderDetails.order_status)}`}
+                      >
+                        {orderDetails.order_status}
+                      </Badge>
+                      {renderCancelButton(orderDetails.order_status)}
+                    </div>
+                  </div>
+                  {orderDetails.order_status === 'IN_CANCEL' || orderDetails.order_status === 'CANCELLED' ? (
+                    <div className="mt-2">
+                      <p className="text-[10px] md:text-sm font-medium text-red-600">
+                        {orderDetails.cancel_reason || 'Tidak ada alasan yang diberikan'}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Informasi Toko & Pembeli */}
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <Store className="h-4 w-4 mt-1" />
+                    <div>
+                      <p className="text-sm font-medium">Toko</p>
+                      <p className="text-sm text-muted-foreground">{orderDetails.shop_name}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <User className="h-4 w-4 mt-1" />
+                    <div>
+                      <p className="text-sm font-medium">Pembeli</p>
+                      <p className="text-sm text-muted-foreground">{orderDetails.buyer_username}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Calendar className="h-4 w-4 mt-1" />
+                    <div>
+                      <p className="text-sm font-medium">Tanggal Pembayaran</p>
+                      <p className="text-sm text-muted-foreground">{formatDate(orderDetails.pay_time)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Truck className="h-4 w-4 mt-1" />
+                    <div>
+                      <p className="text-sm font-medium">Informasi Pengiriman</p>
+                      <p className="text-sm text-muted-foreground">
+                        {orderDetails.shipping_carrier} - {orderDetails.tracking_number}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Detail Produk */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Package2 className="h-4 w-4" />
+                    Detail Produk
                   </h3>
-                  <Badge 
-                    variant="outline" 
-                    className={`text-[10px] md:text-sm ${getStatusBadgeVariant(orderDetails.order_status)}`}
-                  >
-                    {orderDetails.order_status}
-                  </Badge>
-                </div>
-                {orderDetails.order_status === 'IN_CANCEL' || orderDetails.order_status === 'CANCELLED' ? (
-                  <div className="mt-2">
-                    <p className="text-[10px] md:text-sm font-medium text-red-600">
-                      {orderDetails.cancel_reason || 'Tidak ada alasan yang diberikan'}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Informasi Toko & Pembeli */}
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <Store className="h-4 w-4 mt-1" />
-                  <div>
-                    <p className="text-sm font-medium">Toko</p>
-                    <p className="text-sm text-muted-foreground">{orderDetails.shop_name}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <User className="h-4 w-4 mt-1" />
-                  <div>
-                    <p className="text-sm font-medium">Pembeli</p>
-                    <p className="text-sm text-muted-foreground">{orderDetails.buyer_username}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <Calendar className="h-4 w-4 mt-1" />
-                  <div>
-                    <p className="text-sm font-medium">Tanggal Pembayaran</p>
-                    <p className="text-sm text-muted-foreground">{formatDate(orderDetails.pay_time)}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <Truck className="h-4 w-4 mt-1" />
-                  <div>
-                    <p className="text-sm font-medium">Informasi Pengiriman</p>
-                    <p className="text-sm text-muted-foreground">
-                      {orderDetails.shipping_carrier} - {orderDetails.tracking_number}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Detail Produk */}
-              <div>
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Package2 className="h-4 w-4" />
-                  Detail Produk
-                </h3>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-[10px] md:text-xs">Produk</TableHead>
-                        <TableHead className="text-[10px] md:text-xs">Varian</TableHead>
-                        <TableHead className="text-[10px] md:text-xs text-right">Harga</TableHead>
-                        <TableHead className="text-[10px] md:text-xs text-center">Qty</TableHead>
-                        <TableHead className="text-[10px] md:text-xs text-right">Subtotal</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {orderDetails?.order_items && orderDetails.order_items.length > 0 ? (
-                        orderDetails.order_items.map((item, index) => (
-                          <TableRow key={index}>
-                            <TableCell className="text-[10px] md:text-xs w-full overflow-hidden text-ellipsis whitespace-nowrap">
-                              <div>
-                                
-                                <p className="text-[10px] md:text-xs">{item.item_sku}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-[10px] md:text-xs whitespace-nowrap">{item.model_name}</TableCell>
-                            <TableCell className="text-[10px] md:text-xs text-right whitespace-nowrap">
-                              Rp {item.model_discounted_price.toLocaleString('id-ID')}
-                            </TableCell>
-                            <TableCell className="text-[10px] md:text-xs text-center whitespace-nowrap">{item.model_quantity_purchased}</TableCell>
-                            <TableCell className="text-[10px] md:text-xs text-right whitespace-nowrap">
-                              Rp {(item.model_discounted_price * item.model_quantity_purchased).toLocaleString('id-ID')}
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-[10px] md:text-xs">Produk</TableHead>
+                          <TableHead className="text-[10px] md:text-xs">Varian</TableHead>
+                          <TableHead className="text-[10px] md:text-xs text-right">Harga</TableHead>
+                          <TableHead className="text-[10px] md:text-xs text-center">Qty</TableHead>
+                          <TableHead className="text-[10px] md:text-xs text-right">Subtotal</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {orderDetails?.order_items && orderDetails.order_items.length > 0 ? (
+                          orderDetails.order_items.map((item, index) => (
+                            <TableRow key={index}>
+                              <TableCell className="text-[10px] md:text-xs w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                                <div>
+                                  
+                                  <p className="text-[10px] md:text-xs">{item.item_sku}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-[10px] md:text-xs whitespace-nowrap">{item.model_name}</TableCell>
+                              <TableCell className="text-[10px] md:text-xs text-right whitespace-nowrap">
+                                Rp {item.model_discounted_price.toLocaleString('id-ID')}
+                              </TableCell>
+                              <TableCell className="text-[10px] md:text-xs text-center whitespace-nowrap">{item.model_quantity_purchased}</TableCell>
+                              <TableCell className="text-[10px] md:text-xs text-right whitespace-nowrap">
+                                Rp {(item.model_discounted_price * item.model_quantity_purchased).toLocaleString('id-ID')}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4 text-[10px] md:text-sm text-gray-500">
+                              Tidak ada data produk
                             </TableCell>
                           </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-4 text-[10px] md:text-sm text-gray-500">
-                            Tidak ada data produk
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
-              </div>
 
-              {/* Total */}
-              <div className="bg-muted p-4 rounded-lg mt-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-[12px] md:text-base font-semibold">Total Pembayaran</span>
-                  <span className="text-[12px] md:text-base font-semibold">
-                    Rp {orderDetails.total_belanja?.toLocaleString('id-ID') || '0'}
-                  </span>
+                {/* Total */}
+                <div className="bg-muted p-4 rounded-lg mt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[12px] md:text-base font-semibold">Total Pembayaran</span>
+                    <span className="text-[12px] md:text-base font-semibold">
+                      Rp {orderDetails.total_belanja?.toLocaleString('id-ID') || '0'}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="text-center py-4 text-gray-500">
-              Data tidak ditemukan
-            </div>
-          )}
-        </ScrollArea>
-      </SheetContent>
-    </Sheet>
+            ) : (
+              <div className="text-center py-4 text-gray-500">
+                Data tidak ditemukan
+              </div>
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Pembatalan</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin membatalkan pesanan ini? 
+              Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelOrder}
+            >
+              Ya, Batalkan Pesanan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 } 

@@ -1163,3 +1163,51 @@ export async function getShopPenalty(shopId: number): Promise<any> {
     };
   }
 }
+
+export async function cancelOrder(
+  shopId: number,
+  orderSn: string,
+  itemList: Array<{
+    item_id: number,
+    model_id: number
+  }>
+): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    
+    console.info(`Memproses pembatalan pesanan ${orderSn}`);
+    
+    const result = await shopeeApi.cancelOrder(
+      shopId,
+      accessToken,
+      orderSn,
+      itemList
+    );
+
+    if (result.error) {
+      console.error(`Error saat membatalkan pesanan: ${JSON.stringify(result)}`);
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal membatalkan pesanan',
+        request_id: result.request_id || ''
+      };
+    }
+
+    console.info(`Berhasil membatalkan pesanan ${orderSn}`);
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+
+  } catch (error) {
+    console.error(`Terjadi kesalahan saat membatalkan pesanan: ${error}`);
+    return {
+      success: false,
+      error: "internal_server_error",
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui',
+      request_id: ''
+    };
+  }
+}
