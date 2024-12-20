@@ -237,7 +237,7 @@ async function handleOrder(data: any) {
         });
 
         if (!orderResponse.ok) {
-          throw new Error('Gagal mengirim pesan order ke pembeli');
+          throw new Error(`Gagal mengirim pesan order ke pembeli ${orderDetail.buyer_username}`);
         }
 
         // Tunggu sebentar sebelum mengirim pesan kedua
@@ -260,7 +260,7 @@ async function handleOrder(data: any) {
         });
 
         if (!textResponse.ok) {
-          throw new Error('Gagal mengirim pesan teks ke pembeli');
+          throw new Error(`Gagal mengirim pesan teks ke pembeli ${orderDetail.buyer_username}`);
         }
 
         console.log(`Pesan pembatalan berhasil dikirim ke pembeli untuk order ${orderData.ordersn}`);
