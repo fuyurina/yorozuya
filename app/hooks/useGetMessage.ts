@@ -6,7 +6,7 @@ interface Message {
   sender: 'buyer' | 'seller';
   content: string;
   time: string;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'image_with_text';
   imageUrl?: string;
   imageThumb?: {
     url: string;
@@ -49,10 +49,10 @@ export function useConversationMessages(conversationId: string | null, shopId: n
         id: msg.message_id,
         sender: msg.from_shop_id === shopId ? 'seller' : 'buyer',
         type: msg.message_type,
-        content: msg.message_type === 'text' ? msg.content.text : '',
-        imageUrl: msg.message_type === 'image' ? msg.content.url : undefined,
-        imageThumb: msg.message_type === 'image' ? {
-          url: msg.content.thumb_url || msg.content.url,
+        content: ['text', 'image_with_text'].includes(msg.message_type) ? msg.content.text : '',
+        imageUrl: ['image', 'image_with_text'].includes(msg.message_type) ? msg.content.image_url : undefined,
+        imageThumb: ['image', 'image_with_text'].includes(msg.message_type) ? {
+          url: msg.content.thumb_url || msg.content.image_url,
           height: msg.content.thumb_height,
           width: msg.content.thumb_width
         } : undefined,
@@ -91,10 +91,10 @@ export function useConversationMessages(conversationId: string | null, shopId: n
           id: data.message_id,
           sender: 'buyer',
           type: data.message_type,
-          content: data.message_type === 'text' ? data.content.text : '',
-          imageUrl: data.message_type === 'image' ? data.content.url : undefined,
-          imageThumb: data.message_type === 'image' ? {
-            url: data.content.thumb_url || data.content.url,
+          content: ['text', 'image_with_text'].includes(data.message_type) ? data.content.text : '',
+          imageUrl: ['image', 'image_with_text'].includes(data.message_type) ? data.content.image_url : undefined,
+          imageThumb: ['image', 'image_with_text'].includes(data.message_type) ? {
+            url: data.content.thumb_url || data.content.image_url,
             height: data.content.thumb_height,
             width: data.content.thumb_width
           } : undefined,

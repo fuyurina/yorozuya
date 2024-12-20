@@ -28,13 +28,13 @@ interface Conversation {
   unread_count: number;
 }
 
-// Perbaiki interface Message untuk menangani content yang mungkin undefined
+// Perbarui interface Message untuk mendukung image_with_text
 interface Message {
   id: string;
   sender: 'buyer' | 'seller';
   content: string;
   time: string;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'image_with_text';
   imageUrl?: string;
   imageThumb?: {
     url: string;
@@ -96,24 +96,6 @@ interface Order {
   tracking_number: string;
 }
 
-// Perbaiki interface MessageContent sesuai format Shopee
-interface MessageContent {
-  text?: string;
-  url?: string;
-  thumb_url?: string;
-  thumb_height?: number;
-  thumb_width?: number;
-  file_server_id?: number;
-}
-
-// Tambahkan fungsi helper untuk membangun URL gambar lengkap
-const buildImageUrl = (url: string) => {
-  // Format URL sesuai standar Shopee CDN
-  if (url.startsWith('sg-')) {
-    return `https://down-id.img.susercontent.com/${url}`;
-  }
-  return url;
-};
 
 const WebChatPage: React.FC = () => {
   const [selectedShop, setSelectedShop] = useState<number | null>(null);
@@ -481,6 +463,61 @@ const WebChatPage: React.FC = () => {
     };
   }, [selectedConversation, selectedShop]);
 
+  // Modifikasi fungsi untuk memproses pesan dari API
+  const processApiMessage = (apiMessage: any): Message => {
+    const isFromSeller = apiMessage.from_shop_id === selectedShop;
+    const baseMessage = {
+      id: apiMessage.message_id,
+      sender: isFromSeller ? 'seller' as const : 'buyer' as const,
+      time: new Date(apiMessage.created_timestamp * 1000).toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      })
+    };
+
+    switch (apiMessage.message_type) {
+      case 'text':
+        return {
+          ...baseMessage,
+          type: 'text' as const,
+          content: apiMessage.content.text
+        };
+      
+      case 'image':
+        return {
+          ...baseMessage,
+          type: 'image' as const,
+          content: '',
+          imageUrl: apiMessage.content.image_url,
+          imageThumb: apiMessage.content.thumb_url ? {
+            url: apiMessage.content.thumb_url,
+            height: apiMessage.content.thumb_height,
+            width: apiMessage.content.thumb_width
+          } : undefined
+        };
+      
+      case 'image_with_text':
+        return {
+          ...baseMessage,
+          type: 'image_with_text' as const,
+          content: apiMessage.content.text || '',
+          imageUrl: apiMessage.content.image_url,
+          imageThumb: {
+            url: apiMessage.content.thumb_url,
+            height: apiMessage.content.thumb_height,
+            width: apiMessage.content.thumb_width
+          }
+        };
+      
+      default:
+        return {
+          ...baseMessage,
+          type: 'text' as const,
+          content: 'Tipe pesan tidak didukung'
+        };
+    }
+  };
+
   return (
     <div className={`flex h-full w-full overflow-hidden ${isFullScreenChat ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       {/* Daftar Percakapan */}
@@ -657,22 +694,29 @@ const WebChatPage: React.FC = () => {
                       
                       {messages.map((message) => (
                         <div key={message.id} className={`flex ${message.sender === 'seller' ? 'justify-end' : 'justify-start'} mb-4`}>
-                          <div className={`max-w-[70%] rounded-lg p-3 ${message.sender === 'seller' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                          <div className={`max-w-[70%] rounded-lg p-3 ${
+                            message.sender === 'seller' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                          }`}>
                             {message.type === 'text' ? (
                               <p className="break-words">{message.content}</p>
-                            ) : message.type === 'image' && message.imageUrl && (
-                              <div className="relative">
-                                <img
-                                  src={message.imageUrl}
-                                  alt="Pesan gambar"
-                                  className="rounded max-w-full cursor-pointer hover:opacity-90 transition-opacity"
-                                  style={{
-                                    maxHeight: '300px',
-                                    width: 'auto',
-                                    aspectRatio: message.imageThumb ? `${message.imageThumb.width}/${message.imageThumb.height}` : 'auto'
-                                  }}
-                                  onClick={() => window.open(message.imageUrl, '_blank')}
-                                />
+                            ) : (message.type === 'image' || message.type === 'image_with_text') && message.imageUrl && (
+                              <div className="space-y-2">
+                                <div className="relative">
+                                  <img
+                                    src={message.imageUrl}
+                                    alt="Pesan gambar"
+                                    className="rounded max-w-full cursor-pointer hover:opacity-90 transition-opacity"
+                                    style={{
+                                      maxHeight: '300px',
+                                      width: 'auto',
+                                      aspectRatio: message.imageThumb ? `${message.imageThumb.width}/${message.imageThumb.height}` : 'auto'
+                                    }}
+                                    onClick={() => window.open(message.imageUrl, '_blank')}
+                                  />
+                                </div>
+                                {message.type === 'image_with_text' && message.content && (
+                                  <p className="break-words mt-2">{message.content}</p>
+                                )}
                               </div>
                             )}
                             <p className="text-xs mt-1 opacity-70">{message.time}</p>
@@ -780,22 +824,29 @@ const WebChatPage: React.FC = () => {
                     
                     {messages.map((message) => (
                       <div key={message.id} className={`flex ${message.sender === 'seller' ? 'justify-end' : 'justify-start'} mb-4`}>
-                        <div className={`max-w-[70%] rounded-lg p-3 ${message.sender === 'seller' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                        <div className={`max-w-[70%] rounded-lg p-3 ${
+                          message.sender === 'seller' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                        }`}>
                           {message.type === 'text' ? (
                             <p className="break-words">{message.content}</p>
-                          ) : message.type === 'image' && message.imageUrl && (
-                            <div className="relative">
-                              <img
-                                src={message.imageUrl}
-                                alt="Pesan gambar"
-                                className="rounded max-w-full cursor-pointer hover:opacity-90 transition-opacity"
-                                style={{
-                                  maxHeight: '300px',
-                                  width: 'auto',
-                                  aspectRatio: message.imageThumb ? `${message.imageThumb.width}/${message.imageThumb.height}` : 'auto'
-                                }}
-                                onClick={() => window.open(message.imageUrl, '_blank')}
-                              />
+                          ) : (message.type === 'image' || message.type === 'image_with_text') && message.imageUrl && (
+                            <div className="space-y-2">
+                              <div className="relative">
+                                <img
+                                  src={message.imageUrl}
+                                  alt="Pesan gambar"
+                                  className="rounded max-w-full cursor-pointer hover:opacity-90 transition-opacity"
+                                  style={{
+                                    maxHeight: '300px',
+                                    width: 'auto',
+                                    aspectRatio: message.imageThumb ? `${message.imageThumb.width}/${message.imageThumb.height}` : 'auto'
+                                  }}
+                                  onClick={() => window.open(message.imageUrl, '_blank')}
+                                />
+                              </div>
+                              {message.type === 'image_with_text' && message.content && (
+                                <p className="break-words mt-2">{message.content}</p>
+                              )}
                             </div>
                           )}
                           <p className="text-xs mt-1 opacity-70">{message.time}</p>
