@@ -193,8 +193,8 @@ async function handleOrder(data: any) {
       }
     }
 
-    // Tambahkan retry untuk updateOrderStatus
-    await withRetry(
+    // Sekarang updateOrderStatus akan mengembalikan data order
+    const orderDetail = await withRetry(
       () => updateOrderStatus(data.shop_id, orderData.ordersn, orderData.status, orderData.update_time),
       5,
       2000
@@ -218,6 +218,33 @@ async function handleOrder(data: any) {
         2000
       );
     }
+    else if (orderData.status === 'IN_CANCEL') {
+      try {
+        const message = `Halo ${orderDetail.buyer_username},\n\nMohon maaf, pesanan dengan nomor ${orderData.ordersn} yang sudah masuk tidak bisa dibatalkan. Jika Anda ingin mengubah warna atau ukuran, silakan tulis permintaan kakak di sini.\n\nJika ingin mengganti alamat atau model, silakan pesan ulang maka pesanan yang salah akan otomatis dikonfirmasi pembatalannya.\n\nTerima kasih atas pengertiannya.`;
+
+        // Gunakan endpoint send_message yang sudah ada
+        const response = await fetch('http://localhost:10000/api/msg/send_message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            toId: orderDetail.buyer_user_id,
+            messageType: 'text',
+            content: message,
+            shopId: data.shop_id
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Gagal mengirim pesan ke pembeli');
+        }
+
+        console.log(`Pesan pembatalan berhasil dikirim ke pembeli untuk order ${orderData.ordersn}`);
+      } catch (error) {
+        console.error(`Gagal mengirim pesan pembatalan untuk order ${orderData.ordersn}:`, error);
+      }
+    }
   } catch (error) {
     console.error(`Gagal memproses order ${orderData.ordersn}:`, error);
   }
@@ -233,7 +260,6 @@ async function updateOrderStatus(shop_id: number, ordersn: string, status: strin
   let orderDetail: any;
   
   try {
-    // Tambahkan retry untuk getOrderDetail
     orderDetail = await withRetry(
       () => getOrderDetail(shop_id, ordersn),
       3,
@@ -246,15 +272,17 @@ async function updateOrderStatus(shop_id: number, ordersn: string, status: strin
 
     const orderData = orderDetail.order_list[0];
     
-    // Jalankan operasi database secara berurutan dengan retry
     await withRetry(() => upsertOrderData(orderData, shop_id), 5, 1000);
     await withRetry(() => upsertOrderItems(orderData), 5, 1000);
     await withRetry(() => upsertLogisticData(orderData, shop_id), 5, 1000);
     
     console.log(`Berhasil memperbarui semua data untuk order ${ordersn}`);
+    
+    // Return orderData untuk digunakan di handleOrder
+    return orderData;
   } catch (error) {
     console.error(`Error kritis dalam updateOrderStatus untuk order ${ordersn}:`, error);
-    throw error; // Re-throw untuk memicu retry di level atas
+    throw error;
   }
 }
 
