@@ -10,3 +10,6 @@ export async function GET() {
     return NextResponse.json({ error: 'Gagal menghasilkan URL deautentikasi' }, { status: 500 });
   }
 } 
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0

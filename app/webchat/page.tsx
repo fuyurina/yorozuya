@@ -295,15 +295,19 @@ const WebChatPage: React.FC = () => {
   const previousScrollHeightRef = useRef<number>(0);
   const previousScrollTopRef = useRef<number>(0);
 
-  // Modifikasi fungsi handleScroll
+  // Tambahkan state untuk menandai initial load
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Modifikasi handleScroll
   const handleScroll = useCallback(() => {
     const viewport = document.querySelector('[data-radix-scroll-area-viewport]');
-    if (!viewport || !hasMoreMessages || isLoading || isLoadingOldMessages) {
+    if (!viewport || !hasMoreMessages || isLoading || isLoadingOldMessages || isInitialLoad) {
       console.log('Scroll handler skipped:', { 
         hasViewport: !!viewport, 
         hasMoreMessages, 
         isLoading,
-        isLoadingOldMessages
+        isLoadingOldMessages,
+        isInitialLoad
       });
       return;
     }
@@ -322,9 +326,20 @@ const WebChatPage: React.FC = () => {
       previousScrollTopRef.current = scrollTop;
       loadMoreMessages();
     }
-  }, [hasMoreMessages, isLoading, isLoadingOldMessages, loadMoreMessages]);
+  }, [hasMoreMessages, isLoading, isLoadingOldMessages, loadMoreMessages, isInitialLoad]);
 
-  // Tambahkan useEffect untuk mengembalikan posisi scroll setelah memuat pesan lama
+  // Modifikasi useEffect untuk scroll ke bawah
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      // Set isInitialLoad ke false setelah scroll pertama selesai
+      setTimeout(() => {
+        setIsInitialLoad(false);
+      }, 100);
+    }
+  }, [messages]);
+
+  // Modifikasi useEffect untuk mengembalikan posisi scroll setelah memuat pesan lama
   useEffect(() => {
     if (!isLoading && isLoadingOldMessages) {
       const viewport = document.querySelector('[data-radix-scroll-area-viewport]');
@@ -684,10 +699,10 @@ const WebChatPage: React.FC = () => {
                   ) : (
                     <>
                       {/* Indikator loading pesan lama */}
-                      {hasMoreMessages && (
+                      {hasMoreMessages && isLoading && (
                         <div className="flex justify-center p-2">
                           <span className="text-sm text-muted-foreground">
-                            {isLoading ? "Memuat pesan lama..." : "Scroll ke atas untuk melihat pesan lama"}
+                            Memuat pesan lama...
                           </span>
                         </div>
                       )}
@@ -814,10 +829,10 @@ const WebChatPage: React.FC = () => {
                 ) : (
                   <>
                     {/* Indikator loading pesan lama */}
-                    {hasMoreMessages && (
+                    {hasMoreMessages && isLoading && (
                       <div className="flex justify-center p-2">
                         <span className="text-sm text-muted-foreground">
-                          {isLoading ? "Memuat pesan lama..." : "Scroll ke atas untuk melihat pesan lama"}
+                          Memuat pesan lama...
                         </span>
                       </div>
                     )}
