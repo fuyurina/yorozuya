@@ -1,5 +1,6 @@
 import axios from 'axios';
 import crypto from 'crypto';
+import { JSONStringify, JSONParse } from 'json-with-bigint';
 
 export class ShopeeAPI {
   private partnerId: number;
@@ -456,6 +457,7 @@ export class ShopeeAPI {
     }
 
     const fullUrl = `${url}?${params.toString()}`;
+    console.info({fullUrl})
     const headers = { 'Content-Type': 'application/json' };
 
     try {
@@ -541,7 +543,7 @@ export class ShopeeAPI {
     }
   }
 
-  async readConversation(shopId: number, accessToken: string, conversationId: number, lastReadMessageId: string): Promise<any> {
+  async readConversation(shopId: number, accessToken: string, conversationId: BigInt, lastReadMessageId: string): Promise<any> {
     const url = 'https://partner.shopeemobile.com/api/v2/sellerchat/read_conversation';
     const path = '/api/v2/sellerchat/read_conversation';
     const [timest, sign] = this._generateSign(path, accessToken, shopId);
@@ -554,17 +556,19 @@ export class ShopeeAPI {
       access_token: accessToken
     });
 
-    const body = {
+    // Gunakan JSONStringify untuk body request
+    const body = JSONStringify({
       conversation_id: conversationId,
       last_read_message_id: lastReadMessageId
-    };
+    });
 
     const fullUrl = `${url}?${params.toString()}`;
     const headers = { 'Content-Type': 'application/json' };
 
     try {
       const response = await axios.post(fullUrl, body, { headers });
-      return response.data;
+      // Parse response dengan JSONParse
+      return JSONParse(JSON.stringify(response.data));
     } catch (error) {
       console.error('Error reading conversation:', error);
       throw error;

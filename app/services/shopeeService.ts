@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { SHOPEE_PARTNER_ID, SHOPEE_PARTNER_KEY, shopeeApi } from '@/lib/shopeeConfig';
 import { getValidAccessToken } from './tokenManager';
+import { JSONStringify, JSONParse } from 'json-with-bigint';
 
 
 
@@ -411,46 +412,20 @@ export async function handleBuyerCancellation(
 
 export async function readConversation(
   shopId: number, 
-  conversationId: number, 
+  conversationId: string, 
   lastReadMessageId: string
 ): Promise<any> {
   try {
     const accessToken = await getValidAccessToken(shopId);
+    // Konversi string ke BigInt
+    const conversationIdBigInt = BigInt(conversationId);
+    const result = await shopeeApi.readConversation(shopId, accessToken, conversationIdBigInt, lastReadMessageId);
     
-    console.info(`Menandai percakapan ${conversationId} sebagai telah dibaca`);
-    
-    const result = await shopeeApi.readConversation(
-      shopId,
-      accessToken,
-      conversationId,
-      lastReadMessageId
-    );
-
-    if (result.error) {
-      console.error(`Error saat menandai percakapan sebagai dibaca: ${JSON.stringify(result)}`);
-      return {
-        success: false,
-        error: result.error,
-        message: result.message || 'Gagal menandai percakapan sebagai dibaca',
-        request_id: result.request_id || ''
-      };
-    }
-
-    console.info(`Berhasil menandai percakapan ${conversationId} sebagai dibaca`);
-    return {
-      success: true,
-      data: result.response,
-      request_id: result.request_id
-    };
-
+    // Parse result dengan JSONParse jika perlu
+    return JSONParse(JSON.stringify(result));
   } catch (error) {
-    console.error(`Terjadi kesalahan saat menandai percakapan sebagai dibaca: ${error}`);
-    return {
-      success: false,
-      error: "internal_server_error",
-      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui',
-      request_id: ''
-    };
+    console.error('Error reading conversation:', error);
+    throw error;
   }
 }
 
