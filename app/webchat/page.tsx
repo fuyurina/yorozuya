@@ -308,25 +308,63 @@ const WebChatPage: React.FC = () => {
   // Tambahkan ref untuk scroll area
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Tambahkan fungsi untuk mendeteksi scroll
-  const handleScroll = useCallback(() => {
-    if (!scrollAreaRef.current || !hasMoreMessages || isLoading) return;
+  // Tambahkan state untuk menyimpan posisi scroll
+  const [isLoadingOldMessages, setIsLoadingOldMessages] = useState(false);
+  const previousScrollHeightRef = useRef<number>(0);
+  const previousScrollTopRef = useRef<number>(0);
 
-    const { scrollTop } = scrollAreaRef.current;
+  // Modifikasi fungsi handleScroll
+  const handleScroll = useCallback(() => {
+    const viewport = document.querySelector('[data-radix-scroll-area-viewport]');
+    if (!viewport || !hasMoreMessages || isLoading || isLoadingOldMessages) {
+      console.log('Scroll handler skipped:', { 
+        hasViewport: !!viewport, 
+        hasMoreMessages, 
+        isLoading,
+        isLoadingOldMessages
+      });
+      return;
+    }
+
+    const viewportElement = viewport as HTMLDivElement;
+    const { scrollTop, scrollHeight, clientHeight } = viewportElement;
     
-    // Jika scroll mendekati atas (threshold 100px), load more messages
-    if (scrollTop < 100) {
+    const scrollPercentage = (scrollTop / (scrollHeight - clientHeight)) * 100;
+    
+    console.log('Scroll percentage:', scrollPercentage);
+
+    if (scrollPercentage < 20) {
+      console.log('Loading more messages...');
+      setIsLoadingOldMessages(true);
+      previousScrollHeightRef.current = scrollHeight;
+      previousScrollTopRef.current = scrollTop;
       loadMoreMessages();
     }
-  }, [hasMoreMessages, isLoading, loadMoreMessages]);
+  }, [hasMoreMessages, isLoading, isLoadingOldMessages, loadMoreMessages]);
 
-  // Tambahkan useEffect untuk scroll event listener
+  // Tambahkan useEffect untuk mengembalikan posisi scroll setelah memuat pesan lama
   useEffect(() => {
-    const scrollArea = scrollAreaRef.current;
-    if (scrollArea) {
-      scrollArea.addEventListener('scroll', handleScroll);
-      return () => scrollArea.removeEventListener('scroll', handleScroll);
+    if (!isLoading && isLoadingOldMessages) {
+      const viewport = document.querySelector('[data-radix-scroll-area-viewport]');
+      if (!viewport) return;
+
+      const viewportElement = viewport as HTMLDivElement;
+      const newScrollHeight = viewportElement.scrollHeight;
+      const scrollDifference = newScrollHeight - previousScrollHeightRef.current;
+      
+      // Kembalikan ke posisi scroll sebelumnya + perbedaan tinggi
+      viewportElement.scrollTop = previousScrollTopRef.current + scrollDifference;
+      setIsLoadingOldMessages(false);
     }
+  }, [isLoading, messages, isLoadingOldMessages]);
+
+  // Modifikasi useEffect untuk scroll event
+  useEffect(() => {
+    const viewport = document.querySelector('[data-radix-scroll-area-viewport]');
+    if (!viewport) return;
+
+    viewport.addEventListener('scroll', handleScroll);
+    return () => viewport.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
   // Tambahkan state untuk menandai URL sudah diproses
@@ -594,13 +632,29 @@ const WebChatPage: React.FC = () => {
             activeTab === 'chat' ? (
               <>
                 {/* Area Pesan */}
-                <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
-                  {isLoading ? (
-                    <div>Memuat pesan...</div>
+                <ScrollArea 
+                  className="flex-grow p-4" 
+                  ref={scrollAreaRef}
+                >
+                  {isLoading && messages.length === 0 ? (
+                    <div className="flex justify-center p-4">
+                      <span>Memuat pesan...</span>
+                    </div>
                   ) : error ? (
-                    <div>Error: {error}</div>
+                    <div className="flex justify-center p-4 text-red-500">
+                      Error: {error}
+                    </div>
                   ) : (
                     <>
+                      {/* Indikator loading pesan lama */}
+                      {hasMoreMessages && (
+                        <div className="flex justify-center p-2">
+                          <span className="text-sm text-muted-foreground">
+                            {isLoading ? "Memuat pesan lama..." : "Scroll ke atas untuk melihat pesan lama"}
+                          </span>
+                        </div>
+                      )}
+                      
                       {messages.map((message) => (
                         <div key={message.id} className={`flex ${message.sender === 'seller' ? 'justify-end' : 'justify-start'} mb-4`}>
                           <div className={`max-w-[70%] rounded-lg p-3 ${message.sender === 'seller' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
@@ -701,13 +755,29 @@ const WebChatPage: React.FC = () => {
           ) : (
             <>
               {/* Tampilan desktop tetap sama */}
-              <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
-                {isLoading ? (
-                  <div>Memuat pesan...</div>
+              <ScrollArea 
+                className="flex-grow p-4" 
+                ref={scrollAreaRef}
+              >
+                {isLoading && messages.length === 0 ? (
+                  <div className="flex justify-center p-4">
+                    <span>Memuat pesan...</span>
+                  </div>
                 ) : error ? (
-                  <div>Error: {error}</div>
+                  <div className="flex justify-center p-4 text-red-500">
+                    Error: {error}
+                  </div>
                 ) : (
                   <>
+                    {/* Indikator loading pesan lama */}
+                    {hasMoreMessages && (
+                      <div className="flex justify-center p-2">
+                        <span className="text-sm text-muted-foreground">
+                          {isLoading ? "Memuat pesan lama..." : "Scroll ke atas untuk melihat pesan lama"}
+                        </span>
+                      </div>
+                    )}
+                    
                     {messages.map((message) => (
                       <div key={message.id} className={`flex ${message.sender === 'seller' ? 'justify-end' : 'justify-start'} mb-4`}>
                         <div className={`max-w-[70%] rounded-lg p-3 ${message.sender === 'seller' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>

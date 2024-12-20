@@ -39,6 +39,12 @@ export function useConversationMessages(conversationId: string | null, shopId: n
           offset
         }
       });
+
+      if (!response.data.response.messages || response.data.response.messages.length === 0) {
+        setNextOffset(null);
+        return;
+      }
+
       const formattedMessages = response.data.response.messages.map((msg: any) => ({
         id: msg.message_id,
         sender: msg.from_shop_id === shopId ? 'seller' : 'buyer',
@@ -59,7 +65,7 @@ export function useConversationMessages(conversationId: string | null, shopId: n
         setMessagesState(formattedMessages.reverse());
       }
       
-      setNextOffset(response.data.response.page_result.next_offset);
+      setNextOffset(response.data.response.page_result.next_offset === "0" ? null : response.data.response.page_result.next_offset);
     } catch (err) {
       setError(offset ? 'Gagal memuat pesan tambahan' : 'Gagal mengambil pesan');
       console.error('Error fetching messages:', err);

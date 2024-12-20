@@ -1,0 +1,10 @@
+2024-12-20 14:15:52,291 - INFO - ==========================================Program dimulai==========================================
+2024-12-20 14:16:04,967 - INFO - ✅ Berhasil menjalankan proses order di server
+2024-12-20 14:16:04,971 - INFO - ✅ Proses order berhasil dijalankan
+2024-12-20 14:16:05,473 - INFO - Total chats ditemukan: 1
+2024-12-20 14:16:08,336 - INFO - ==========================================Balasan AI==========================================
+2024-12-20 14:16:08,336 - INFO - Invoice: None - Status pesanan: None
+2024-12-20 14:16:08,336 - INFO - 👤 fdc6m70w9t: Kak,, kami kalau mau pesan batik untuk anak usia 11 tahun apa ada ditoko ini...
+2024-12-20 14:16:08,336 - INFO - 🤖 AI: Kak, kami sangat senang mendengar rencana kakak! Namun, saat ini kami belum menjual batik untuk anak. Kami hanya menyediakan gamis, setelan kebaya+rok, dan kemeja dewasa. Jika ada yang ingin kakak tanyakan atau pesan, silakan ya! 😊
+2024-12-20 14:16:08,841 - INFO - ✅ Pesan berhasil dikirim ke fdc6m70w9t
+2024-12-20 14:16:08,848 - INFO - ==========================================Program selesai==========================================

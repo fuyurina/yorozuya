@@ -30,6 +30,20 @@ def chatbot(conversation, user_id, ada_invoice, nomor_invoice, store_id, convers
         
         hasil_cek = cek_keluhan_dan_perubahan(user_id_int, user_id)
         
+        # Tambahkan pengecekan status IN_CANCEL
+        order_details = ambil_data_pesanan_shopee(user_id)
+        if order_details and 'data' in order_details:
+            for order in order_details['data']:
+                if order.get('order_status') == 'IN_CANCEL':
+                    # Cek dan konfirmasi pembatalan dengan shop_id
+                    pembatalan_dikonfirmasi = cek_dan_konfirmasi_pembatalan(
+                        user_id_int,
+                        order.get('order_sn'),
+                        store_id  # Menambahkan shop_id
+                    )
+                    
+                    if pembatalan_dikonfirmasi:
+                        logging.info(f"Pembatalan order {order.get('order_sn')} dikonfirmasi karena pembeli sudah memiliki pesanan baru")
 
         if hasil_cek['ada_keluhan']:
             
@@ -577,3 +591,45 @@ def main():
 if __name__ == "__main__":
     print("Mulai menjalankan program...")
     main()
+
+def cek_dan_konfirmasi_pembatalan(user_id: int, order_sn: str, shop_id: int) -> bool:
+    try:
+        # Ambil semua pesanan dari pembeli
+        url = f"https://yorozuya.onrender.com/api/order_details?user_id={user_id}"
+        response = requests.get(url)
+        
+        if response.status_code != 200:
+            logging.error(f"Gagal mengambil data pesanan: {response.status_code}")
+            return False
+            
+        data = response.json()
+        orders = data.get('data', [])
+        
+        # Cek apakah ada pesanan lain dengan status PROCESSED
+        has_processed_order = any(
+            order['order_status'] == 'PROCESSED' 
+            and order['order_sn'] != order_sn  # Pastikan bukan pesanan yang sama
+            for order in orders
+        )
+        
+        if has_processed_order:
+            # Konfirmasi pembatalan pesanan menggunakan endpoint yang benar
+            cancel_url = "http://yorozuya.onrender.com/api/orders/handle-cancellation"
+            cancel_response = requests.post(cancel_url, json={
+                "shopId": shop_id,
+                "orderSn": order_sn,
+                "operation": "ACCEPT"  # ACCEPT untuk menyetujui pembatalan
+            })
+            
+            if cancel_response.status_code == 200:
+                logging.info(f"Berhasil mengkonfirmasi pembatalan untuk order {order_sn}")
+                return True
+            else:
+                logging.error(f"Gagal mengkonfirmasi pembatalan: {cancel_response.status_code}")
+                return False
+                
+        return False
+        
+    except Exception as e:
+        logging.error(f"Error saat cek dan konfirmasi pembatalan: {str(e)}")
+        return False
