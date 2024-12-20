@@ -220,10 +220,33 @@ async function handleOrder(data: any) {
     }
     else if (orderData.status === 'IN_CANCEL') {
       try {
+        // Kirim pesan pertama dengan tipe 'order'
+        const orderResponse = await fetch('http://localhost:10000/api/msg/send_message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            toId: orderDetail.buyer_user_id,
+            messageType: 'order',
+            content: {
+              order_sn: orderData.ordersn
+            },
+            shopId: data.shop_id
+          })
+        });
+
+        if (!orderResponse.ok) {
+          throw new Error('Gagal mengirim pesan order ke pembeli');
+        }
+
+        // Tunggu sebentar sebelum mengirim pesan kedua
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Kirim pesan kedua dengan teks informasi
         const message = `Halo ${orderDetail.buyer_username},\n\nMohon maaf, pesanan dengan nomor ${orderData.ordersn} yang sudah masuk tidak bisa dibatalkan. Jika kakak ingin mengubah warna atau ukuran, silakan tulis permintaan kakak di sini.\n\nJika ingin mengganti alamat atau model, silakan pesan ulang maka pesanan yang salah akan otomatis dikonfirmasi pembatalannya.\n\nTerima kasih atas pengertiannya.`;
 
-        // Gunakan endpoint send_message yang sudah ada
-        const response = await fetch('http://localhost:10000/api/msg/send_message', {
+        const textResponse = await fetch('http://localhost:10000/api/msg/send_message', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -236,8 +259,8 @@ async function handleOrder(data: any) {
           })
         });
 
-        if (!response.ok) {
-          throw new Error('Gagal mengirim pesan ke pembeli');
+        if (!textResponse.ok) {
+          throw new Error('Gagal mengirim pesan teks ke pembeli');
         }
 
         console.log(`Pesan pembatalan berhasil dikirim ke pembeli untuk order ${orderData.ordersn}`);
