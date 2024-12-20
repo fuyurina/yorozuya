@@ -220,7 +220,7 @@ async function handleOrder(data: any) {
     }
     else if (orderData.status === 'IN_CANCEL') {
       try {
-        const message = `Halo ${orderDetail.buyer_username},\n\nMohon maaf, pesanan dengan nomor ${orderData.ordersn} yang sudah masuk tidak bisa dibatalkan. Jika Anda ingin mengubah warna atau ukuran, silakan tulis permintaan kakak di sini.\n\nJika ingin mengganti alamat atau model, silakan pesan ulang maka pesanan yang salah akan otomatis dikonfirmasi pembatalannya.\n\nTerima kasih atas pengertiannya.`;
+        const message = `Halo ${orderDetail.buyer_username},\n\nMohon maaf, pesanan dengan nomor ${orderData.ordersn} yang sudah masuk tidak bisa dibatalkan. Jika kakak ingin mengubah warna atau ukuran, silakan tulis permintaan kakak di sini.\n\nJika ingin mengganti alamat atau model, silakan pesan ulang maka pesanan yang salah akan otomatis dikonfirmasi pembatalannya.\n\nTerima kasih atas pengertiannya.`;
 
         // Gunakan endpoint send_message yang sudah ada
         const response = await fetch('http://localhost:10000/api/msg/send_message', {
