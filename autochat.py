@@ -13,6 +13,8 @@ import os
 supabase: Client = create_client("https://jsitzrpjtdorcdxencxm.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzaXR6cnBqdGRvcmNkeGVuY3htIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyNjQ5MjEyOSwiZXhwIjoyMDQyMDY4MTI5fQ.tk5zgD7dv-LKae93N2c6Dj3cFSHtEhJYL772QeT7CIQ")
 
 config_chat = supabase.table('settings').select('*').execute()
+status_chat = supabase.table('auto_ship_chat').select('shop_id, status_chat').execute()
+cancel_order = supabase.table('orders').select('shop_id, order_status','order_sn').eq('order_status', 'IN_CANCEL').eq('shop_id', 1385860044).execute()
 data = config_chat.data[0] if config_chat.data else None
 if data:
     openai_api = data.get('openai_api')
@@ -231,8 +233,12 @@ def reply_to_chat(chat, reply_text):
         return None
 
 def box_exec(conversation_id, shop_id, to_name, shop_name, unread_count, to_id):
-   
-    
+    # Cek status chat untuk shop_id tertentu
+    status_result = next((item for item in status_chat.data if item['shop_id'] == shop_id), None)
+    if status_result and not status_result['status_chat']:
+        logging.info(f"Skip membalas chat untuk shop_id {shop_id} karena status_chat = False")
+        return
+        
     userchat = f"https://yorozuya.onrender.com/api/msg/get_message?conversationId={conversation_id}&shopId={shop_id}&pageSize=25"
     
     try:
@@ -564,13 +570,30 @@ def setup_logging():
     # Mematikan log dari httpx
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
+def handle_order_cancellation():
+    try:
+        for order in cancel_order.data:
+            url = "https://yorozuya.me/api/orders/handle-cancellation"
+            payload = {
+                "shopId": order['shop_id'],
+                "orderSn": order['order_sn'],
+                "operation": "ACCEPT"
+            }
+            
+            response = requests.post(url, json=payload)
+            
+            if response.status_code == 200:
+                logging.info(f"✅ Berhasil menolak pembatalan untuk order {order['order_sn']}")
+            else:
+                logging.error(f"❌ Gagal menolak pembatalan untuk order {order['order_sn']}. Status: {response.status_code}")
+                
+    except Exception as e:
+        logging.error(f"❌ Error dalam handle_order_cancellation: {str(e)}")
+
 def main():
     setup_logging()
     logging.info("==========================================Program dimulai==========================================")
-    if jalankan_proses_order():
-        logging.info("✅ Proses order berhasil dijalankan")
-    else:
-        logging.error("❌ Gagal menjalankan proses order")
+    handle_order_cancellation()
     send_replies()
     logging.info("==========================================Program selesai==========================================")
 

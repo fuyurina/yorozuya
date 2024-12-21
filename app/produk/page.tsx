@@ -34,19 +34,6 @@ import { formatRupiah } from "@/lib/utils"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
-interface Shop {
-  shop_id: number;
-  shop_name: string;
-}
-
-interface Product {
-  item_id: number;
-  item_name: string;
-  shopee_tokens: Shop[];
-  image_id_list: string[];
-  image_url_list: string[];
-}
-
 interface StockPrice {
   model_id: number;
   model_name: string;
@@ -62,6 +49,7 @@ interface StockPrice {
     total_available_stock: number;
   };
   model_status: string;
+  image_url?: string;
 }
 
 export default function ProdukPage() {
@@ -73,7 +61,9 @@ export default function ProdukPage() {
     loadShops, 
     isLoadingShops, 
     loadProducts,
-    getStockPrices
+    getStockPrices,
+    syncSingleProduct,
+    updateStock
   } = useProducts()
   const [syncProgress, setSyncProgress] = useState(0)
   const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false)
@@ -86,6 +76,10 @@ export default function ProdukPage() {
   const [isSavingStocks, setIsSavingStocks] = useState(false)
   const [invalidStocks, setInvalidStocks] = useState<{ [key: number]: boolean }>({});
   const [massUpdateStock, setMassUpdateStock] = useState<number | ''>('');
+  const [loadingProductId, setLoadingProductId] = useState<number | null>(null)
+  const [isSyncingItem, setIsSyncingItem] = useState(false)
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
+  const [stockPrices, setStockPrices] = useState<StockPrice[]>([])
 
   const filteredProducts = products.filter((product) => {
     if (selectedShopId === 'all') return true
@@ -97,14 +91,15 @@ export default function ProdukPage() {
   }, [])
 
   const handleViewStockDetail = async (itemId: number) => {
-    setIsLoadingStocks(true)
+    setLoadingProductId(itemId)
+    setSelectedItemId(itemId)
     try {
       const response = await getStockPrices(itemId)
       const stocks = response as StockPrice[]
       setSelectedItemStocks(stocks)
       setIsStockDialogOpen(true)
     } finally {
-      setIsLoadingStocks(false)
+      setLoadingProductId(null)
     }
   }
 
@@ -150,17 +145,50 @@ export default function ProdukPage() {
     toast.success("Stok berhasil diperbarui untuk semua varian");
   };
 
+
+  const handleSaveStocks = async () => {
+    setIsSavingStocks(true);
+    try {
+      const product = products.find(p => p.item_id === selectedItemId);
+      if (!product || !selectedItemId) return;
+
+      const [modelId, newStock] = Object.entries(editedStocks)[0];
+      
+      const modelData = stockPrices.find(m => m.model_id === parseInt(modelId));
+      const reservedStock = modelData?.stock_info.total_reserved_stock || 0;
+
+      const success = await updateStock(
+        product.shop_id,
+        selectedItemId,
+        parseInt(modelId),
+        newStock,
+        reservedStock
+      );
+
+      if (success) {
+        toast.success("Stok berhasil diperbarui");
+        setIsStockDialogOpen(false);
+        setEditedStocks({});
+      }
+    } catch (error) {
+      console.error('Error saving stocks:', error);
+      toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan saat menyimpan perubahan stok');
+    } finally {
+      setIsSavingStocks(false);
+    }
+  };
+
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Daftar Produk</h1>
-        <div className="flex gap-4 items-center">
+        <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center w-full sm:w-auto">
           <Select
             value={selectedShopId}
             onValueChange={setSelectedShopId}
             disabled={isLoadingShops}
           >
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Pilih Toko" />
             </SelectTrigger>
             <SelectContent>
@@ -173,152 +201,25 @@ export default function ProdukPage() {
             </SelectContent>
           </Select>
 
-          <Dialog open={isSyncDialogOpen} onOpenChange={setIsSyncDialogOpen}>
-            <DialogTrigger asChild>
-              <Button disabled={isLoadingShops}>
-                Sinkronisasi Produk
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Sinkronisasi Produk</DialogTitle>
-              </DialogHeader>
-              
-              {isLoadingShops ? (
-                <div className="flex items-center justify-center p-4">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                  <span className="ml-2">Memuat daftar toko...</span>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">
-                      Pilih toko yang akan disinkronkan
-                    </span>
-                    <div className="space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedShops(shops.map(s => s.shop_id))}
-                      >
-                        Pilih Semua
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedShops([])}
-                      >
-                        Reset
-                      </Button>
-                    </div>
-                  </div>
-
-                  <ScrollArea className="h-[300px] rounded-md border p-4">
-                    <div className="grid gap-2">
-                      {shops.map((shop) => (
-                        <Card key={shop.shop_id} className="cursor-pointer">
-                          <CardContent 
-                            className="p-3 flex items-center justify-between"
-                            onClick={() => {
-                              setSelectedShops(prev => 
-                                prev.includes(shop.shop_id)
-                                  ? prev.filter(id => id !== shop.shop_id)
-                                  : [...prev, shop.shop_id]
-                              )
-                            }}
-                          >
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={selectedShops.includes(shop.shop_id)}
-                                onChange={() => {}}
-                                className="h-4 w-4"
-                              />
-                              <span>{shop.shop_name}</span>
-                            </div>
-                            <Badge variant={selectedShops.includes(shop.shop_id) ? "default" : "outline"}>
-                              {selectedShops.includes(shop.shop_id) ? "Dipilih" : "Belum dipilih"}
-                            </Badge>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </ScrollArea>
-
-                  {isCurrentlySyncing && (
-                    <div className="space-y-2">
-                      <Progress value={syncProgress} className="w-full" />
-                      <p className="text-sm text-center text-muted-foreground">
-                        Sedang mensinkronkan {Math.round(syncProgress)}% produk...
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsSyncDialogOpen(false)}
-                      disabled={isCurrentlySyncing}
-                    >
-                      Batal
-                    </Button>
-                    <Button
-                      disabled={selectedShops.length === 0 || isCurrentlySyncing}
-                      onClick={async () => {
-                        try {
-                          setIsCurrentlySyncing(true)
-                          
-                          for (let i = 0; i < selectedShops.length; i++) {
-                            const shopId = selectedShops[i]
-                            await syncProducts(shopId)
-                            setSyncProgress(((i + 1) / selectedShops.length) * 100)
-                          }
-                          
-                          setIsSyncDialogOpen(false)
-                          setSelectedShops([])
-                          setSyncProgress(0)
-                          await loadShops()
-                          await loadProducts()
-                          
-                        } catch (error) {
-                          console.error('Sync error:', error)
-                        } finally {
-                          setIsCurrentlySyncing(false)
-                        }
-                      }}
-                    >
-                      {isCurrentlySyncing ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Mensinkronkan...
-                        </>
-                      ) : (
-                        `Sinkronkan ${selectedShops.length} Toko`
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
+          <Button className="w-full sm:w-auto" disabled={isLoadingShops}>
+            Sinkronisasi Produk
+          </Button>
         </div>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Gambar</TableHead>
-              <TableHead>ID Produk</TableHead>
+              <TableHead className="w-[80px] sm:w-[100px]">Gambar</TableHead>
               <TableHead>Nama Produk</TableHead>
-              <TableHead>Toko</TableHead>
-              <TableHead>Aksi</TableHead>
+              <TableHead className="w-[80px]">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={3} className="text-center">
                   {selectedShopId === 'all' 
                     ? "Belum ada produk yang tersedia"
                     : "Tidak ada produk untuk toko yang dipilih"}
@@ -342,20 +243,29 @@ export default function ProdukPage() {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell>{product.item_id}</TableCell>
                   <TableCell>
-                    <p className="font-medium">{product.item_name}</p>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1.5">
-                      {product.shopee_tokens?.map((shop) => (
-                        <span 
-                          key={shop.shop_id}
-                          className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-sm font-medium"
-                        >
-                          {shop.shop_name}
-                        </span>
-                      ))}
+                    <div className="space-y-2">
+                      <p className="font-medium line-clamp-2">{product.item_name}</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-primary whitespace-nowrap">
+                            SKU: {product.item_sku || '-'}
+                          </span>
+                          <span className="hidden sm:inline text-muted-foreground">•</span>
+                        </div>
+                        <span className="text-muted-foreground whitespace-nowrap">ID: {product.item_id}</span>
+                        <span className="hidden sm:inline text-muted-foreground">•</span>
+                        <div className="flex flex-wrap gap-1.5 mt-1 sm:mt-0">
+                          {product.shopee_tokens?.map((shop) => (
+                            <span 
+                              key={shop.shop_id}
+                              className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium"
+                            >
+                              {shop.shop_name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -363,15 +273,15 @@ export default function ProdukPage() {
                       variant="outline" 
                       size="sm"
                       onClick={() => handleViewStockDetail(product.item_id)}
-                      disabled={isLoadingStocks}
+                      disabled={loadingProductId === product.item_id}
                     >
-                      {isLoadingStocks ? (
+                      {loadingProductId === product.item_id ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Memuat...
+                       
                         </>
                       ) : (
-                        'Lihat Detail'
+                        'Stok'
                       )}
                     </Button>
                   </TableCell>
@@ -383,7 +293,7 @@ export default function ProdukPage() {
       </div>
 
       <Dialog open={isStockDialogOpen} onOpenChange={setIsStockDialogOpen}>
-        <DialogContent className="sm:max-w-[800px] h-[80vh] flex flex-col overflow-hidden">
+        <DialogContent className="sm:max-w-[1000px] h-[90vh] sm:h-[80vh] w-[95vw] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Detail Stok dan Harga</DialogTitle>
           </DialogHeader>
@@ -397,10 +307,10 @@ export default function ProdukPage() {
             ) : (
               <div className="flex flex-col h-full">
                 <div className="p-4 border-b space-y-3">
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full">
                       <span className="text-sm font-medium whitespace-nowrap">Update Semua Stok:</span>
-                      <div className="max-w-[120px]">
+                      <div className="w-full sm:max-w-[140px]">
                         <input
                           type="number"
                           className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
@@ -409,13 +319,63 @@ export default function ProdukPage() {
                           placeholder="Jumlah stok"
                         />
                       </div>
-                      <Button 
-                        size="sm"
-                        onClick={handleMassUpdate}
-                        disabled={massUpdateStock === ''}
-                      >
-                        Terapkan ke Semua
-                      </Button>
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        <Button 
+                          size="sm"
+                          className="flex-1 sm:flex-none"
+                          onClick={handleMassUpdate}
+                          disabled={massUpdateStock === ''}
+                        >
+                          Terapkan ke Semua
+                        </Button>
+                        {selectedItemId && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={async () => {
+                              setIsSyncingItem(true)
+                              try {
+                                const product = products.find(p => p.item_id === selectedItemId)
+                                if (product) {
+                                  const success = await syncSingleProduct(product.shop_id, selectedItemId)
+                                  if (success) {
+                                    toast.success("Produk berhasil disinkronkan")
+                                    await handleViewStockDetail(selectedItemId)
+                                  }
+                                }
+                              } catch (error) {
+                                toast.error("Gagal menyinkronkan produk")
+                              } finally {
+                                setIsSyncingItem(false)
+                              }
+                            }}
+                            disabled={isSyncingItem}
+                          >
+                            {isSyncingItem ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Sinkronisasi...
+                              </>
+                            ) : (
+                              <>
+                                <svg 
+                                  className="mr-2 h-4 w-4" 
+                                  xmlns="http://www.w3.org/2000/svg" 
+                                  viewBox="0 0 24 24" 
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  strokeWidth="2" 
+                                  strokeLinecap="round" 
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38" />
+                                </svg>
+                                Sinkronisasi
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -425,55 +385,149 @@ export default function ProdukPage() {
 
                 <ScrollArea className="flex-1">
                   <div className="p-4">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[20%]">Varian</TableHead>
-                          <TableHead className="w-[17%]">Harga</TableHead>
-                          <TableHead className="w-[17%]">Harga Asli</TableHead>
-                          <TableHead className="w-[15%] text-center">Stok Dikunci</TableHead>
-                          <TableHead className="w-[15%]">Stok</TableHead>
-                          <TableHead className="w-[16%]">Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedItemStocks.map((stock) => (
-                          <TableRow key={stock.model_id}>
-                            <TableCell className="font-medium">{stock.model_name}</TableCell>
-                            <TableCell>{formatRupiah(stock.current_price)}</TableCell>
-                            <TableCell>{formatRupiah(stock.original_price)}</TableCell>
-                            <TableCell className="text-center">
-                              {stock.stock_info.total_reserved_stock}
-                            </TableCell>
-                            <TableCell>
-                              <div className="max-w-[120px]">
-                                <input
-                                  type="number"
-                                  className={cn(
-                                    "w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm",
-                                    invalidStocks[stock.model_id] && "border-red-500"
-                                  )}
-                                  value={editedStocks[stock.model_id] ?? stock.stock_info.seller_stock}
-                                  onChange={(e) => {
-                                    const value = parseInt(e.target.value) || 0;
-                                    handleStockChange(stock.model_id, value);
-                                  }}
-                                  onBlur={(e) => {
-                                    const value = parseInt(e.target.value) || 0;
-                                    handleBlur(stock.model_id, value);
-                                  }}
-                                />
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={stock.model_status === 'MODEL_NORMAL' ? 'default' : 'secondary'}>
-                                {stock.model_status === 'MODEL_NORMAL' ? 'Aktif' : 'Nonaktif'}
-                              </Badge>
-                            </TableCell>
+                    {/* Tampilan desktop */}
+                    <div className="hidden sm:block">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="min-w-[350px]">Varian</TableHead>
+                            <TableHead className="w-[150px] text-center">Harga</TableHead>
+                            <TableHead className="w-[150px] text-center">Harga Asli</TableHead>
+                            <TableHead className="w-[120px] text-center">Stok Lock</TableHead>
+                            <TableHead className="w-[130px] text-center">Stok</TableHead>
+                            <TableHead className="w-[100px] text-center">Status</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {selectedItemStocks.map((stock) => (
+                            <TableRow key={stock.model_id}>
+                              <TableCell className="font-medium">
+                                <div className="flex items-center gap-2">
+                                  {stock.image_url ? (
+                                    <div className="w-10 h-10 rounded overflow-hidden">
+                                      <img 
+                                        src={stock.image_url} 
+                                        alt={stock.model_name}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                                      <span className="text-xs text-muted-foreground">No img</span>
+                                    </div>
+                                  )}
+                                  <span>{stock.model_name}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">{formatRupiah(stock.current_price)}</TableCell>
+                              <TableCell className="text-center">{formatRupiah(stock.original_price)}</TableCell>
+                              <TableCell className="text-center">
+                                {stock.stock_info.total_reserved_stock}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <div className="flex justify-center">
+                                  <div className="max-w-[120px]">
+                                    <input
+                                      type="number"
+                                      className={cn(
+                                        "w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm",
+                                        invalidStocks[stock.model_id] && "border-red-500"
+                                      )}
+                                      value={editedStocks[stock.model_id] ?? stock.stock_info.seller_stock}
+                                      onChange={(e) => {
+                                        const value = parseInt(e.target.value) || 0;
+                                        handleStockChange(stock.model_id, value);
+                                      }}
+                                      onBlur={(e) => {
+                                        const value = parseInt(e.target.value) || 0;
+                                        handleBlur(stock.model_id, value);
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <div className="flex justify-center">
+                                  <Badge variant={stock.model_status === 'MODEL_NORMAL' ? 'default' : 'secondary'}>
+                                    {stock.model_status === 'MODEL_NORMAL' ? 'Aktif' : 'Nonaktif'}
+                                  </Badge>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Tampilan mobile */}
+                    <div className="block sm:hidden">
+                      {selectedItemStocks.map((stock) => (
+                        <Card key={stock.model_id} className="mb-4">
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-3 mb-3">
+                              {stock.image_url ? (
+                                <div className="w-16 h-16 rounded overflow-hidden flex-shrink-0">
+                                  <img 
+                                    src={stock.image_url} 
+                                    alt={stock.model_name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-16 h-16 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                                  <span className="text-xs text-muted-foreground">No img</span>
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <p className="font-medium mb-1">{stock.model_name}</p>
+                                <Badge variant={stock.model_status === 'MODEL_NORMAL' ? 'default' : 'secondary'}>
+                                  {stock.model_status === 'MODEL_NORMAL' ? 'Aktif' : 'Nonaktif'}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                  <p className="text-muted-foreground">Harga</p>
+                                  <p className="font-medium">{formatRupiah(stock.current_price)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Harga Asli</p>
+                                  <p className="font-medium">{formatRupiah(stock.original_price)}</p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                  <p className="text-muted-foreground">Stok Lock</p>
+                                  <p className="font-medium">{stock.stock_info.total_reserved_stock}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Stok</p>
+                                  <input
+                                    type="number"
+                                    className={cn(
+                                      "w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm",
+                                      invalidStocks[stock.model_id] && "border-red-500"
+                                    )}
+                                    value={editedStocks[stock.model_id] ?? stock.stock_info.seller_stock}
+                                    onChange={(e) => {
+                                      const value = parseInt(e.target.value) || 0;
+                                      handleStockChange(stock.model_id, value);
+                                    }}
+                                    onBlur={(e) => {
+                                      const value = parseInt(e.target.value) || 0;
+                                      handleBlur(stock.model_id, value);
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
                   </div>
                 </ScrollArea>
                 
@@ -490,19 +544,7 @@ export default function ProdukPage() {
                   </Button>
                   <Button
                     disabled={Object.keys(editedStocks).length === 0 || isSavingStocks}
-                    onClick={async () => {
-                      setIsSavingStocks(true)
-                      try {
-                        // Implementasi fungsi untuk menyimpan perubahan stok
-                        // await updateStocks(editedStocks)
-                        setIsStockDialogOpen(false)
-                        setEditedStocks({})
-                      } catch (error) {
-                        console.error('Error updating stocks:', error)
-                      } finally {
-                        setIsSavingStocks(false)
-                      }
-                    }}
+                    onClick={handleSaveStocks}
                   >
                     {isSavingStocks ? (
                       <>

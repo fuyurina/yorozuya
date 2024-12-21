@@ -5,7 +5,7 @@ import { DatePickerWithRange } from '@/components/ui/date-picker-with-range'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from "@/components/ui/skeleton"
 
-import { CreditCard, Store, DollarSign } from "lucide-react"
+import {Store, DollarSign } from "lucide-react"
 
 interface AdData {
   shop_id: number

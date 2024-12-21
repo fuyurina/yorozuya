@@ -1597,7 +1597,10 @@ export class ShopeeAPI {
     stockInfo: {
       stock_list: Array<{
         model_id?: number,
-        seller_stock: number
+        seller_stock: {
+          location_id?: string,
+          stock: number
+        }[]
       }>
     }
   ): Promise<any> {
@@ -1612,6 +1615,11 @@ export class ShopeeAPI {
       shop_id: shopId.toString(),
       access_token: accessToken
     });
+
+    // Validasi input
+    if (!stockInfo.stock_list || stockInfo.stock_list.length === 0 || stockInfo.stock_list.length > 50) {
+      throw new Error('stock_list harus berisi antara 1 sampai 50 item');
+    }
 
     const body = {
       item_id: itemId,

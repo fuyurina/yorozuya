@@ -5,6 +5,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const shopId = parseInt(searchParams.get('shop_id') || '');
+    const itemId = searchParams.get('item_id');
     
     if (!shopId) {
       return NextResponse.json(
@@ -13,7 +14,49 @@ export async function GET(request: Request) {
       );
     }
 
-    // Mengambil daftar produk dari Shopee
+    // Jika item_id tersedia, ambil hanya item spesifik
+    if (itemId) {
+      const itemDetailsResult = await getItemBaseInfo(shopId, [parseInt(itemId)]);
+
+      if (!itemDetailsResult.success) {
+        return NextResponse.json(
+          { error: itemDetailsResult.message },
+          { status: 400 }
+        );
+      }
+
+      const item = itemDetailsResult.data.item_list[0];
+      const modelListResult = await getModelList(shopId, parseInt(itemId));
+      
+      const models = modelListResult.success ? modelListResult.data.model.map((model: any) => ({
+        model_id: model.model_id,
+        model_name: model.model_name,
+        price_info: model.price_info[0],
+        stock_info: {
+          ...model.stock_info_v2.summary_info,
+          seller_stock: model.stock_info_v2.seller_stock[0]?.stock || 0,
+          shopee_stock: model.stock_info_v2.shopee_stock.map((stock: any) => ({
+            location_id: stock.location_id || '',
+            stock: stock.stock || 0
+          }))
+        },
+        model_status: model.model_status
+      })) : [];
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          shop_id: shopId,
+          item: {
+            ...item,
+            models,
+            variations: modelListResult.success ? modelListResult.data.standardise_tier_variation : []
+          }
+        }
+      });
+    }
+
+    // Jika tidak ada item_id, ambil semua item (kode existing)
     const itemListResult = await getItemList(shopId, {
       page_size: 100,
       item_status: ['NORMAL'],

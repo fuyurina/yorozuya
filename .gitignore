@@ -4,6 +4,7 @@
 /node_modules
 /.pnp
 .pnp.js
+/autochat.py
 .yarn/install-state.gz
 
 # testing
