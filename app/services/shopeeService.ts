@@ -1241,9 +1241,10 @@ export async function blockShopWebhook(shopId: number): Promise<any> {
     }
 
     // 2. Gabungkan dengan daftar yang sudah ada
-    const currentBlockedList = currentConfig.response.blocked_shop_id || [];
+    const currentBlockedList = currentConfig.response.blocked_shop_id_list || [];
     if (!currentBlockedList.includes(shopId)) {
       currentBlockedList.push(shopId);
+      console.log("data yang akan diblokir", currentBlockedList);
     }
 
     // 3. Kirim request dengan daftar yang diperbarui
@@ -1312,7 +1313,8 @@ export async function unblockShopWebhook(shopId: number): Promise<any> {
     }
 
     // Cek apakah toko ada dalam daftar yang diblokir
-    const currentBlockedList = currentConfig.response.blocked_shop_id || [];
+    const currentBlockedList = currentConfig.response.blocked_shop_id_list || [];
+    console.log("currentBlockedList", currentBlockedList);
     if (!currentBlockedList.includes(shopId)) {
       return {
         success: true,
@@ -1325,10 +1327,13 @@ export async function unblockShopWebhook(shopId: number): Promise<any> {
       };
     }
 
-    // Lanjutkan proses unblock jika toko memang diblokir
+    // Hapus shopId dari daftar yang diblokir
     const newBlockedList = currentBlockedList.filter((id: number) => id !== shopId);
+    console.log("newBlockedList", newBlockedList);
+    
+    // Kirim request dengan daftar yang diperbarui
     const result = await shopeeApi.setAppPushConfig({
-        blocked_shop_id_list: newBlockedList
+      blocked_shop_id_list: newBlockedList
     });
 
     // Update status toko di database

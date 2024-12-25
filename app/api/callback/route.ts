@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTokens } from '@/app/services/tokenManager';
+import { unblockShopWebhook } from '@/app/services/shopeeService';
 
 export async function GET(request: NextRequest) {
     const code = request.nextUrl.searchParams.get('code');
@@ -10,6 +11,8 @@ export async function GET(request: NextRequest) {
     }
 
     const tokens = await getTokens(code, Number(shopId));
+    
+    await unblockShopWebhook(Number(shopId));
 
     // Ambil host dari request headers
     const host = request.headers.get('host');
