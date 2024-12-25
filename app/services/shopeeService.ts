@@ -1220,3 +1220,144 @@ export async function cancelOrder(
     };
   }
 }
+
+export async function blockShopWebhook(shopId: number): Promise<any> {
+  try {
+    if (!shopId) {
+      throw new Error('ID Toko diperlukan');
+    }
+
+    // 1. Dapatkan daftar toko yang diblokir saat ini
+    const currentConfig = await shopeeApi.getAppPushConfig();
+    
+    if (currentConfig.error) {
+      console.error('Gagal mendapatkan konfigurasi push:', currentConfig.error);
+      return {
+        success: false,
+        error: currentConfig.error,
+        message: currentConfig.message || 'Gagal mendapatkan konfigurasi push',
+        request_id: currentConfig.request_id
+      };
+    }
+
+    // 2. Gabungkan dengan daftar yang sudah ada
+    const currentBlockedList = currentConfig.response.blocked_shop_id || [];
+    if (!currentBlockedList.includes(shopId)) {
+      currentBlockedList.push(shopId);
+    }
+
+    // 3. Kirim request dengan daftar yang diperbarui
+    const result = await shopeeApi.setAppPushConfig({
+      blocked_shop_id_list: currentBlockedList
+    });
+
+    if (result.error) {
+      console.error(`Gagal memblokir webhook toko: ${JSON.stringify(result)}`);
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal memblokir webhook toko',
+        request_id: result.request_id
+      };
+    }
+
+    // 4. Update status toko di database
+    const { error: updateError } = await supabase
+      .from('shopee_tokens')
+      .update({ 
+        is_active: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('shop_id', shopId);
+
+    if (updateError) {
+      console.error('Gagal mengupdate status toko:', updateError);
+      throw updateError;
+    }
+
+    return {
+      success: true,
+      message: 'Berhasil memblokir webhook toko',
+      data: result.response,
+      request_id: result.request_id
+    };
+
+  } catch (error) {
+    console.error('Kesalahan saat memblokir webhook toko:', error);
+    return {
+      success: false,
+      error: 'BLOCK_WEBHOOK_FAILED',
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
+
+export async function unblockShopWebhook(shopId: number): Promise<any> {
+  try {
+    if (!shopId) {
+      throw new Error('ID Toko diperlukan');
+    }
+
+    // Dapatkan konfigurasi push saat ini
+    const currentConfig = await shopeeApi.getAppPushConfig();
+    
+    if (currentConfig.error) {
+      console.error('Gagal mendapatkan konfigurasi push:', currentConfig.error);
+      return {
+        success: false,
+        error: currentConfig.error,
+        message: currentConfig.message || 'Gagal mendapatkan konfigurasi push',
+        request_id: currentConfig.request_id
+      };
+    }
+
+    // Cek apakah toko ada dalam daftar yang diblokir
+    const currentBlockedList = currentConfig.response.blocked_shop_id || [];
+    if (!currentBlockedList.includes(shopId)) {
+      return {
+        success: true,
+        message: 'Toko tidak dalam status diblokir',
+        data: {
+          shop_id: shopId,
+          is_blocked: false
+        },
+        request_id: currentConfig.request_id
+      };
+    }
+
+    // Lanjutkan proses unblock jika toko memang diblokir
+    const newBlockedList = currentBlockedList.filter((id: number) => id !== shopId);
+    const result = await shopeeApi.setAppPushConfig({
+        blocked_shop_id_list: newBlockedList
+    });
+
+    // Update status toko di database
+    const { error: updateError } = await supabase
+      .from('shopee_tokens')
+      .update({ 
+        is_active: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('shop_id', shopId);
+
+    if (updateError) {
+      console.error('Gagal mengupdate status toko:', updateError);
+      throw updateError;
+    }
+
+    return {
+      success: true,
+      message: 'Berhasil membuka blokir webhook toko',
+      data: result.response,
+      request_id: result.request_id
+    };
+
+  } catch (error) {
+    console.error('Kesalahan saat membuka blokir webhook toko:', error);
+    return {
+      success: false,
+      error: 'UNBLOCK_WEBHOOK_FAILED',
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}

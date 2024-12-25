@@ -1,6 +1,7 @@
 // pages/api/shops/route.ts
 import { NextResponse } from 'next/server';
-import { redis } from '@/app/services/redis';
+
+import { getAllShops } from '@/app/services/shopeeService';
 
 type Shop = {
   shop_id: number;
@@ -9,12 +10,14 @@ type Shop = {
 
 export async function GET() {
   try {
-    const autoShipData = await redis.get('auto_ship');
-    if (autoShipData) {
-      const shops = JSON.parse(autoShipData);
+    const shops = await getAllShops();
+    
+    if (shops && shops.length > 0) {
       const simplifiedShops = shops.map((shop: any) => ({
         shop_id: shop.shop_id,
-        shop_name: shop.shop_name
+        shop_name: shop.shop_name,
+        is_active: shop.is_active,
+        access_token: shop.access_token
       }));
 
       return NextResponse.json({

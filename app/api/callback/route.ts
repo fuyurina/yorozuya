@@ -11,5 +11,13 @@ export async function GET(request: NextRequest) {
 
     const tokens = await getTokens(code, Number(shopId));
 
-    return NextResponse.redirect(new URL('/shops', request.url));
+    // Ambil host dari request headers
+    const host = request.headers.get('host');
+    // Tentukan protocol (https untuk production, http untuk development)
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    
+    const baseUrl = `${protocol}://${host}`;
+    const redirectUrl = new URL('/shops', baseUrl);
+    console.log('Redirect URL:', redirectUrl.toString());
+    return NextResponse.redirect(redirectUrl);
 }

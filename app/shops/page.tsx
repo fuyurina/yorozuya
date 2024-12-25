@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
+import { toast } from "sonner";
 interface SyncStatus {
   [shopId: number]: {
     progress: { current: number; total: number } | null;
@@ -17,6 +17,7 @@ interface SyncStatus {
     isSyncing: boolean;
   };
 }
+
 
 interface TokenStatus {
   [shopId: number]: {
@@ -194,7 +195,15 @@ function MetricGroup({
   );
 }
 
-function ShopCard({ shop, tokenStatus, syncStatus, onSync, onDeauth, helpers }: {
+function ShopCard({ 
+  shop, 
+  tokenStatus, 
+  syncStatus, 
+  onSync, 
+  onDeauth, 
+  helpers,
+  blockingShops
+}: {
   shop: any;
   tokenStatus: any;
   syncStatus: any;
@@ -204,6 +213,7 @@ function ShopCard({ shop, tokenStatus, syncStatus, onSync, onDeauth, helpers }: 
     getRatingText: (rating: number) => string;
     getPunishmentName: (name: string) => string;
   };
+  blockingShops: {[key: number]: boolean};
 }) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-md p-3 sm:p-4 border border-gray-100 dark:border-gray-700 
@@ -474,14 +484,23 @@ function ShopCard({ shop, tokenStatus, syncStatus, onSync, onDeauth, helpers }: 
 
         <button
           onClick={() => onDeauth(shop.shop_id)}
+          disabled={blockingShops[shop.shop_id]}
           className="p-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-md 
-                    hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors
+                    disabled:bg-gray-200 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
           title="Putuskan koneksi toko"
         >
-          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
+          {blockingShops[shop.shop_id] ? (
+            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          ) : (
+            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          )}
         </button>
       </div>
     </div>
@@ -494,6 +513,7 @@ export default function ShopsPage() {
   const [tokenStatus, setTokenStatus] = useState<TokenStatus>({});
   const [isConnecting, setIsConnecting] = useState(false);
   const [hasCheckedTokens, setHasCheckedTokens] = useState(false);
+  const [blockingShops, setBlockingShops] = useState<{[key: number]: boolean}>({});
 
   const checkTokens = async (shopsList: any[]) => {
     if (!shopsList || shopsList.length === 0) return;
@@ -659,15 +679,26 @@ export default function ShopsPage() {
     }
   };
 
-  const handleDeauth = async (shopId: number) => {
+  const handleBlock = async (shopId: number) => {
+    setBlockingShops(prev => ({ ...prev, [shopId]: true }));
+    
     try {
-      const response = await fetch('/api/generate-deauth-url');
-      const data = await response.json();
-      if (data.deauthUrl) {
-        window.location.href = data.deauthUrl;
+      const response = await fetch(`/api/shops/block?shopId=${shopId}`, {
+        method: 'POST'
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || 'Gagal memblokir toko');
       }
+
+      toast.success('Toko berhasil diblokir');
     } catch (error) {
-      console.error('Gagal mendapatkan URL deautentikasi:', error);
+      console.error('Gagal memblokir toko:', error);
+      toast.error(error instanceof Error ? error.message : 'Gagal memblokir toko');
+    } finally {
+      setBlockingShops(prev => ({ ...prev, [shopId]: false }));
     }
   };
 
@@ -722,8 +753,9 @@ export default function ShopsPage() {
               tokenStatus={tokenStatus}
               syncStatus={syncStatus}
               onSync={handleSync}
-              onDeauth={handleDeauth}
+              onDeauth={handleBlock}
               helpers={helpers}
+              blockingShops={blockingShops}
             />
           ))}
         </div>

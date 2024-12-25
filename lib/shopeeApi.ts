@@ -2283,6 +2283,66 @@ async cancelOrder(
     throw error;
   }
 }
+
+async setAppPushConfig(options: {
+  callback_url?: string;
+  set_push_config_on?: number[];
+  set_push_config_off?: number[];
+  blocked_shop_id_list?: number[];
+}): Promise<any> {
+  const url = 'https://partner.shopeemobile.com/api/v2/push/set_app_push_config';
+  const path = '/api/v2/push/set_app_push_config';
+  const [timest, sign] = this._generateSign(path);
+
+  const params = new URLSearchParams({
+    partner_id: this.partnerId.toString(),
+    timestamp: timest.toString(),
+    sign
+  });
+
+  const body = {
+    ...options
+  };
+
+  const fullUrl = `${url}?${params.toString()}`;
+  const headers = { 'Content-Type': 'application/json' };
+
+  console.info(`Mengirim permintaan untuk mengatur push config: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+  try {
+    const response = await axios.post(fullUrl, body, { headers });
+    return response.data;
+  } catch (error) {
+    console.error('Kesalahan saat mengatur push config:', error);
+    throw error;
+  }
+}
+
+async getAppPushConfig(): Promise<any> {
+  const url = 'https://partner.shopeemobile.com/api/v2/push/get_app_push_config';
+  const path = '/api/v2/push/get_app_push_config';
+  const [timest, sign] = this._generateSign(path);
+
+  const params = new URLSearchParams({
+    partner_id: this.partnerId.toString(),
+    timestamp: timest.toString(),
+    sign
+  });
+
+  const fullUrl = `${url}?${params.toString()}`;
+  const headers = { 'Content-Type': 'application/json' };
+
+  console.info(`Mengirim permintaan untuk mendapatkan konfigurasi push: URL=${fullUrl}`);
+
+  try {
+    const response = await axios.get(fullUrl, { headers });
+    console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+    return response.data;
+  } catch (error) {
+    console.error('Kesalahan saat mengambil konfigurasi push:', error);
+    throw error;
+  }
+}
 }
 
 export default ShopeeAPI;

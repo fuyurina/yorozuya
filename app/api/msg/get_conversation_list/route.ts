@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getAllShops } from '@/app/services/shopeeService';
 import { shopeeApi } from '@/lib/shopeeConfig';
 // Inisialisasi Supabase Client
 
@@ -14,24 +14,20 @@ export async function GET(request: Request) {
     // Tentukan page_size berdasarkan parameter limit atau default 50
     const pageSize = limit ? parseInt(limit) : 50;
     
-    // Ambil semua token dan nama toko dari tabel shopee_tokens
-    const { data: tokens, error } = await supabase
-      .from('shopee_tokens')
-      .select('shop_id, access_token, shop_name');
-
-    if (error) throw error;
-
-    if (!tokens || tokens.length === 0) {
+    // Gunakan getAllShops() sebagai pengganti query Supabase langsung
+    const shopsResponse = await getAllShops();
+    
+    if (!shopsResponse || shopsResponse.length === 0) {
       return NextResponse.json({ message: 'Tidak ada toko yang terhubung' }, { status: 404 });
     }
 
     // Ambil daftar percakapan untuk setiap toko
     const allConversations = await Promise.all(
-      tokens.map(async (token) => {
+      shopsResponse.map(async (shop) => {
         try {
           const conversations = await shopeeApi.getConversationList(
-            token.shop_id,
-            token.access_token,
+            shop.shop_id,
+            shop.access_token,
             {
               direction: 'older',
               type: 'all',
@@ -39,13 +35,12 @@ export async function GET(request: Request) {
             }
           );
           
-          // Tambahkan shop_name ke setiap percakapan
           return conversations.response.conversations.map((conv: any) => ({
             ...conv,
-            shop_name: token.shop_name
+            shop_name: shop.shop_name
           }));
         } catch (error) {
-          console.error(`Error mengambil percakapan untuk toko ${token.shop_id}:`, error);
+          console.error(`Error mengambil percakapan untuk toko ${shop.shop_id}:`, error);
           return [];
         }
       })
