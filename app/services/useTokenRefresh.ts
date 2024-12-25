@@ -12,7 +12,6 @@ export async function refreshAllTokens() {
     const { data: shops, error } = await supabase
       .from('shopee_tokens')
       .select('shop_id, refresh_token, shop_name')
-      .eq('is_active', true);
 
     if (error) {
       console.error('Error fetching tokens:', error);

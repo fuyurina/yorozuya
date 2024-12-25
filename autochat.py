@@ -14,7 +14,6 @@ supabase: Client = create_client("https://jsitzrpjtdorcdxencxm.supabase.co", "ey
 
 config_chat = supabase.table('settings').select('*').execute()
 status_chat = supabase.table('auto_ship_chat').select('shop_id, status_chat').execute()
-cancel_order = supabase.table('orders').select('shop_id, order_status','order_sn').eq('order_status', 'IN_CANCEL').eq('shop_id', 1385860044).execute()
 data = config_chat.data[0] if config_chat.data else None
 if data:
     openai_api = data.get('openai_api')
@@ -570,30 +569,12 @@ def setup_logging():
     # Mematikan log dari httpx
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
-def handle_order_cancellation():
-    try:
-        for order in cancel_order.data:
-            url = "https://yorozuya.me/api/orders/handle-cancellation"
-            payload = {
-                "shopId": order['shop_id'],
-                "orderSn": order['order_sn'],
-                "operation": "ACCEPT"
-            }
-            
-            response = requests.post(url, json=payload)
-            
-            if response.status_code == 200:
-                logging.info(f"✅ Berhasil menolak pembatalan untuk order {order['order_sn']}")
-            else:
-                logging.error(f"❌ Gagal menolak pembatalan untuk order {order['order_sn']}. Status: {response.status_code}")
-                
-    except Exception as e:
-        logging.error(f"❌ Error dalam handle_order_cancellation: {str(e)}")
+
 
 def main():
     setup_logging()
     logging.info("==========================================Program dimulai==========================================")
-    handle_order_cancellation()
+    jalankan_proses_order()
     send_replies()
     logging.info("==========================================Program selesai==========================================")
 
