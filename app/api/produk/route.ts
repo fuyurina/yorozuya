@@ -74,20 +74,31 @@ export async function GET(request: Request) {
     // Menyesuaikan dengan struktur response Shopee
     const itemIds = itemListResult.data.item.map((item: any) => item.item_id);
     
-    // Mengambil informasi detail untuk setiap produk
-    const itemDetailsResult = await getItemBaseInfo(shopId, itemIds);
-
-    if (!itemDetailsResult.success) {
-      
-      return NextResponse.json(
-        { error: itemDetailsResult.message },
-        { status: 400 }
-      );
+    // Membagi itemIds menjadi batch-batch 50 item
+    const batchSize = 50;
+    const itemIdBatches = [];
+    for (let i = 0; i < itemIds.length; i += batchSize) {
+        itemIdBatches.push(itemIds.slice(i, i + batchSize));
+    }
+    
+    // Mengambil informasi detail untuk setiap batch produk
+    const allItemDetails = [];
+    for (const batch of itemIdBatches) {
+        const itemDetailsResult = await getItemBaseInfo(shopId, batch);
+        
+        if (!itemDetailsResult.success) {
+            return NextResponse.json(
+                { error: itemDetailsResult.message },
+                { status: 400 }
+            );
+        }
+        
+        allItemDetails.push(...itemDetailsResult.data.item_list);
     }
 
     // Mengambil model list untuk setiap produk
     const itemsWithModels = await Promise.all(
-      itemDetailsResult.data.item_list.map(async (item: any) => {
+        allItemDetails.map(async (item: any) => {
         const modelListResult = await getModelList(shopId, item.item_id);
         
         // Menambahkan console.log untuk model list

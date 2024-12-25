@@ -26,11 +26,6 @@ interface TokenStatus {
   };
 }
 
-interface DialogState {
-  isOpen: boolean;
-  shopId: number | null;
-}
-
 interface MetricTarget {
   value: number;
   comparator: string;
@@ -47,14 +42,6 @@ interface Metric {
   target?: MetricTarget;
 }
 
-interface PenaltyPoints {
-  overall_penalty_points: number;
-  non_fulfillment_rate: number;
-  late_shipment_rate: number;
-  listing_violations: number;
-  opfr_violations: number;
-  others: number;
-}
 
 interface OngoingPunishment {
   punishment_name: string;
@@ -62,21 +49,7 @@ interface OngoingPunishment {
   days_left: number;
 }
 
-interface ShopPenalty {
-  penalty_points: PenaltyPoints;
-  ongoing_punishment: OngoingPunishment[];
-}
 
-interface ShopPerformance {
-  overall_performance: {
-    rating: number;
-    fulfillment_failed: number;
-    listing_failed: number;
-    custom_service_failed: number;
-  };
-  metric_list: Metric[];
-  penalty?: ShopPenalty;
-}
 
 function ShopSkeleton() {
   return (
@@ -232,20 +205,6 @@ function ShopCard({ shop, tokenStatus, syncStatus, onSync, onDeauth, helpers }: 
     getPunishmentName: (name: string) => string;
   };
 }) {
-  const getMetricValue = (metricName: string) => {
-    if (!shop.performance?.metric_list) return null;
-    const metric = shop.performance.metric_list.find(
-      (m: Metric) => m.metric_name === metricName
-    );
-    return metric?.current_period;
-  };
-
-  const getPenaltyColor = (points: number) => {
-    if (points <= 1) return 'bg-green-500';
-    if (points <= 5) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
-
   return (
     <div className="bg-white dark:bg-gray-800 rounded-md p-3 sm:p-4 border border-gray-100 dark:border-gray-700 
                    hover:border-gray-200 dark:hover:border-gray-600 transition-all">
@@ -279,66 +238,190 @@ function ShopCard({ shop, tokenStatus, syncStatus, onSync, onDeauth, helpers }: 
       {/* Performance Section */}
       <div className="mb-3">
         {shop.performance ? (
-          <>
-            <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-md mb-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className={`w-1.5 h-1.5 rounded-full ${
-                    shop.performance.overall_performance.rating >= 3 ? 'bg-green-500' : 'bg-red-500'
-                  }`} />
-                  <span className="text-xs text-gray-600 dark:text-gray-300">
-                    Performa: {helpers.getRatingText(shop.performance.overall_performance.rating)}
-                  </span>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="w-full text-left">
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-md space-y-2">
+                  {/* Baris pertama - Performa dan Poin */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full ${
+                        shop.performance.overall_performance.rating >= 3 ? 'bg-green-500' : 'bg-red-500'
+                      }`} />
+                      <span className="text-xs text-gray-600 dark:text-gray-300">
+                        Performa: {helpers.getRatingText(shop.performance.overall_performance.rating)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full ${
+                        (shop.performance.penalty?.penalty_points.overall_penalty_points || 0) <= 5 
+                          ? 'bg-green-500' 
+                          : 'bg-red-500'
+                      }`} />
+                      <span className="text-xs text-gray-600 dark:text-gray-300">
+                        Poin: {shop.performance.penalty?.penalty_points.overall_penalty_points || 0}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Baris kedua - Pesanan tidak terpenuhi dan terlambat */}
+                  <div className="flex gap-2 text-xs">
+                    <div className="flex-1 bg-gray-100 dark:bg-gray-600/50 p-1.5 rounded">
+                      <span className="block text-gray-500 dark:text-gray-400">Tidak Dipenuhi</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-200">
+                        {(shop.performance.metric_list.find((m: Metric) => m.metric_name === 'non_fulfillment_rate')?.current_period || 0).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="flex-1 bg-gray-100 dark:bg-gray-600/50 p-1.5 rounded">
+                      <span className="block text-gray-500 dark:text-gray-400">Terlambat</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-200">
+                        {(shop.performance.metric_list.find((m: Metric) => m.metric_name === 'late_shipment_rate')?.current_period || 0).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Baris ketiga - Tingkat respon dan rating toko */}
+                  <div className="flex gap-2 text-xs">
+                    <div className="flex-1 bg-gray-100 dark:bg-gray-600/50 p-1.5 rounded">
+                      <span className="block text-gray-500 dark:text-gray-400">Tingkat Respon</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-200">
+                        {(shop.performance.metric_list.find((m: Metric) => m.metric_name === 'response_rate')?.current_period || 0).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="flex-1 bg-gray-100 dark:bg-gray-600/50 p-1.5 rounded">
+                      <span className="block text-gray-500 dark:text-gray-400">Rating Toko</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-200">
+                        {(shop.performance.metric_list.find((m: Metric) => m.metric_name === 'shop_rating')?.current_period || 0).toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-1.5 h-1.5 rounded-full ${
-                    getPenaltyColor(shop.performance.penalty?.penalty_points.overall_penalty_points || 0)
-                  }`} />
-                  <span className="text-xs text-gray-600 dark:text-gray-300">
-                    Poin: {shop.performance.penalty?.penalty_points.overall_penalty_points || 0}
-                  </span>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-3 sm:p-6">
+              <DialogHeader className="mb-4">
+                <DialogTitle className="text-base sm:text-lg font-semibold">
+                  {shop.shop_name}
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4 sm:space-y-6">
+                {/* Overall Performance */}
+                <div className="space-y-2">
+                  <h3 className="text-sm sm:text-base font-medium text-gray-700 dark:text-gray-300">
+                    Performa Keseluruhan
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="p-2 sm:p-3 bg-gray-50 dark:bg-gray-700/50 rounded">
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Rating</p>
+                      <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">
+                        {helpers.getRatingText(shop.performance.overall_performance.rating)}
+                      </p>
+                    </div>
+                    <div className="p-2 sm:p-3 bg-gray-50 dark:bg-gray-700/50 rounded">
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Pengiriman Gagal</p>
+                      <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">
+                        {shop.performance.overall_performance.fulfillment_failed}
+                      </p>
+                    </div>
+                    <div className="p-2 sm:p-3 bg-gray-50 dark:bg-gray-700/50 rounded">
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Listing Gagal</p>
+                      <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">
+                        {shop.performance.overall_performance.listing_failed}
+                      </p>
+                    </div>
+                    <div className="p-2 sm:p-3 bg-gray-50 dark:bg-gray-700/50 rounded">
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Layanan Gagal</p>
+                      <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">
+                        {shop.performance.overall_performance.custom_service_failed}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Penalty Points */}
+                {shop.performance.penalty && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm sm:text-base font-medium text-gray-700 dark:text-gray-300">
+                      Poin Penalti
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className="p-2 sm:p-3 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total</p>
+                        <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">
+                          {shop.performance.penalty.penalty_points.overall_penalty_points} poin
+                        </p>
+                      </div>
+                      <div className="p-2 sm:p-3 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Pembatalan</p>
+                        <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">
+                          {shop.performance.penalty.penalty_points.non_fulfillment_rate} poin
+                        </p>
+                      </div>
+                      <div className="p-2 sm:p-3 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Keterlambatan</p>
+                        <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">
+                          {shop.performance.penalty.penalty_points.late_shipment_rate} poin
+                        </p>
+                      </div>
+                      <div className="p-2 sm:p-3 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Produk</p>
+                        <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">
+                          {shop.performance.penalty.penalty_points.listing_violations} poin
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Ongoing Punishments */}
+                    {shop.performance.penalty.ongoing_punishment?.length > 0 && (
+                      <div className="mt-3 sm:mt-4 space-y-2">
+                        <h3 className="text-sm sm:text-base font-medium text-gray-700 dark:text-gray-300">
+                          Hukuman Berlangsung
+                        </h3>
+                        <div className="space-y-2">
+                          {shop.performance.penalty.ongoing_punishment.map((punishment: OngoingPunishment, idx: number) => (
+                            <div 
+                              key={idx}
+                              className="p-2 sm:p-3 bg-red-50 dark:bg-red-900/20 rounded flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0"
+                            >
+                              <span className="text-xs sm:text-sm text-red-600 dark:text-red-400">
+                                {helpers.getPunishmentName(punishment.punishment_name)}
+                                <span className="ml-1 text-red-500">
+                                  (Tier {punishment.punishment_tier})
+                                </span>
+                              </span>
+                              <span className="text-xs sm:text-sm text-red-500">
+                                {punishment.days_left} hari lagi
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Detailed Metrics */}
+                <div className="space-y-4 sm:space-y-6">
+                  <MetricGroup 
+                    title="Performa Pengiriman" 
+                    metrics={shop.performance.metric_list}
+                    type={1}
+                  />
+                  <MetricGroup 
+                    title="Performa Listing" 
+                    metrics={shop.performance.metric_list}
+                    type={2}
+                  />
+                  <MetricGroup 
+                    title="Performa Layanan Pelanggan" 
+                    metrics={shop.performance.metric_list}
+                    type={3}
+                  />
                 </div>
               </div>
-            </div>
-            
-            {/* Metrics Display */}
-            <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
-                <span className="text-gray-600 dark:text-gray-300">Pesanan Tidak Dipenuhi</span>
-                <span className="font-medium">
-                  {(getMetricValue('non_fulfillment_rate') || 0).toFixed(1)}%
-                </span>
-              </div>
-              
-              <div className="flex justify-between p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
-                <span className="text-gray-600 dark:text-gray-300">Pengiriman Terlambat</span>
-                <span className="font-medium">
-                  {(getMetricValue('late_shipment_rate') || 0).toFixed(1)}%
-                </span>
-              </div>
-              
-              <div className="flex justify-between p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
-                <span className="text-gray-600 dark:text-gray-300">Waktu Pengemasan</span>
-                <span className="font-medium">
-                  {Math.ceil((getMetricValue('preparation_time') || 0) * 10) / 10} jam
-                </span>
-              </div>
-              
-              <div className="flex justify-between p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
-                <span className="text-gray-600 dark:text-gray-300">Tingkat Respon</span>
-                <span className="font-medium">
-                  {(getMetricValue('response_rate') || 0).toFixed(1)}%
-                </span>
-              </div>
-              
-              <div className="flex justify-between p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
-                <span className="text-gray-600 dark:text-gray-300">Rating Toko</span>
-                <span className="font-medium">
-                  {(getMetricValue('shop_rating') || 0).toFixed(1)}
-                </span>
-              </div>
-            </div>
-          </>
+            </DialogContent>
+          </Dialog>
         ) : (
           <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-md">
             <div className="flex items-center gap-2">
@@ -410,7 +493,6 @@ export default function ShopsPage() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({});
   const [tokenStatus, setTokenStatus] = useState<TokenStatus>({});
   const [isConnecting, setIsConnecting] = useState(false);
-  const [dialog, setDialog] = useState<DialogState>({ isOpen: false, shopId: null });
   const [hasCheckedTokens, setHasCheckedTokens] = useState(false);
 
   const checkTokens = async (shopsList: any[]) => {
@@ -587,11 +669,6 @@ export default function ShopsPage() {
     } catch (error) {
       console.error('Gagal mendapatkan URL deautentikasi:', error);
     }
-  };
-
-  // Function untuk menampilkan dialog
-  const showPerformanceDialog = (shopId: number) => {
-    setDialog({ isOpen: true, shopId });
   };
 
   return (

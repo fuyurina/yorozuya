@@ -195,102 +195,122 @@ export function useProducts() {
     loadProducts()
   }, [])
 
-  const syncProducts = async (shopId: number) => {
+  const syncProducts = async (shopIds: number[], onProgress?: (progress: number) => void) => {
     try {
       setIsSyncing(true)
-      const response = await fetch(`/api/produk?shop_id=${shopId}`)
-      const data: SyncResponse = await response.json()
+      let totalProducts = 0
+      let processedProducts = 0
 
-      if (data.success) {
-        // Simpan data produk ke Supabase
-        for (const item of data.data.items) {
-          // 1. Insert/Update item utama
-          const { error: itemError } = await supabase
-            .from('items')
-            .upsert({
-              item_id: item.item_id,
-              shop_id: shopId,
-              category_id: item.category_id,
-              item_name: item.item_name,
-              description: item.description,
-              item_sku: item.item_sku,
-              create_time: item.create_time,
-              update_time: item.update_time,
-              weight: item.weight,
-              image: item.image,
-              logistic_info: item.logistic_info,
-              pre_order: item.pre_order,
-              condition: item.condition,
-              item_status: item.item_status,
-              has_model: item.has_model,
-              brand: item.brand,
-              item_dangerous: item.item_dangerous,
-              description_type: item.description_type,
-              size_chart_id: item.size_chart_id,
-              promotion_image: item.promotion_image,
-              deboost: item.deboost === 'FALSE' ? false : true,
-              authorised_brand_id: item.authorised_brand_id
-            }, { 
-              onConflict: 'item_id' 
-            })
+      // Proses setiap toko yang dipilih
+      for (const shopId of shopIds) {
+        const response = await fetch(`/api/produk?shop_id=${shopId}`)
+        const data: SyncResponse = await response.json()
 
-          if (itemError) throw itemError
+        if (data.success) {
+          totalProducts += data.data.items.length
 
-          console.log('Item saved, processing variations...');
-          
-          // Proses variations
-          if (item.variations && item.variations.length > 0) {
-            for (const variation of item.variations) {
-              const { error: variationError } = await supabase
-                .from('item_variations')
-                .upsert({
-                  item_id: item.item_id,
-                  variation_id: variation.variation_id,
-                  variation_name: variation.variation_name,
-                  variation_option: {
-                    group_id: variation.variation_group_id || null,
-                    options: variation.variation_option_list.map((opt) => ({
-                      id: opt.variation_option_id,
-                      name: opt.variation_option_name,
-                      image_url: opt.image_url || null
-                    }))
-                  }
-                }, {
-                  onConflict: 'item_id,variation_id'
-                })
+          // Simpan data produk ke Supabase
+          for (const item of data.data.items) {
+            // 1. Insert/Update item utama
+            const { error: itemError } = await supabase
+              .from('items')
+              .upsert({
+                item_id: item.item_id,
+                shop_id: shopId,
+                category_id: item.category_id,
+                item_name: item.item_name,
+                description: item.description,
+                item_sku: item.item_sku,
+                create_time: item.create_time,
+                update_time: item.update_time,
+                weight: item.weight,
+                image: item.image,
+                logistic_info: item.logistic_info,
+                pre_order: item.pre_order,
+                condition: item.condition,
+                item_status: item.item_status,
+                has_model: item.has_model,
+                brand: item.brand,
+                item_dangerous: item.item_dangerous,
+                description_type: item.description_type,
+                size_chart_id: item.size_chart_id,
+                promotion_image: item.promotion_image,
+                deboost: item.deboost === 'FALSE' ? false : true,
+                authorised_brand_id: item.authorised_brand_id
+              }, { 
+                onConflict: 'item_id' 
+              })
 
-              if (variationError) throw variationError
+            if (itemError) throw itemError
+
+            // Proses variations
+            if (item.variations && item.variations.length > 0) {
+              for (const variation of item.variations) {
+                const { error: variationError } = await supabase
+                  .from('item_variations')
+                  .upsert({
+                    item_id: item.item_id,
+                    variation_id: variation.variation_id,
+                    variation_name: variation.variation_name,
+                    variation_option: {
+                      group_id: variation.variation_group_id || null,
+                      options: variation.variation_option_list.map((opt) => ({
+                        id: opt.variation_option_id,
+                        name: opt.variation_option_name,
+                        image_url: opt.image_url || null
+                      }))
+                    }
+                  }, {
+                    onConflict: 'item_id,variation_id'
+                  })
+
+                if (variationError) throw variationError
+              }
+            }
+
+            // Proses models
+            if (item.models && item.models.length > 0) {
+              for (const model of item.models) {
+                const { error: modelError } = await supabase
+                  .from('item_models')
+                  .upsert({
+                    item_id: item.item_id,
+                    model_id: model.model_id,
+                    model_name: model.model_name,
+                    current_price: model.price_info.current_price,
+                    original_price: model.price_info.original_price,
+                    stock_info: model.stock_info,
+                    model_status: model.model_status
+                  }, { onConflict: 'item_id,model_id' })
+
+                if (modelError) throw modelError
+              }
+            }
+
+            processedProducts++
+            
+            // Update progress
+            if (onProgress) {
+              const progress = Math.round((processedProducts / totalProducts) * 100)
+              onProgress(progress)
             }
           }
-
-          // 3. Insert/Update models jika ada
-          if (item.models && item.models.length > 0) {
-            for (const model of item.models) {
-              const { error: modelError } = await supabase
-                .from('item_models')
-                .upsert({
-                  item_id: item.item_id,
-                  model_id: model.model_id,
-                  model_name: model.model_name,
-                  current_price: model.price_info.current_price,
-                  original_price: model.price_info.original_price,
-                  stock_info: model.stock_info,
-                  model_status: model.model_status
-                }, { onConflict: 'item_id,model_id' })
-
-              if (modelError) throw modelError
-            }
-          }
+        } else {
+          throw new Error(data.error)
         }
+      }
 
-        setProducts(data.data.items)
-        toast({
-          title: 'Sinkronisasi Berhasil',
-          description: `${data.data.items.length} produk telah disinkronkan`,
-        })
-        return data.data.items
-      } else {
-        throw new Error(data.error)
+      // Refresh products setelah sync selesai
+      await loadProducts()
+
+      toast({
+        title: 'Sinkronisasi Berhasil',
+        description: `${processedProducts} produk telah disinkronkan`,
+      })
+
+      return {
+        success: processedProducts,
+        total: totalProducts
       }
     } catch (error) {
       toast({
@@ -298,7 +318,10 @@ export function useProducts() {
         title: 'Gagal Sinkronisasi',
         description: error instanceof Error ? error.message : 'Terjadi kesalahan saat sinkronisasi',
       })
-      return []
+      return {
+        success: 0,
+        total: 0
+      }
     } finally {
       setIsSyncing(false)
     }
@@ -474,9 +497,11 @@ export function useProducts() {
   const updateStock = async (
     shopId: number,
     itemId: number,
-    modelId: number,
-    newStock: number,
-    reservedStock: number
+    modelUpdates: Array<{
+      modelId: number,
+      newStock: number,
+      reservedStock: number
+    }>
   ) => {
     try {
       // Update ke API Shopee
@@ -488,12 +513,12 @@ export function useProducts() {
         body: JSON.stringify({
           shop_id: shopId,
           item_id: itemId,
-          stock_list: [{
-            model_id: modelId,
+          stock_list: modelUpdates.map(update => ({
+            model_id: update.modelId,
             seller_stock: [{
-              stock: newStock
+              stock: update.newStock
             }]
-          }]
+          }))
         })
       });
 
@@ -508,28 +533,30 @@ export function useProducts() {
         return false;
       }
 
-      // Update database dengan struktur yang benar
-      const { error: dbError } = await supabase
-        .from('item_models')
-        .update({
-          'stock_info': {
-            seller_stock: newStock,
-            shopee_stock: [{ stock: 0, location_id: "" }],
-            total_reserved_stock: reservedStock,
-            total_available_stock: newStock - reservedStock
-          }
-        })
-        .eq('item_id', itemId)
-        .eq('model_id', modelId);
+      // Update database untuk semua model
+      for (const update of modelUpdates) {
+        const { error: dbError } = await supabase
+          .from('item_models')
+          .update({
+            'stock_info': {
+              seller_stock: update.newStock,
+              shopee_stock: [{ stock: 0, location_id: "" }],
+              total_reserved_stock: update.reservedStock,
+              total_available_stock: update.newStock - update.reservedStock
+            }
+          })
+          .eq('item_id', itemId)
+          .eq('model_id', update.modelId);
 
-      if (dbError) {
-        console.error('Error updating database:', dbError);
-        toast({
-          variant: 'destructive',
-          title: 'Peringatan',
-          description: 'Stok berhasil diupdate di Shopee tapi gagal update di database'
-        });
-        return true;
+        if (dbError) {
+          console.error('Error updating database:', dbError);
+          toast({
+            variant: 'destructive',
+            title: 'Peringatan',
+            description: 'Stok berhasil diupdate di Shopee tapi gagal update di database'
+          });
+          return true;
+        }
       }
 
       // Refresh data stok setelah update berhasil

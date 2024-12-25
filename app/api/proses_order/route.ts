@@ -8,11 +8,6 @@ interface Shop {
     access_token: string;
 }
 
-interface ShopsResponse {
-    success: boolean;
-    message: string;
-    data: Shop[];
-}
 
 async function getAllOrders(shopId: string, accessToken: string) {
     // Definisikan interface untuk order (sesuaikan dengan struktur data dari Shopee API)

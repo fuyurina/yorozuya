@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog"
 import { useEffect, useState } from 'react'
 import {
@@ -33,6 +34,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { formatRupiah } from "@/lib/utils"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface StockPrice {
   model_id: number;
@@ -74,12 +76,13 @@ export default function ProdukPage() {
   const [isLoadingStocks, setIsLoadingStocks] = useState(false)
   const [editedStocks, setEditedStocks] = useState<{ [key: number]: number }>({})
   const [isSavingStocks, setIsSavingStocks] = useState(false)
-  const [invalidStocks, setInvalidStocks] = useState<{ [key: number]: boolean }>({});
+  const [invalidStocks] = useState<{ [key: number]: boolean }>({});
   const [massUpdateStock, setMassUpdateStock] = useState<number | ''>('');
   const [loadingProductId, setLoadingProductId] = useState<number | null>(null)
   const [isSyncingItem, setIsSyncingItem] = useState(false)
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
   const [stockPrices, setStockPrices] = useState<StockPrice[]>([])
+  const [syncResult, setSyncResult] = useState<{ success: number; total: number } | null>(null);
 
   const filteredProducts = products.filter((product) => {
     if (selectedShopId === 'all') return true
@@ -93,28 +96,20 @@ export default function ProdukPage() {
   const handleViewStockDetail = async (itemId: number) => {
     setLoadingProductId(itemId)
     setSelectedItemId(itemId)
+    setIsLoadingStocks(true)
     try {
       const response = await getStockPrices(itemId)
       const stocks = response as StockPrice[]
       setSelectedItemStocks(stocks)
+      setStockPrices(stocks)
       setIsStockDialogOpen(true)
     } finally {
       setLoadingProductId(null)
+      setIsLoadingStocks(false)
     }
   }
 
-  const validateStock = (modelId: number, value: number): { isValid: boolean; minRequired: number } => {
-    const stock = selectedItemStocks.find(s => s.model_id === modelId);
-    if (!stock) return { isValid: true, minRequired: 0 };
-
-    const totalShopeeStock = stock.stock_info.shopee_stock.reduce((total, loc) => total + loc.stock, 0);
-    const minRequiredStock = stock.stock_info.total_reserved_stock - totalShopeeStock;
-
-    return {
-      isValid: value >= minRequiredStock,
-      minRequired: minRequiredStock
-    };
-  };
+  
 
   const handleStockChange = (modelId: number, newValue: number) => {
     setEditedStocks(prev => ({
@@ -152,24 +147,28 @@ export default function ProdukPage() {
       const product = products.find(p => p.item_id === selectedItemId);
       if (!product || !selectedItemId) return;
 
-      const [modelId, newStock] = Object.entries(editedStocks)[0];
-      
-      const modelData = stockPrices.find(m => m.model_id === parseInt(modelId));
-      const reservedStock = modelData?.stock_info.total_reserved_stock || 0;
+      // Menyiapkan data untuk semua model yang diubah
+      const modelUpdates = Object.entries(editedStocks).map(([modelId, newStock]) => {
+        const modelData = stockPrices.find(m => m.model_id === parseInt(modelId));
+        const reservedStock = modelData?.stock_info.total_reserved_stock || 0;
 
-      const success = await updateStock(
+        return {
+          modelId: parseInt(modelId),
+          newStock,
+          reservedStock
+        };
+      });
+
+      await updateStock(
         product.shop_id,
         selectedItemId,
-        parseInt(modelId),
-        newStock,
-        reservedStock
+        modelUpdates
       );
 
-      if (success) {
-        toast.success("Stok berhasil diperbarui");
-        setIsStockDialogOpen(false);
-        setEditedStocks({});
-      }
+      toast.success("Stok berhasil diperbarui");
+      setIsStockDialogOpen(false);
+      setEditedStocks({});
+      
     } catch (error) {
       console.error('Error saving stocks:', error);
       toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan saat menyimpan perubahan stok');
@@ -177,6 +176,31 @@ export default function ProdukPage() {
       setIsSavingStocks(false);
     }
   };
+
+  const handleSyncProducts = async () => {
+    if (selectedShops.length === 0) {
+      toast.error("Pilih minimal satu toko untuk disinkronkan")
+      return
+    }
+
+    setIsCurrentlySyncing(true)
+    setSyncProgress(0)
+    setSyncResult(null)
+    
+    try {
+      const result = await syncProducts(selectedShops, (progress) => {
+        setSyncProgress(progress)
+      })
+      
+      setSyncResult(result)
+      toast.success("Sinkronisasi selesai")
+    } catch (error) {
+      toast.error("Gagal menyinkronkan produk")
+    } finally {
+      setIsCurrentlySyncing(false)
+      setSyncProgress(0)
+    }
+  }
 
   return (
     <div className="p-6">
@@ -201,7 +225,11 @@ export default function ProdukPage() {
             </SelectContent>
           </Select>
 
-          <Button className="w-full sm:w-auto" disabled={isLoadingShops}>
+          <Button 
+            className="w-full sm:w-auto" 
+            disabled={isLoadingShops}
+            onClick={() => setIsSyncDialogOpen(true)}
+          >
             Sinkronisasi Produk
           </Button>
         </div>
@@ -559,6 +587,155 @@ export default function ProdukPage() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isSyncDialogOpen} onOpenChange={setIsSyncDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader className="pb-4 border-b">
+            <DialogTitle className="text-xl font-semibold">Sinkronisasi Produk</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Pilih toko yang akan disinkronkan produknya
+            </p>
+          </DialogHeader>
+          
+          <div className="py-6">
+            <div className="space-y-1 mb-4">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="select-all"
+                  checked={selectedShops.length === shops.length}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedShops(shops.map(shop => shop.shop_id))
+                    } else {
+                      setSelectedShops([])
+                    }
+                  }}
+                  disabled={isCurrentlySyncing}
+                />
+                <label htmlFor="select-all" className="text-sm font-medium">
+                  Pilih Semua Toko
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+              {shops.map((shop) => (
+                <div 
+                  key={shop.shop_id} 
+                  className={cn(
+                    "flex items-center space-x-3 p-3 rounded-lg border transition-colors",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    selectedShops.includes(shop.shop_id) && "border-primary bg-primary/5"
+                  )}
+                >
+                  <Checkbox
+                    id={`shop-${shop.shop_id}`}
+                    checked={selectedShops.includes(shop.shop_id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedShops([...selectedShops, shop.shop_id])
+                      } else {
+                        setSelectedShops(selectedShops.filter(id => id !== shop.shop_id))
+                      }
+                    }}
+                    disabled={isCurrentlySyncing}
+                  />
+                  <label 
+                    htmlFor={`shop-${shop.shop_id}`}
+                    className="flex-1 text-sm font-medium cursor-pointer"
+                  >
+                    {shop.shop_name}
+                  </label>
+                </div>
+              ))}
+            </div>
+
+            {isCurrentlySyncing && (
+              <div className="mt-6 space-y-3">
+                <div className="p-4 rounded-lg bg-muted">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="font-medium">Progress Sinkronisasi</span>
+                    <span className="text-primary">{Math.round(syncProgress)}%</span>
+                  </div>
+                  <Progress value={syncProgress} className="h-2" />
+                  <p className="text-sm text-muted-foreground mt-2 text-center">
+                    Mohon tunggu, sedang melakukan sinkronisasi...
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {syncResult && !isCurrentlySyncing && (
+              <div className="mt-6">
+                <div className="p-4 rounded-lg bg-muted space-y-3">
+                  <h4 className="font-medium">Hasil Sinkronisasi</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 rounded-md bg-background">
+                      <p className="text-sm text-muted-foreground">Total Produk</p>
+                      <p className="text-2xl font-semibold">{syncResult.total}</p>
+                    </div>
+                    <div className="p-3 rounded-md bg-background">
+                      <p className="text-sm text-muted-foreground">Berhasil Disinkronkan</p>
+                      <p className="text-2xl font-semibold text-primary">{syncResult.success}</p>
+                    </div>
+                  </div>
+                  {syncResult.total !== syncResult.success && (
+                    <div className="p-3 rounded-md bg-yellow-50 border-yellow-200 border text-yellow-800">
+                      <p className="text-sm">
+                        {syncResult.total - syncResult.success} produk gagal disinkronkan
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="border-t pt-4">
+            {!isCurrentlySyncing && syncResult ? (
+              <Button
+                onClick={() => {
+                  setIsSyncDialogOpen(false)
+                  setSelectedShops([])
+                  setSyncResult(null)
+                }}
+                className="w-24"
+              >
+                Tutup
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsSyncDialogOpen(false)
+                    setSelectedShops([])
+                    setSyncResult(null)
+                  }}
+                  disabled={isCurrentlySyncing}
+                  className="w-24"
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleSyncProducts}
+                  disabled={isCurrentlySyncing || selectedShops.length === 0}
+                  className="w-40"
+                >
+                  {isCurrentlySyncing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sinkronisasi...
+                    </>
+                  ) : (
+                    'Mulai Sinkronisasi'
+                  )}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
