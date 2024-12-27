@@ -241,20 +241,23 @@ export function Header() {
             >
               <Bell className="h-5 w-5" />
               {(notifications.length > 0 || (healthData?.data?.shop_health?.summary?.totalIssues ?? 0) > 0) && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] rounded-full w-4 h-4 flex items-center justify-center">
                   {notifications.length + (healthData?.data?.shop_health?.summary?.totalIssues ?? 0)}
                 </span>
               )}
               <span className="sr-only">Notifikasi</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[320px] md:w-[380px]">
+          <DropdownMenuContent 
+            align="end" 
+            className="w-[320px] md:w-[380px] md:right-0 translate-x-[10%]"
+          >
             <Tabs defaultValue="notifications" className="w-full">
               <TabsList className="w-full">
                 <TabsTrigger value="notifications" className="flex-1">
                   <span className="flex items-center gap-2">
                     <Bell className="h-4 w-4" />
-                    Notifikasi
+                    <span className="text-xs">Notifikasi</span>
                     {notifications.length > 0 && (
                       <span className="bg-red-500 text-white text-[8px] rounded-full w-4 h-4 flex items-center justify-center">
                         {notifications.length}
@@ -265,7 +268,7 @@ export function Header() {
                 <TabsTrigger value="health" className="flex-1">
                   <span className="flex items-center gap-2">
                     <Activity className="h-4 w-4" />
-                    Health Check
+                    <span className="text-xs">Health Check</span>
                     {healthData?.data?.shop_health?.summary?.totalIssues !== undefined && 
                      healthData?.data?.shop_health?.summary?.totalIssues > 0 && (
                       <span className="bg-yellow-500 text-white text-[8px] rounded-full w-4 h-4 flex items-center justify-center">
@@ -441,7 +444,7 @@ export function Header() {
 
               <TabsContent value="health">
                 <DropdownMenuLabel className="flex justify-between items-center border-b pb-2">
-                  <span className="font-semibold">Status Sistem</span>
+                  <span className="text-xs font-medium">Status Sistem</span>
                   <Button 
                     variant="ghost" 
                     size="sm" 
@@ -468,9 +471,9 @@ export function Header() {
                           ) : (
                             <AlertCircle className="h-4 w-4 text-red-500" />
                           )}
-                          <span className="font-medium">OpenAI Service</span>
+                          <span className="text-xs">OpenAI Service</span>
                           {!healthData.data.openai?.success && (
-                            <span className="text-xs text-red-600 ml-2">
+                            <span className="text-[11px] text-red-600 ml-2">
                               {healthData.data.openai?.message}
                             </span>
                           )}
@@ -488,7 +491,7 @@ export function Header() {
                             >
                               <div className="flex items-center gap-2 mb-2">
                                 <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                                <span className="font-medium">{shop.shop_name}</span>
+                                <span className="text-xs">{shop.shop_name}</span>
                               </div>
                               <ul className="space-y-1">
                                 {shop.issues.map((issue, i) => (
