@@ -13,11 +13,11 @@ export default function DashboardLayout({
     <SSEProvider>
       <Providers>
         <GlobalNotification />
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex h-screen w-full">
           <Sidebar />
-          <div className="flex flex-col flex-1 overflow-hidden md:pl-[56px]">
+          <div className="flex flex-col flex-1 md:pl-[56px]">
             <Header />
-            <main className="flex-1 overflow-auto">
+            <main className="flex-1 overflow-y-auto h-[calc(100vh-64px)]">
               {children}
             </main>
           </div>
