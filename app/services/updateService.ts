@@ -45,6 +45,9 @@ export class UpdateService {
 
   private static async sendUpdateNotification(shop_id: number, action: ShopeeUpdateWebhook['data']['actions'][0]) {
     try {
+      console.log('[UpdateService] Memulai proses notifikasi untuk shop_id:', shop_id);
+      console.log('[UpdateService] Data action yang diterima:', JSON.stringify(action, null, 2));
+
       // Simpan ke database dulu dan dapatkan ID-nya
       const { data: insertedData, error } = await supabase
         .from('shopee_notifications')
@@ -61,7 +64,12 @@ export class UpdateService {
         .select('id')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[UpdateService] Error saat menyimpan ke database:', error);
+        throw error;
+      }
+
+      console.log('[UpdateService] Berhasil menyimpan ke database dengan ID:', insertedData?.id);
 
       // Buat notifikasi dengan ID dari database
       const notification: UpdateNotification = {
