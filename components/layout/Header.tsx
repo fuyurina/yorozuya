@@ -29,7 +29,7 @@ interface Notification {
 }
 
 export function Header() {
-  const { status } = useSession()
+
   const [isMobile, setIsMobile] = useState(false)
   const { theme, setTheme } = useTheme()
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -131,10 +131,7 @@ export function Header() {
     }
   }
 
-  // Pindahkan early return setelah semua hooks
-  if (status !== "authenticated") {
-    return null
-  }
+
 
   return (
     <header className="flex h-[53px] items-center justify-between gap-4 border-b bg-muted/40 px-4 lg:px-6">

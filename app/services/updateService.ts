@@ -35,10 +35,6 @@ export class UpdateService {
     try {
       // Proses setiap update dalam actions array
       for (const action of data.data.actions) {
-        await this.saveUpdateToDatabase({
-          ...data,
-          data: { actions: [action] } // Simpan satu action per record
-        });
         await this.sendUpdateNotification(data.shop_id, action);
       }
     } catch (error) {
@@ -47,38 +43,49 @@ export class UpdateService {
     }
   }
 
-  private static async saveUpdateToDatabase(data: ShopeeUpdateWebhook) {
-    const { error } = await supabase
-      .from('shopee_notifications')
-      .insert({
-        notification_type: 'shopee_update',
-        shop_id: data.shop_id,
-        data: data,
-        processed: true,
-        read: false
-      });
-
-    if (error) throw error;
-  }
-
   private static async sendUpdateNotification(shop_id: number, action: ShopeeUpdateWebhook['data']['actions'][0]) {
-    const notification: UpdateNotification = {
-      type: 'shopee_update',
-      action: 'UPDATE',
-      shop_id: shop_id,
-      title: action.title,
-      content: action.content,
-      url: action.url,
-      details: {
+    try {
+      // Simpan ke database dulu dan dapatkan ID-nya
+      const { data: insertedData, error } = await supabase
+        .from('shopee_notifications')
+        .insert({
+          notification_type: 'shopee_update',
+          shop_id: shop_id,
+          data: {
+            shop_id,
+            data: { actions: [action] }
+          },
+          processed: false,
+          read: false
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+
+      // Buat notifikasi dengan ID dari database
+      const notification: UpdateNotification = {
+        id: insertedData.id,
+        type: 'shopee_update',
+        action: 'UPDATE',
+        shop_id: shop_id,
         title: action.title,
         content: action.content,
-        url: action.url
-      },
-      timestamp: action.update_time,
-      read: false
-    };
+        url: action.url,
+        details: {
+          title: action.title,
+          content: action.content,
+          url: action.url
+        },
+        timestamp: action.update_time,
+        read: false
+      };
 
-    sendEventToAll(notification);
+      sendEventToAll(notification);
+    } catch (error) {
+      console.error('Error sending update notification:', error);
+      throw error;
+    }
   }
 
   public static createUpdateNotification(notification: any): UpdateNotification {

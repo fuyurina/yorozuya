@@ -36,14 +36,20 @@ export async function GET(req: Request) {
     const transformedNotifications = notifications.map(notification => {
       switch (notification.notification_type) {
         case 'shop_penalty':
-          return PenaltyService.createPenaltyNotification(notification.data);
+          return {
+            id: notification.id,
+            ...PenaltyService.createPenaltyNotification(notification.data)
+          };
         case 'shopee_update':
           return UpdateService.createUpdateNotification({
             ...notification,
             id: notification.id
           });
         case 'item_violation':
-          return ViolationService.createViolationNotification(notification.data);
+          return {
+            id: notification.id,
+            ...ViolationService.createViolationNotification(notification.data)
+          };
         default:
           return null;
       }

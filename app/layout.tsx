@@ -46,27 +46,14 @@ const ThemeProvider = dynamic(() => import('@/components/layout/theme-provider')
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" className="h-full overflow-hidden">
-      <body className={`h-full ${inter.className} flex flex-col overflow-hidden`}>
+      <body className={`h-full ${inter.className}`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <SSEProvider>
-            <Providers>
-              <GlobalNotification />
-              <div className="flex flex-1 overflow-hidden">
-                <Sidebar />
-                <div className="flex flex-col flex-1 overflow-hidden md:pl-[56px]">
-                  <Header />
-                  <main className="flex-1 overflow-auto">
-                    <Providers>{children}</Providers>
-                  </main>
-                </div>
-              </div>
-            </Providers>
-          </SSEProvider>
+          {children}
         </ThemeProvider>
         <Toaster richColors expand={false} />
       </body>

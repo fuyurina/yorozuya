@@ -83,7 +83,6 @@ export const PENALTY_ACTIONS = {
 export class PenaltyService {
   static async handlePenalty(data: ShopPenaltyWebhook) {
     try {
-      await this.savePenaltyToDatabase(data);
       await this.processPenaltyAction(data);
       await this.updateProcessedStatus(data);
       await this.sendPenaltyNotification(data);
@@ -91,20 +90,6 @@ export class PenaltyService {
       console.error('Error handling penalty:', error);
       throw error;
     }
-  }
-
-  private static async savePenaltyToDatabase(data: ShopPenaltyWebhook) {
-    const { error } = await supabase
-      .from('shopee_notifications')
-      .insert({
-        notification_type: 'shop_penalty',
-        shop_id: data.shop_id,
-        data: data,
-        processed: false,
-        read: false
-      });
-
-    if (error) throw error;
   }
 
   private static async processPenaltyAction(data: ShopPenaltyWebhook) {

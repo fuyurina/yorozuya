@@ -15,13 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Package, Clock, Truck, XCircle, AlertCircle, RefreshCcw, Search, Filter, Printer, PrinterCheck, CheckSquare, CheckCircle, Send, MessageSquare } from 'lucide-react'
 import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { OrderDetails } from '@/app/dashboard/OrderDetails'
+import { OrderDetails } from './OrderDetails'
 import { useShippingDocument } from '@/app/hooks/useShippingDocument';
 import { Button } from "@/components/ui/button";
 import { mergePDFs } from '@/app/utils/pdfUtils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { OrderHistory } from '@/app/dashboard/OrderHistory';
+import { OrderHistory } from './OrderHistory';
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 

@@ -61,7 +61,6 @@ export interface ViolationNotification {
 export class ViolationService {
   static async handleViolation(data: ViolationItemWebhook) {
     try {
-      await this.saveViolationToDatabase(data);
       await this.sendViolationNotification(data);
     } catch (error) {
       console.error('Error handling violation:', error);
@@ -69,23 +68,35 @@ export class ViolationService {
     }
   }
 
-  private static async saveViolationToDatabase(data: ViolationItemWebhook) {
-    const { error } = await supabase
-      .from('shopee_notifications')
-      .insert({
-        notification_type: 'item_violation',
-        shop_id: data.shop_id,
-        data: data,
-        processed: true,
-        read: false
-      });
-
-    if (error) throw error;
-  }
-
   private static async sendViolationNotification(data: ViolationItemWebhook) {
-    const notification = this.createViolationNotification(data);
-    sendEventToAll(notification);
+    try {
+      // Simpan ke database dan dapatkan ID
+      const { data: insertedData, error } = await supabase
+        .from('shopee_notifications')
+        .insert({
+          notification_type: 'item_violation',
+          shop_id: data.shop_id,
+          data: data,
+          processed: true,
+          read: false
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+
+      // Buat notifikasi dengan ID dari database
+      const notification = this.createViolationNotification(data);
+      const notificationWithId = {
+        ...notification,
+        id: insertedData.id
+      };
+
+      sendEventToAll(notificationWithId);
+    } catch (error) {
+      console.error('Error sending violation notification:', error);
+      throw error;
+    }
   }
 
   public static createViolationNotification(data: ViolationItemWebhook): ViolationNotification {
