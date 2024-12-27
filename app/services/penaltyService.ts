@@ -129,8 +129,34 @@ export class PenaltyService {
   }
 
   private static async sendPenaltyNotification(data: ShopPenaltyWebhook) {
-    const notification = this.createPenaltyNotification(data);
-    sendEventToAll(notification);
+    try {
+      // Simpan ke database dulu dan dapatkan ID-nya
+      const { data: insertedData, error } = await supabase
+        .from('shopee_notifications')
+        .insert({
+          notification_type: 'shop_penalty',
+          shop_id: data.shop_id,
+          data: data,
+          processed: false,
+          read: false
+        })
+        .select('id') // Ambil ID yang baru dibuat
+        .single()
+
+      if (error) throw error;
+
+      // Gunakan ID dari database untuk notifikasi
+      const notification = this.createPenaltyNotification(data);
+      const notificationWithId = {
+        ...notification,
+        id: insertedData.id // Gunakan ID dari database
+      };
+
+      sendEventToAll(notificationWithId);
+    } catch (error) {
+      console.error('Error sending penalty notification:', error);
+      throw error;
+    }
   }
 
   public static createPenaltyNotification(data: ShopPenaltyWebhook): PenaltyNotification {

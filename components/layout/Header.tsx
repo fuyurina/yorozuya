@@ -37,8 +37,27 @@ export function Header() {
   const { lastMessage } = useSSE()
 
   useEffect(() => {
+    if (!lastMessage) return
+    
+    if (['shop_penalty', 'shopee_update', 'item_violation'].includes(lastMessage.type)) {
+      setNotifications(prev => [{
+        id: lastMessage.id,
+        type: lastMessage.type,
+        action: lastMessage.action,
+        shop_id: lastMessage.shop_id,
+        details: lastMessage.details,
+        timestamp: lastMessage.timestamp,
+        read: false,
+        title: lastMessage.title,
+        content: lastMessage.content,
+        url: lastMessage.url
+      }, ...prev])
+    }
+  }, [lastMessage])
+
+  useEffect(() => {
     fetchNotifications()
-  }, []) // Fetch saat komponen dimount
+  }, [])
 
   useEffect(() => {
     const checkIsMobile = () => {
@@ -50,14 +69,6 @@ export function Header() {
 
     return () => window.removeEventListener('resize', checkIsMobile)
   }, [])
-
-  useEffect(() => {
-    if (!lastMessage) return
-    
-    if (['shop_penalty', 'shopee_update', 'item_violation'].includes(lastMessage.type)) {
-      fetchNotifications()
-    }
-  }, [lastMessage])
 
   // Fungsi-fungsi handler
   const fetchNotifications = async () => {
