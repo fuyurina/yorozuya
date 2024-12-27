@@ -29,14 +29,37 @@ interface Notification {
 }
 
 export function Header() {
-  const { status } = useSession() // Tambahkan hook useSession
+  const { status } = useSession()
   const [isMobile, setIsMobile] = useState(false)
-  const { theme, setTheme } = useTheme() // Gunakan useTheme
+  const { theme, setTheme } = useTheme()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
-  const { lastMessage } = useSSE();
+  const { lastMessage } = useSSE()
 
-  // Fetch notifications
+  useEffect(() => {
+    fetchNotifications()
+  }, []) // Fetch saat komponen dimount
+
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    checkIsMobile()
+    window.addEventListener('resize', checkIsMobile)
+
+    return () => window.removeEventListener('resize', checkIsMobile)
+  }, [])
+
+  useEffect(() => {
+    if (!lastMessage) return
+    
+    if (['shop_penalty', 'shopee_update', 'item_violation'].includes(lastMessage.type)) {
+      fetchNotifications()
+    }
+  }, [lastMessage])
+
+  // Fungsi-fungsi handler
   const fetchNotifications = async () => {
     try {
       setLoading(true)
@@ -51,17 +74,6 @@ export function Header() {
     }
   }
 
-  // Tambahkan useEffect untuk lastMessage
-  useEffect(() => {
-    if (!lastMessage) return;
-    
-    // Refresh notifikasi ketika ada message baru
-    if (['shop_penalty', 'shopee_update', 'item_violation'].includes(lastMessage.type)) {
-      fetchNotifications();
-    }
-  }, [lastMessage]);
-
-  // Handle klik notifikasi
   const handleNotificationClick = async (notificationId: number) => {
     try {
       await fetch('/api/notifications', {
@@ -77,7 +89,6 @@ export function Header() {
     }
   }
 
-  // Handle tandai semua dibaca
   const markAllAsRead = async () => {
     try {
       const notificationIds = notifications.map(n => n.id)
@@ -94,19 +105,8 @@ export function Header() {
     }
   }
 
-  useEffect(() => {
-    const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-
-    checkIsMobile()
-    window.addEventListener('resize', checkIsMobile)
-
-    return () => window.removeEventListener('resize', checkIsMobile)
-  }, [])
-
   const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark') // Ubah tema
+    setTheme(theme === 'dark' ? 'light' : 'dark')
   }
 
   const handleLogout = async () => {
@@ -120,14 +120,10 @@ export function Header() {
     }
   }
 
-  // Jika user belum login, jangan tampilkan header
+  // Pindahkan early return setelah semua hooks
   if (status !== "authenticated") {
     return null
   }
-
-  useEffect(() => {
-    fetchNotifications();
-  }, []); // Fetch saat komponen dimount
 
   return (
     <header className="flex h-[53px] items-center justify-between gap-4 border-b bg-muted/40 px-4 lg:px-6">
