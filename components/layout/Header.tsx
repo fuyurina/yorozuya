@@ -125,6 +125,10 @@ export function Header() {
     return null
   }
 
+  useEffect(() => {
+    fetchNotifications();
+  }, []); // Fetch saat komponen dimount
+
   return (
     <header className="flex h-[53px] items-center justify-between gap-4 border-b bg-muted/40 px-4 lg:px-6">
       <div className="w-[60px]">

@@ -4,66 +4,109 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
 interface SSEContextType {
-  lastMessage: any;
+  connectionId: string | null;
+  isConnected: boolean;
+  lastMessage: any | null;
 }
 
-const SSEContext = createContext<SSEContextType>({ lastMessage: null });
+const SSEContext = createContext<SSEContextType | null>(null);
+
+class SSEService {
+  private static instance: SSEService;
+  private eventSource: EventSource | null = null;
+  
+  private constructor() {}
+
+  static getInstance() {
+    if (!SSEService.instance) {
+      SSEService.instance = new SSEService();
+    }
+    return SSEService.instance;
+  }
+
+  connect() {
+    if (this.eventSource) return;
+
+    try {
+      const url = new URL('/api/webhook', window.location.origin);
+      this.eventSource = new EventSource(url.toString());
+      
+      return this.eventSource;
+    } catch (err) {
+      console.error('Error initializing SSE:', err);
+      return null;
+    }
+  }
+
+  disconnect() {
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+    }
+  }
+}
 
 export function SSEProvider({ children }: { children: React.ReactNode }) {
-  const [lastMessage, setLastMessage] = useState<any>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 3;
+  const [connectionId, setConnectionId] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [lastMessage, setLastMessage] = useState<any | null>(null);
 
   useEffect(() => {
-    let eventSource: EventSource | null = null;
-    
-    const connectSSE = () => {
-      eventSource = new EventSource('/api/webhook');
+    const sseService = SSEService.getInstance();
+    const eventSource = sseService.connect();
+
+    if (eventSource) {
+      eventSource.onopen = () => {
+        console.log('SSE terhubung');
+        setIsConnected(true);
+      };
 
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          setLastMessage(data);
           
-          // Handle berbagai tipe notifikasi
-          if (['new_message', 'new_order', 'item_violation', 'shopee_update'].includes(data.type)) {
-            setLastMessage(data);
+          if (data.type === 'connection_established') {
+            setConnectionId(data.connectionId);
           }
           
-          // Reset retry count pada koneksi sukses
-          setRetryCount(0);
-        } catch (error) {
-          console.error('Error parsing SSE message:', error);
+          window.dispatchEvent(
+            new CustomEvent('sse-message', { detail: data })
+          );
+        } catch (err) {
+          console.error('Error parsing SSE message:', err);
         }
       };
 
-      eventSource.onerror = (error) => {
-        console.error('SSE connection error:', error);
-        eventSource?.close();
+      eventSource.onerror = () => {
+        console.error('SSE connection error');
+        setIsConnected(false);
+        sseService.disconnect();
         
-        // Coba reconnect dengan exponential backoff
-        if (retryCount < MAX_RETRIES) {
-          const timeout = Math.min(1000 * Math.pow(2, retryCount), 10000);
-          setTimeout(() => {
-            setRetryCount(prev => prev + 1);
-            connectSSE();
-          }, timeout);
-        }
+        // Reconnect setelah 5 detik
+        setTimeout(() => {
+          sseService.connect();
+        }, 5000);
       };
-    };
+    }
 
-    connectSSE();
-
-    // Cleanup pada unmount
     return () => {
-      eventSource?.close();
+      sseService.disconnect();
+      setIsConnected(false);
     };
-  }, [retryCount]);
+  }, []);
 
   return (
-    <SSEContext.Provider value={{ lastMessage }}>
+    <SSEContext.Provider value={{ connectionId, isConnected, lastMessage }}>
       {children}
     </SSEContext.Provider>
   );
 }
 
-export const useSSE = () => useContext(SSEContext);
+export const useSSE = () => {
+  const context = useContext(SSEContext);
+  if (!context) {
+    throw new Error('useSSE harus digunakan dalam SSEProvider');
+  }
+  return context;
+};
