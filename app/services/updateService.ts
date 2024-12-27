@@ -31,11 +31,24 @@ export interface UpdateNotification {
 
 // Service Class
 export class UpdateService {
-  static async handleUpdate(data: ShopeeUpdateWebhook) {
+  static async handleUpdate(webhookData: any) {
     try {
-      // Proses setiap update dalam actions array
-      for (const action of data.data.actions) {
-        await this.sendUpdateNotification(data.shop_id, action);
+      let actionsToProcess = [];
+      
+      // Cek struktur data dan sesuaikan
+      if (Array.isArray(webhookData.data)) {
+        // Struktur pertama: data langsung berupa array
+        actionsToProcess = webhookData.data;
+      } else if (webhookData.data?.actions) {
+        // Struktur kedua: data.actions berupa array
+        actionsToProcess = webhookData.data.actions;
+      } else {
+        throw new Error('Invalid update webhook structure');
+      }
+
+      // Proses setiap action
+      for (const action of actionsToProcess) {
+        await this.sendUpdateNotification(webhookData.shop_id, action);
       }
     } catch (error) {
       console.error('Error handling update:', error);
