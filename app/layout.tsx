@@ -7,8 +7,7 @@ import { Toaster } from 'sonner';
 import Providers from "./services/Providers"
 import { SSEProvider } from './services/SSEService';
 import { GlobalNotification } from '@/components/GlobalNotification';
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "./api/auth/[...nextauth]/route"
+import { useSession } from "next-auth/react"
 
 import type { Viewport } from 'next'
 
@@ -45,8 +44,9 @@ const ThemeProvider = dynamic(() => import('@/components/layout/theme-provider')
   ssr: false
 })
 
-export default async function RootLayout({ children }: RootLayoutProps) {
-  const session = await getServerSession(authOptions)
+export default function RootLayout({ children }: RootLayoutProps) {
+  const { status } = useSession()
+  const isAuthenticated = status === "authenticated"
 
   return (
     <html lang="en" className="h-full overflow-hidden">
@@ -59,11 +59,11 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         >
           <SSEProvider>
             <Providers>
-              {session && <GlobalNotification />}
+              {isAuthenticated && <GlobalNotification />}
               <div className="flex flex-1 overflow-hidden">
-                {session && <Sidebar />}
+                <Sidebar />
                 <div className="flex flex-col flex-1 overflow-hidden md:pl-[56px]">
-                  {session && <Header />}
+                  <Header />
                   <main className="flex-1 overflow-auto">
                     <Providers>{children}</Providers>
                   </main>
