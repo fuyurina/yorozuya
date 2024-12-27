@@ -35,9 +35,13 @@ export function useOrderSearch() {
       const { data, error } = await query.order('create_time', { ascending: false })
 
       if (error) throw error
-      setSearchResults(data)
+      
+      const results = data || []
+      setSearchResults(results)
+      
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Terjadi kesalahan saat mencari pesanan')
+      setSearchResults([])
     } finally {
       setLoading(false)
     }

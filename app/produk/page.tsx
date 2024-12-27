@@ -83,6 +83,10 @@ export default function ProdukPage() {
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
   const [stockPrices, setStockPrices] = useState<StockPrice[]>([])
   const [syncResult, setSyncResult] = useState<{ success: number; total: number } | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<number[]>([])
+  const [isBulkStockDialogOpen, setIsBulkStockDialogOpen] = useState(false)
+  const [bulkStockValue, setBulkStockValue] = useState<number>(0)
+  const [isSavingBulkStock, setIsSavingBulkStock] = useState(false)
 
   const filteredProducts = products.filter((product) => {
     if (selectedShopId === 'all') return true
@@ -159,15 +163,28 @@ export default function ProdukPage() {
         };
       });
 
-      await updateStock(
+      const result = await updateStock(
         product.shop_id,
         selectedItemId,
         modelUpdates
       );
 
-      toast.success("Stok berhasil diperbarui");
-      setIsStockDialogOpen(false);
-      setEditedStocks({});
+      if (result.success) {
+        toast.success("Stok berhasil diperbarui");
+        setIsStockDialogOpen(false);
+        setEditedStocks({});
+      } else {
+        // Jika ada model yang gagal diupdate
+        if (result.failedModels?.length > 0) {
+          toast.error("Beberapa varian gagal diupdate", {
+            description: result.failedModels.map((fail: { modelId: number; reason: string }) => 
+              `Model ID ${fail.modelId}: ${fail.reason}`
+            ).join('\n')
+          });
+        } else {
+          toast.error(result.message || "Gagal memperbarui stok");
+        }
+      }
       
     } catch (error) {
       console.error('Error saving stocks:', error);
@@ -202,6 +219,107 @@ export default function ProdukPage() {
     }
   }
 
+  const handleSelectProduct = (itemId: number) => {
+    setSelectedProducts(prev => {
+      if (prev.includes(itemId)) {
+        return prev.filter(id => id !== itemId)
+      }
+      return [...prev, itemId]
+    })
+  }
+
+  const handleSelectAllProducts = (checked: boolean) => {
+    if (checked) {
+      setSelectedProducts(filteredProducts.map(p => p.item_id))
+    } else {
+      setSelectedProducts([])
+    }
+  }
+
+  const handleBulkStockUpdate = async () => {
+    if (selectedProducts.length === 0) return
+    
+    setIsSavingBulkStock(true)
+    let successCount = 0
+    let failedCount = 0
+
+    try {
+      // Buat array of promises untuk semua produk yang dipilih
+      const updatePromises = selectedProducts.map(async (productId) => {
+        const product = products.find(p => p.item_id === productId)
+        if (!product) {
+          return { success: false, productId, error: 'Product not found' }
+        }
+
+        try {
+          const stocks = await getStockPrices(productId)
+          const modelUpdates = stocks.map(stock => ({
+            modelId: stock.model_id,
+            newStock: Math.max(bulkStockValue, stock.stock_info.total_reserved_stock),
+            reservedStock: stock.stock_info.total_reserved_stock
+          }))
+
+          const result = await updateStock(
+            product.shop_id,
+            productId,
+            modelUpdates
+          )
+          
+          return { 
+            success: result.success, 
+            productId,
+            error: result.message,
+            failedModels: result.failedModels 
+          }
+        } catch (error) {
+          return { 
+            success: false, 
+            productId,
+            error: error instanceof Error ? error.message : 'Unknown error' 
+          }
+        }
+      })
+
+      // Jalankan semua promises secara parallel
+      const results = await Promise.all(updatePromises)
+
+      // Hitung hasil
+      results.forEach(result => {
+        if (result.success) {
+          successCount++
+        } else {
+          failedCount++
+          console.error(`Failed to update stock for product ${result.productId}:`, result.error)
+        }
+      })
+
+      // Tampilkan hasil
+      if (successCount > 0 || failedCount > 0) {
+        const messages = []
+        if (successCount > 0) messages.push(`${successCount} produk berhasil diupdate`)
+        if (failedCount > 0) messages.push(`${failedCount} produk gagal diupdate`)
+        
+        toast[failedCount > 0 ? 'error' : 'success']('Update Stok Massal', {
+          description: messages.join(', ')
+        })
+      }
+
+      // Reset state
+      setSelectedProducts([])
+      setIsBulkStockDialogOpen(false)
+      setBulkStockValue(0)
+      
+      // Refresh data produk
+      loadProducts()
+
+    } catch (error) {
+      toast.error("Terjadi kesalahan saat mengupdate stok")
+      console.error('Bulk update error:', error)
+    } finally {
+      setIsSavingBulkStock(false)
+    }
+  }
+
   return (
     <div className="p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -225,6 +343,15 @@ export default function ProdukPage() {
             </SelectContent>
           </Select>
 
+          {selectedProducts.length > 0 && (
+            <Button 
+              onClick={() => setIsBulkStockDialogOpen(true)}
+              variant="default"
+            >
+              Update Stok ({selectedProducts.length})
+            </Button>
+          )}
+
           <Button 
             className="w-full sm:w-auto" 
             disabled={isLoadingShops}
@@ -239,6 +366,16 @@ export default function ProdukPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                <Checkbox
+                  checked={
+                    filteredProducts.length > 0 &&
+                    selectedProducts.length === filteredProducts.length
+                  }
+                  onCheckedChange={handleSelectAllProducts}
+                  aria-label="Select all"
+                />
+              </TableHead>
               <TableHead className="w-[80px] sm:w-[100px]">Gambar</TableHead>
               <TableHead>Nama Produk</TableHead>
               <TableHead className="w-[80px]">Aksi</TableHead>
@@ -256,6 +393,13 @@ export default function ProdukPage() {
             ) : (
               filteredProducts.map((product) => (
                 <TableRow key={product.item_id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedProducts.includes(product.item_id)}
+                      onCheckedChange={() => handleSelectProduct(product.item_id)}
+                      aria-label={`Select ${product.item_name}`}
+                    />
+                  </TableCell>
                   <TableCell className="w-[100px]">
                     {product.image_url_list?.[0] ? (
                       <div className="relative aspect-square">
@@ -735,6 +879,59 @@ export default function ProdukPage() {
                 </Button>
               </>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isBulkStockDialogOpen} onOpenChange={setIsBulkStockDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Update Stok Massal</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Jumlah Stok Baru
+                </label>
+                <input
+                  type="number"
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                  value={bulkStockValue}
+                  onChange={(e) => setBulkStockValue(parseInt(e.target.value) || 0)}
+                  min={0}
+                />
+              </div>
+              
+              <div className="text-sm text-muted-foreground">
+                <p>• {selectedProducts.length} produk akan diupdate</p>
+                <p>• Stok akan disesuaikan dengan stok minimum yang dikunci untuk setiap varian</p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsBulkStockDialogOpen(false)}
+              disabled={isSavingBulkStock}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleBulkStockUpdate}
+              disabled={isSavingBulkStock}
+            >
+              {isSavingBulkStock ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                'Update Stok'
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -111,7 +111,7 @@ export async function getValidAccessToken(shopId: number): Promise<string> {
         
         throw new Error('Token tidak ditemukan');
     } catch (error) {
-        console.error('Gagal mendapatkan access token:', error);
-        throw new Error('Gagal mendapatkan access token');
+        console.error('Gagal mendapatkan access token untuk toko', shopId, error);
+        throw new Error(`Gagal mendapatkan access token untuk toko ${shopId}`);
     }
 }

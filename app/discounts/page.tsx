@@ -48,6 +48,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { MoreVertical as MoreVerticalIcon } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from 'lucide-react';
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 interface DiscountModel {
   model_id: number;
@@ -442,7 +446,7 @@ export default function DiscountsPage() {
       </div>
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+        <div className="flex flex-row items-center gap-4 w-full md:w-auto">
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Filter berdasarkan status" />
@@ -469,10 +473,10 @@ export default function DiscountsPage() {
             </SelectContent>
           </Select>
         </div>
-        
+
         <Button 
           onClick={handleAddDiscount}
-          className="flex items-center gap-2 w-full sm:w-auto"
+          className="flex items-center gap-2 w-full md:w-auto"
         >
           <PlusIcon className="w-4 h-4" />
           Buat Promo Baru
@@ -640,7 +644,6 @@ export default function DiscountsPage() {
           {isDuplicating ? (
             <div className="py-8 space-y-6">
               <div className="flex flex-col items-center justify-center space-y-6">
-                {/* Loading Indicator yang Lebih Baik */}
                 <div className="relative">
                   <div className="w-16 h-16 rounded-full border-4 border-slate-100">
                     <div className="absolute top-0 left-0 w-16 h-16 rounded-full border-4 border-primary animate-spin border-t-transparent" />
@@ -650,7 +653,6 @@ export default function DiscountsPage() {
                   </div>
                 </div>
                 
-                {/* Progress Steps dengan Visual yang Lebih Baik */}
                 <div className="w-full max-w-sm space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
@@ -734,7 +736,6 @@ export default function DiscountsPage() {
             </div>
           ) : (
             <div className="py-4 space-y-6">
-              {/* Preview Informasi Promo */}
               <div className="space-y-4">
                 <div className="grid gap-4 p-4 border rounded-lg bg-slate-50">
                   <div className="grid grid-cols-2 gap-2 text-sm">
@@ -764,7 +765,6 @@ export default function DiscountsPage() {
                   </div>
                 </div>
 
-                {/* Info & Warning */}
                 <div className="flex items-start gap-2 p-3 text-sm bg-amber-50 border-l-4 border-amber-500 rounded">
                   <AlertTriangleIcon className="w-5 h-5 text-amber-500 flex-shrink-0" />
                   <p>

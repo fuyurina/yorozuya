@@ -1,7 +1,7 @@
 'use client'
 import { useOrders } from '@/app/hooks/useOrders'
 import type { Order } from '@/app/hooks/useOrders'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Calendar } from "@/components/ui/calendar"
 import {
   Popover,
@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useOrderSearch } from '@/app/hooks/useOrderSearch'
+import { toast } from 'sonner'
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleString('id-ID', {
@@ -198,42 +199,63 @@ export default function OrdersPage() {
   // Tambahkan state untuk tracking SKU yang sedang diperluas
   const [expandedSku, setExpandedSku] = useState<string | null>(null);
 
-  // Modifikasi logika filtering
-  const filteredOrders = searchResults.length > 0 
-    ? searchResults  // Langsung gunakan hasil pencarian jika ada
-    : orders.filter(order => {  // Gunakan filter hanya jika tidak ada hasil pencarian
-        if (!activeFilter) return true
-        
-        if (activeFilter === 'failed') {
-          return order.cancel_reason === 'Failed Delivery'
-        }
-        
-        switch (activeFilter) {
-          case 'pending':
-            return order.order_status === 'UNPAID'
-          case 'process':
-            return order.order_status === 'PROCESSED'
-          case 'shipping':
-            return order.order_status === 'SHIPPED'
-          case 'cancel':
-            return order.order_status === 'CANCELLED'
-          case 'total':
-            if (order.cancel_reason === 'Failed Delivery') return false
-            return !['CANCELLED'].includes(order.order_status)
-          default:
-            return true
-        }
-      })
-      .filter(order => {
-        if (selectedShops.length === 0) return true
-        return selectedShops.includes(order.shop_name)
-      })
+  // Tambahkan state untuk tracking apakah pencarian baru saja dilakukan
+  const [isSearching, setIsSearching] = useState(false)
 
-  // Reset filter dan shop selection ketika melakukan pencarian
+  // Tambahkan state untuk loading pencarian
+  const [isSearchLoading, setIsSearchLoading] = useState(false)
+
+  // Optimisasi filtered orders dengan useMemo
+  const filteredOrders = useMemo(() => {
+    if (searchResults.length > 0) return searchResults
+    
+    return orders.filter(order => {
+      if (!activeFilter) return true
+      
+      if (activeFilter === 'failed') {
+        return order.cancel_reason === 'Failed Delivery'
+      }
+      
+      switch (activeFilter) {
+        case 'pending':
+          return order.order_status === 'UNPAID'
+        case 'process':
+          return order.order_status === 'PROCESSED'
+        case 'shipping':
+          return order.order_status === 'SHIPPED'
+        case 'cancel':
+          return order.order_status === 'CANCELLED'
+        case 'total':
+          if (order.cancel_reason === 'Failed Delivery') return false
+          return !['CANCELLED'].includes(order.order_status)
+        default:
+          return true
+      }
+    }).filter(order => {
+      if (selectedShops.length === 0) return true
+      return selectedShops.includes(order.shop_name)
+    })
+  }, [searchResults, orders, activeFilter, selectedShops])
+
+  // Optimisasi fungsi format dengan useCallback
+  // Tambahkan useEffect untuk memantau hasil pencarian
+  useEffect(() => {
+    if (isSearching && !searchLoading) {
+      if (searchResults.length === 0) {
+        toast.error(`Tidak ditemukan hasil untuk pencarian "${searchQuery}" pada ${
+          searchType === "order_sn" ? "nomor pesanan" :
+          searchType === "tracking_number" ? "nomor resi" :
+          "username"
+        }`)
+      }
+      setIsSearching(false)
+    }
+  }, [searchResults, searchLoading, isSearching, searchQuery, searchType])
+
   const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       if (searchQuery.length < 4) {
-        alert(`Minimal 4 karakter untuk melakukan pencarian ${
+        toast.error(`Minimal 4 karakter untuk melakukan pencarian ${
           searchType === "order_sn" ? "nomor pesanan" :
           searchType === "tracking_number" ? "nomor resi" :
           "username"
@@ -241,22 +263,21 @@ export default function OrdersPage() {
         return
       }
       
-      // Reset filter
+      // Set loading state sebelum pencarian
+      setIsSearchLoading(true)
       setActiveFilter(null)
       setSelectedShops([])
+      setIsSearching(true)
       
       const searchParams = {
         [searchType]: searchQuery
       }
-      await searchOrders(searchParams)
       
-      // Cek searchResults langsung
-      if (searchResults.length === 0) {
-        alert(`Tidak ditemukan hasil untuk pencarian "${searchQuery}" pada ${
-          searchType === "order_sn" ? "nomor pesanan" :
-          searchType === "tracking_number" ? "nomor resi" :
-          "username"
-        }`)
+      try {
+        await searchOrders(searchParams)
+      } finally {
+        // Reset loading state setelah pencarian selesai
+        setIsSearchLoading(false)
       }
     }
   }
@@ -479,7 +500,7 @@ export default function OrdersPage() {
       .slice(0, 10) // Ambil 10 SKU teratas
   }, [getShopsSummary])
 
-  const [selectedSku, setSelectedSku] = useState<string | null>(null);
+ 
 
   const handleSkuClick = (skuName: string) => {
     setExpandedSku(expandedSku === skuName ? null : skuName);
@@ -492,7 +513,7 @@ export default function OrdersPage() {
     }).filter(Boolean);
   };
 
-  if (ordersLoading || searchLoading) {
+  if (ordersLoading) {
     return (
       <div className="w-full p-4 sm:p-6 space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -532,9 +553,62 @@ export default function OrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...Array(10)].map((_, i) => (
-                <TableRowSkeleton key={i} />
-              ))}
+              {isSearchLoading ? (
+                // Tampilkan skeleton loader saat pencarian
+                Array(10).fill(0).map((_, i) => (
+                  <TableRowSkeleton key={`search-skeleton-${i}`} />
+                ))
+              ) : (
+                // Tampilkan data normal
+                <>
+                  {visibleOrders.map((order, index) => (
+                    <TableRow 
+                      key={order.order_sn}
+                      className={index % 2 === 0 ? 'bg-muted dark:bg-gray-800/50' : 'bg-gray-100/20 dark:bg-gray-900'}
+                    >
+                      <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white text-center">{index + 1}</TableCell>
+                      <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap max-w-[80px] sm:max-w-none overflow-hidden text-ellipsis">{order.shop_name}</TableCell>
+                      <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{formatDate(order.create_time)}</TableCell>
+                      <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <span>{order.order_sn}</span>
+                          {order.cod && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-600 text-white dark:bg-red-500">
+                              COD
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.buyer_username}</TableCell>
+                      <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                        Rp {parseInt(order.total_amount).toLocaleString('id-ID')}
+                      </TableCell>
+                      <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.sku_qty}</TableCell>
+                      <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                        {order.shipping_carrier || '-'} ({order.tracking_number || '-'})
+                      </TableCell>
+                      <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          order.order_status === 'READY_TO_SHIP' ? 'bg-green-600 text-white' :
+                          order.order_status === 'PROCESSED' ? 'bg-blue-600 text-white' :
+                          order.order_status === 'SHIPPED' ? 'bg-indigo-600 text-white' :
+                          order.order_status === 'CANCELLED' ? 'bg-red-600 text-white' :
+                          order.order_status === 'IN_CANCEL' ? 'bg-yellow-600 text-white' :
+                          order.order_status === 'TO_RETURN' ? 'bg-purple-600 text-white' :
+                          'bg-gray-600 text-white'
+                        }`}>
+                          {order.order_status}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {hasMore && (
+                    Array(3).fill(0).map((_, i) => (
+                      <TableRowSkeleton key={`load-more-skeleton-${i}`} />
+                    ))
+                  )}
+                </>
+              )}
             </TableBody>
           </Table>
         </div>
@@ -995,52 +1069,73 @@ export default function OrdersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visibleOrders.map((order, index) => (
-              <TableRow 
-                key={order.order_sn}
-                className={index % 2 === 0 ? 'bg-muted dark:bg-gray-800/50' : 'bg-gray-100/20 dark:bg-gray-900'}
-              >
-                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white text-center">{index + 1}</TableCell>
-                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap max-w-[80px] sm:max-w-none overflow-hidden text-ellipsis">{order.shop_name}</TableCell>
-                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{formatDate(order.create_time)}</TableCell>
-                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
-                  <div className="flex items-center gap-1.5">
-                    <span>{order.order_sn}</span>
-                    {order.cod && (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-600 text-white dark:bg-red-500">
-                        COD
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.buyer_username}</TableCell>
-                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
-                  Rp {parseInt(order.total_amount).toLocaleString('id-ID')}
-                </TableCell>
-                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.sku_qty}</TableCell>
-                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
-                  {order.shipping_carrier || '-'} ({order.tracking_number || '-'})
-                </TableCell>
-                <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    order.order_status === 'READY_TO_SHIP' ? 'bg-green-600 text-white' :
-                    order.order_status === 'PROCESSED' ? 'bg-blue-600 text-white' :
-                    order.order_status === 'SHIPPED' ? 'bg-indigo-600 text-white' :
-                    order.order_status === 'CANCELLED' ? 'bg-red-600 text-white' :
-                    order.order_status === 'IN_CANCEL' ? 'bg-yellow-600 text-white' :
-                    order.order_status === 'TO_RETURN' ? 'bg-purple-600 text-white' :
-                    'bg-gray-600 text-white'
-                  }`}>
-                    {order.order_status}
+            {(searchLoading || isSearchLoading) ? (
+              // Loading state hanya untuk tabel saat pencarian
+              Array(10).fill(0).map((_, i) => (
+                <TableRowSkeleton key={`search-skeleton-${i}`} />
+              ))
+            ) : visibleOrders.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center py-4">
+                  <span className="text-sm text-muted-foreground">
+                    {searchQuery.length >= 4 
+                      ? `Tidak ditemukan hasil untuk pencarian "${searchQuery}" pada ${
+                          searchType === "order_sn" ? "nomor pesanan" :
+                          searchType === "tracking_number" ? "nomor resi" :
+                          "username"
+                        }`
+                      : "Tidak ada data pesanan"}
                   </span>
                 </TableCell>
               </TableRow>
-            ))}
-            {hasMore && (
+            ) : (
               <>
-                {[...Array(3)].map((_, i) => (
-                  <TableRowSkeleton key={`skeleton-${i}`} />
+                {visibleOrders.map((order, index) => (
+                  <TableRow 
+                    key={order.order_sn}
+                    className={index % 2 === 0 ? 'bg-muted dark:bg-gray-800/50' : 'bg-gray-100/20 dark:bg-gray-900'}
+                  >
+                    <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white text-center">{index + 1}</TableCell>
+                    <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap max-w-[80px] sm:max-w-none overflow-hidden text-ellipsis">{order.shop_name}</TableCell>
+                    <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{formatDate(order.create_time)}</TableCell>
+                    <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <span>{order.order_sn}</span>
+                        {order.cod && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-600 text-white dark:bg-red-500">
+                            COD
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.buyer_username}</TableCell>
+                    <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                      Rp {parseInt(order.total_amount).toLocaleString('id-ID')}
+                    </TableCell>
+                    <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">{order.sku_qty}</TableCell>
+                    <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                      {order.shipping_carrier || '-'} ({order.tracking_number || '-'})
+                    </TableCell>
+                    <TableCell className="p-1 h-[32px] text-xs text-gray-600 dark:text-white whitespace-nowrap">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        order.order_status === 'READY_TO_SHIP' ? 'bg-green-600 text-white' :
+                        order.order_status === 'PROCESSED' ? 'bg-blue-600 text-white' :
+                        order.order_status === 'SHIPPED' ? 'bg-indigo-600 text-white' :
+                        order.order_status === 'CANCELLED' ? 'bg-red-600 text-white' :
+                        order.order_status === 'IN_CANCEL' ? 'bg-yellow-600 text-white' :
+                        order.order_status === 'TO_RETURN' ? 'bg-purple-600 text-white' :
+                        'bg-gray-600 text-white'
+                      }`}>
+                        {order.order_status}
+                      </span>
+                    </TableCell>
+                  </TableRow>
                 ))}
+                {hasMore && (
+                  Array(3).fill(0).map((_, i) => (
+                    <TableRowSkeleton key={`load-more-skeleton-${i}`} />
+                  ))
+                )}
               </>
             )}
           </TableBody>
@@ -1049,7 +1144,7 @@ export default function OrdersPage() {
 
       {/* Loading indicator */}
       <div ref={loadingRef} className="flex justify-center items-center p-4">
-        {visibleOrders.length === 0 ? (
+        {visibleOrders.length === 0 && !(searchLoading || isSearchLoading) && (
           <span className="text-sm text-muted-foreground">
             {searchQuery.length >= 4 
               ? `Tidak ditemukan hasil untuk pencarian "${searchQuery}" pada ${
@@ -1059,7 +1154,7 @@ export default function OrdersPage() {
                 }`
               : "Tidak ada data pesanan"}
           </span>
-        ) : null}
+        )}
       </div>
     </div>
   )

@@ -1,19 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getShopFlashSaleList } from '@/app/services/shopeeFlashSaleService';
+import { getAllShops } from '@/app/services/shopeeService';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const shopId = parseInt(searchParams.get('shop_id') || '');
+    const shopId = searchParams.get('shop_id') || '';
     const type = parseInt(searchParams.get('type') || '');
     const startTime = searchParams.get('start_time') ? parseInt(searchParams.get('start_time') || '') : undefined;
     const endTime = searchParams.get('end_time') ? parseInt(searchParams.get('end_time') || '') : undefined;
     const offset = parseInt(searchParams.get('offset') || '0');
     const limit = parseInt(searchParams.get('limit') || '10');
 
-    if (!shopId || type === undefined) {
+    // Validasi parameter wajib
+    if (!shopId) {
       return NextResponse.json(
-        { error: 'Parameter shop_id dan type diperlukan' },
+        { error: 'Parameter shop_id diperlukan' },
+        { status: 400 }
+      );
+    }
+
+    // Handle kasus untuk semua toko
+    if (shopId.toLowerCase() === 'all') {
+      const shops = await getAllShops();
+      const allFlashSales = await Promise.all(
+        shops.map(async shop => {
+          const flashSaleData = await getShopFlashSaleList(shop.shop_id, {
+            type: type || 0,
+            pagination_offset: offset,
+            pagination_entry_count: 50
+          });
+
+          // Tambahkan informasi toko ke setiap flash sale
+          return {
+            shop_id: shop.shop_id,
+            shop_name: shop.shop_name,
+            flash_sales: flashSaleData
+          };
+        })
+      );
+
+      return NextResponse.json(allFlashSales);
+    }
+
+    // Handle kasus untuk toko spesifik
+    const shopIdNum = parseInt(shopId);
+    if (isNaN(shopIdNum)) {
+      return NextResponse.json(
+        { error: 'Parameter shop_id harus berupa angka atau "all"' },
         { status: 400 }
       );
     }
@@ -56,7 +90,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result = await getShopFlashSaleList(shopId, {
+    const result = await getShopFlashSaleList(shopIdNum, {
       type,
       start_time: startTime,
       end_time: endTime,

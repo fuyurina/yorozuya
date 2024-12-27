@@ -65,6 +65,6 @@ export const useDiscounts = () => {
     error,
     selectedStatus,
     setSelectedStatus,
-    refetch: fetchDiscounts
+    refetch: fetchDiscounts,
   };
 }; 

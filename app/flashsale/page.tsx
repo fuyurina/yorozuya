@@ -38,11 +38,12 @@ import {
   RadioGroupItem,
 } from "@/components/ui/radio-group";
 import { format } from 'date-fns';
-import { X, AlertTriangle, Plus, CalendarDays, Clock, Eye, Bell, MoreVertical, Check, Trash2, Copy } from 'lucide-react';
+import { X, AlertTriangle, Plus, CalendarDays, Clock, Eye, Bell, MoreVertical, Check, Trash2, Copy, RefreshCcw } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 import { Checkbox } from "@/components/ui/checkbox"
+import { InactiveFlashSaleIndicator } from "./components/InactiveFlashSaleIndicator"
 
 interface FlashSale {
   flash_sale_id: number;
@@ -57,10 +58,7 @@ interface FlashSale {
   remindme_count: number;
 }
 
-interface FlashSaleResponse {
-  flash_sale_list: FlashSale[];
-  total_count: number;
-}
+
 
 interface TimeSlot {
   timeslot_id: number;
@@ -118,27 +116,6 @@ interface State {
   hasError: boolean;
 }
 
-class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false
-  };
-
-  public static getDerivedStateFromError(_: Error): State {
-    return { hasError: true };
-  }
-
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Error:', error, errorInfo);
-  }
-
-  public render() {
-    if (this.state.hasError) {
-      return this.props.fallback;
-    }
-
-    return this.props.children;
-  }
-}
 
 // Tambahkan interface untuk StepIndicator
 interface StepIndicatorProps {
@@ -376,6 +353,9 @@ const MobileCreateFlashSaleDialog = ({
   );
 };
 
+// Tambahkan opsi ukuran halaman
+const pageSizeOptions = [10, 25, 50, 100];
+
 export default function FlashSalePage() {
   const [loading, setLoading] = useState(false);
   const [flashSales, setFlashSales] = useState<FlashSale[]>([]);
@@ -387,7 +367,6 @@ export default function FlashSalePage() {
   const [pageSize, setPageSize] = useState(10);
   const totalPages = Math.ceil(totalCount / pageSize);
   const router = useRouter();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot>();
   const [date, setDate] = useState<Date>();
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
@@ -409,9 +388,10 @@ export default function FlashSalePage() {
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [deletingFlashSale, setDeletingFlashSale] = useState<number | null>(null);
   const [isDeletingSingle, setIsDeletingSingle] = useState(false);
-  const [stepStatuses, setStepStatuses] = useState<Record<number, StepStatus>>({});
+ 
   const [isDesktopDialogOpen, setIsDesktopDialogOpen] = useState(false);
   const [isMobileDialogOpen, setIsMobileDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Tambahkan fungsi helper untuk mengambil slot waktu
   const fetchTimeSlots = async (shopId: number) => {
@@ -471,6 +451,7 @@ export default function FlashSalePage() {
     if (!selectedShop) return;
     
     setLoading(true);
+    setError(null); // Reset error state
     try {
       const offset = (page - 1) * pageSize;
       const response = await fetch(`/api/flashsale/list?shop_id=${selectedShop}&type=${selectedType}&offset=${offset}&limit=${pageSize}`);
@@ -479,13 +460,13 @@ export default function FlashSalePage() {
         setFlashSales(data.data.flash_sale_list || []);
         setTotalCount(data.data.total_count || 0);
       } else {
-        toast.error('Gagal mengambil daftar flash sale', {
-          description: data.message || 'Gagal mengambil daftar flash sale'
-        });
+        setError(data.message || 'Gagal mengambil daftar flash sale');
+        toast.error('Gagal mengambil daftar flash sale');
       }
     } catch (error) {
-      toast.error('Terjadi kesalahan saat mengambil daftar flash sale', {
-        description: 'Terjadi kesalahan saat mengambil daftar flash sale'
+      setError('Terjadi kesalahan saat mengambil data. Periksa koneksi internet Anda.');
+      toast.error('Terjadi kesalahan', {
+        description: 'Gagal mengambil daftar flash sale'
       });
     } finally {
       setLoading(false);
@@ -616,7 +597,8 @@ export default function FlashSalePage() {
         description: 'Terjadi kesalahan saat membuat flash sale'
       });
     } finally {
-      setIsCreateDialogOpen(false);
+      setIsDesktopDialogOpen(false);
+      setIsMobileDialogOpen(false);
     }
   };
 
@@ -845,8 +827,15 @@ export default function FlashSalePage() {
             <span className="font-medium">{record.enabled_item_count}</span>
             <span className="text-muted-foreground"> / {record.item_count} item aktif</span>
           </div>
-          <div className="text-sm text-muted-foreground">
-            {record.click_count} klik  {record.remindme_count} pengingat
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span className="flex items-center">
+              <Eye className="w-4 h-4 mr-1" />
+              {record.click_count} klik
+            </span>
+            <span className="flex items-center">
+              <Bell className="w-4 h-4 mr-1" />
+              {record.remindme_count} pengingat
+            </span>
           </div>
         </div>
       )
@@ -1195,33 +1184,35 @@ export default function FlashSalePage() {
         </div>
       </div>
 
-      {/* Filter yang lebih compact untuk mobile */}
+      {/* Filter dengan Indicator baru */}
       <div className="flex flex-col md:flex-row gap-3 md:gap-4 mb-4 md:mb-6">
-        <Select value={selectedShop?.toString()} onValueChange={handleShopChange}>
-          <SelectTrigger className="w-full md:w-[250px]">
-            <SelectValue placeholder="Pilih Toko" />
-          </SelectTrigger>
-          <SelectContent>
-            {shops.map(shop => (
-              <SelectItem key={shop.shop_id} value={shop.shop_id.toString()}>
-                {shop.shop_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4 w-full">
+          <Select value={selectedShop?.toString()} onValueChange={handleShopChange}>
+            <SelectTrigger className="w-full md:w-[250px]">
+              <SelectValue placeholder="Pilih Toko" />
+            </SelectTrigger>
+            <SelectContent>
+              {shops.map(shop => (
+                <SelectItem key={shop.shop_id} value={shop.shop_id.toString()}>
+                  {shop.shop_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select value={selectedType.toString()} onValueChange={(value) => setSelectedType(Number(value))}>
-          <SelectTrigger className="w-full md:w-[200px]">
-            <SelectValue placeholder="Status Flash Sale" />
-          </SelectTrigger>
-          <SelectContent>
-            {typeOptions.map(option => (
-              <SelectItem key={option.value} value={option.value.toString()}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={selectedType.toString()} onValueChange={(value) => setSelectedType(Number(value))}>
+            <SelectTrigger className="w-full md:w-[200px]">
+              <SelectValue placeholder="Status Flash Sale" />
+            </SelectTrigger>
+            <SelectContent>
+              {typeOptions.map(option => (
+                <SelectItem key={option.value} value={option.value.toString()}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Table dan Card View */}
@@ -1259,6 +1250,29 @@ export default function FlashSalePage() {
                     <div className="flex justify-center items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       <span>Memuat data...</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : error ? (
+                <TableRow>
+                  <TableCell colSpan={7}>
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <AlertTriangle className="h-8 w-8 text-red-500 mb-2" />
+                      <h3 className="text-lg font-medium mb-2 text-red-500">
+                        Gagal Memuat Data
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 px-6">
+                        {error}
+                      </p>
+                      <Button 
+                        onClick={() => fetchFlashSales(currentPage, pageSize)}
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                      >
+                        <RefreshCcw className="h-4 w-4" />
+                        Coba Lagi
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -1388,6 +1402,27 @@ export default function FlashSalePage() {
           <div className="flex justify-center items-center py-12">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <div className="flex justify-center mb-4">
+              <AlertTriangle className="h-12 w-12 text-red-500" />
+            </div>
+            <h3 className="text-lg font-medium mb-2 text-red-500">
+              Gagal Memuat Data
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 px-6">
+              {error}
+            </p>
+            <Button 
+              onClick={() => fetchFlashSales(currentPage, pageSize)}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              Coba Lagi
+            </Button>
+          </div>
         ) : flashSales.length === 0 ? (
           <div className="text-center py-12">
             <div className="flex justify-center mb-4">
@@ -1397,10 +1432,10 @@ export default function FlashSalePage() {
               </div>
             </div>
             <h3 className="text-lg font-medium mb-2">Belum Ada Flash Sale</h3>
-            <p className="text-sm text-gray-500 mb-4 px-6">
-              Buat flash sale pertama Anda untuk meningkatkan penjualan
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center max-w-[300px]">
+              Buat flash sale pertama Anda untuk meningkatkan penjualan dengan penawaran terbatas waktu
             </p>
-            <Button onClick={handleCreateFlashSale} size="sm">
+            <Button onClick={handleCreateFlashSale}>
               <Plus className="w-4 h-4 mr-2" />
               Buat Flash Sale
             </Button>
@@ -1423,66 +1458,82 @@ export default function FlashSalePage() {
       {/* Pagination yang lebih compact untuk mobile */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4 text-sm text-muted-foreground">
         <div className="order-2 md:order-1 text-center md:text-left dark:text-gray-400">
-          Menampilkan {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalCount)} dari {totalCount} data
+          <div className="flex items-center gap-2">
+            <span>
+              Menampilkan {totalCount === 0 ? 0 : ((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalCount)} dari {totalCount} data
+            </span>
+            <Select
+              value={pageSize.toString()}
+              onValueChange={(value) => {
+                setPageSize(Number(value));
+                setCurrentPage(1); // Reset ke halaman pertama
+              }}
+            >
+              <SelectTrigger className="w-[70px] h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {pageSizeOptions.map((size) => (
+                  <SelectItem key={size} value={size.toString()}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span>per halaman</span>
+          </div>
         </div>
+
         <div className="order-1 md:order-2 flex items-center gap-1 md:gap-2">
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
+            onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage <= 1}
             className="dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800 dark:disabled:text-gray-700"
           >
             Previous
           </Button>
           
-          {/* First page */}
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => handlePageChange(1)}
-            className={currentPage === 1 
-              ? "bg-primary text-white hover:bg-primary dark:bg-white dark:text-black dark:hover:bg-white/90" 
-              : "dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800"}
-          >
-            1
-          </Button>
+          {Array.from({ length: totalPages }).map((_, index) => {
+            const pageNumber = index + 1;
+            
+            // Tampilkan halaman pertama, terakhir, dan halaman di sekitar halaman aktif
+            if (
+              pageNumber === 1 ||
+              pageNumber === totalPages ||
+              (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+            ) {
+              return (
+                <Button 
+                  key={pageNumber}
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handlePageChange(pageNumber)}
+                  className={pageNumber === currentPage 
+                    ? "bg-primary text-white hover:bg-primary dark:bg-white dark:text-black dark:hover:bg-white/90" 
+                    : "dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800"}
+                >
+                  {pageNumber}
+                </Button>
+              );
+            }
 
-          {/* Show dots if there are many pages before current page */}
-          {currentPage > 3 && <span className="px-1 dark:text-gray-400">...</span>}
+            // Tampilkan ellipsis jika ada gap
+            if (
+              (pageNumber === currentPage - 2 && pageNumber > 2) ||
+              (pageNumber === currentPage + 2 && pageNumber < totalPages - 1)
+            ) {
+              return <span key={pageNumber} className="px-1 dark:text-gray-400">...</span>;
+            }
 
-          {/* Current page and surrounding pages */}
-          {currentPage > 2 && currentPage < totalPages - 1 && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="bg-primary text-white hover:bg-primary dark:bg-white dark:text-black dark:hover:bg-white/90"
-            >
-              {currentPage}
-            </Button>
-          )}
-
-          {/* Show dots if there are many pages after current page */}
-          {currentPage < totalPages - 2 && <span className="px-1 dark:text-gray-400">...</span>}
-
-          {/* Last page */}
-          {totalPages > 1 && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => handlePageChange(totalPages)}
-              className={currentPage === totalPages 
-                ? "bg-primary text-white hover:bg-primary dark:bg-white dark:text-black dark:hover:bg-white/90" 
-                : "dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800"}
-            >
-              {totalPages}
-            </Button>
-          )}
+            return null;
+          })}
 
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
+            onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage >= totalPages}
             className="dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800 dark:disabled:text-gray-700"
           >

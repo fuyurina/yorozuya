@@ -3,6 +3,9 @@ import { upsertOrderData, upsertOrderItems, upsertLogisticData, trackingUpdate, 
 import { prosesOrder } from '@/app/services/prosesOrder';
 import { getOrderDetail } from '@/app/services/shopeeService';
 import { redis } from '@/app/services/redis';
+import { PenaltyService } from '@/app/services/penaltyService';
+import { UpdateService } from '@/app/services/updateService';
+import { ViolationService } from '@/app/services/violationService';
 
 // Simpan semua koneksi SSE aktif
 const clients = new Set<ReadableStreamDefaultController>();
@@ -103,7 +106,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-function sendEventToAll(data: any) {
+export function sendEventToAll(data: any) {
   const eventId = Date.now().toString();
   const event = [
     `id: ${eventId}`,
@@ -132,6 +135,9 @@ async function processWebhookData(webhookData: any) {
       3: handleOrder,
       4: handleTrackingUpdate,
       15: handleDocumentUpdate,
+      5: handleUpdate,
+      28: handlePenalty,
+      16: handleViolation
     };
 
     const handler = handlers[code] || handleOther;
@@ -140,7 +146,6 @@ async function processWebhookData(webhookData: any) {
     console.error('Error processing webhook data:', error);
   }
 }
-
 async function handleChat(data: any) {
   if (data.data.type === 'message') {
     const messageContent = data.data.content;
@@ -340,17 +345,47 @@ async function handleDocumentUpdate(data: any) {
   await updateDocumentStatus(data.data.ordersn, data.data.package_number);
 }
 
-// Sebaiknya tambahkan pembersihan klien yang tidak aktif
-function cleanupInactiveClients() {
-  clients.forEach(client => {
-    if (!client.desiredSize) {
-      clients.delete(client);
+async function handlePenalty(data: any) {
+  try {
+    // Ambil data auto_ship untuk mendapatkan nama toko
+    const autoShipData = await redis.get('auto_ship');
+    let shopName = '';
+    
+    if (autoShipData) {
+      const shops = JSON.parse(autoShipData);
+      const shop = shops.find((s: any) => s.shop_id === data.shop_id);
+      if (shop) {
+        shopName = shop.shop_name;
+      }
     }
-  });
+
+    // Proses penalty menggunakan PenaltyService
+    await PenaltyService.handlePenalty({
+      ...data,
+      shop_name: shopName // Tambahkan shop_name ke data
+    });
+
+  } catch (error) {
+    console.error('Error handling penalty webhook:', error);
+    throw error;
+  }
 }
 
-function startHeartbeat() {
-  setInterval(() => {
-    sendEventToAll({ type: 'heartbeat', timestamp: Date.now() });
-  }, 30000); // Kirim heartbeat setiap 30 detik
+
+async function handleUpdate(data: any) {
+  try {
+    await UpdateService.handleUpdate(data);
+  } catch (error) {
+    console.error('Error handling update webhook:', error);
+    throw error;
+  }
+}
+
+async function handleViolation(data: any) {
+  try {
+    await ViolationService.handleViolation(data);
+  } catch (error) {
+    console.error('Error handling violation webhook:', error);
+    throw error;
+  }
 }

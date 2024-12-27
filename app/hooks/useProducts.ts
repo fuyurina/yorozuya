@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { useToast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 import { getAllShops } from '../services/shopeeService'
 import { supabase } from '@/lib/supabase'
 
-interface Product {
+export interface Product {
   item_id: number
   shop_id: number
   category_id: number
@@ -131,7 +131,6 @@ export function useProducts() {
   const [shops, setShops] = useState<Shop[]>([])
   const [isLoadingShops, setIsLoadingShops] = useState(false)
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
-  const { toast } = useToast()
   const [stockPrices, setStockPrices] = useState<StockPrice[]>([]);
   const [isLoadingStockPrices, setIsLoadingStockPrices] = useState(false);
 
@@ -141,9 +140,7 @@ export function useProducts() {
       const shopsData = await getAllShops()
       setShops(shopsData)
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Gagal Memuat Toko',
+      toast.error('Gagal Memuat Toko', {
         description: 'Terjadi kesalahan saat memuat daftar toko',
       })
     } finally {
@@ -181,9 +178,7 @@ export function useProducts() {
 
       setProducts(productsWithShops)
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Gagal Memuat Produk',
+      toast.error('Gagal Memuat Produk', {
         description: error instanceof Error ? error.message : 'Terjadi kesalahan saat memuat daftar produk',
       })
     } finally {
@@ -303,8 +298,7 @@ export function useProducts() {
       // Refresh products setelah sync selesai
       await loadProducts()
 
-      toast({
-        title: 'Sinkronisasi Berhasil',
+      toast.success('Sinkronisasi Berhasil', {
         description: `${processedProducts} produk telah disinkronkan`,
       })
 
@@ -313,9 +307,7 @@ export function useProducts() {
         total: totalProducts
       }
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Gagal Sinkronisasi',
+      toast.error('Gagal Sinkronisasi', {
         description: error instanceof Error ? error.message : 'Terjadi kesalahan saat sinkronisasi',
       })
       return {
@@ -374,9 +366,7 @@ export function useProducts() {
       return modelsWithImages;
       
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Gagal Memuat Data Stok dan Harga',
+      toast.error('Gagal Memuat Data Stok dan Harga', {
         description: error instanceof Error ? error.message : 'Terjadi kesalahan saat memuat data stok dan harga',
       });
       return [];
@@ -473,8 +463,7 @@ export function useProducts() {
         // Refresh produk setelah sync
         await loadProducts()
 
-        toast({
-          title: 'Sinkronisasi Berhasil',
+        toast.success('Sinkronisasi Berhasil', {
           description: `Produk ${item.item_name} telah disinkronkan`,
         })
 
@@ -483,9 +472,7 @@ export function useProducts() {
         throw new Error(data.error)
       }
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Gagal Sinkronisasi',
+      toast.error('Gagal Sinkronisasi', {
         description: error instanceof Error ? error.message : 'Terjadi kesalahan saat sinkronisasi',
       })
       return false
@@ -504,7 +491,6 @@ export function useProducts() {
     }>
   ) => {
     try {
-      // Update ke API Shopee
       const response = await fetch('/api/produk/update-stock', {
         method: 'PUT',
         headers: {
@@ -524,13 +510,23 @@ export function useProducts() {
 
       const result = await response.json();
 
-      if (!result.success) {
-        toast({
-          variant: 'destructive',
-          title: 'Gagal Update Stok',
-          description: result.message || 'Terjadi kesalahan saat mengupdate stok'
-        });
-        return false;
+      // Jika ada failure_list, return detail kegagalan
+      if (!result.success || (result.data?.failure_list?.length > 0)) {
+        if (result.data?.failure_list?.length > 0) {
+          return {
+            success: false,
+            failedModels: result.data.failure_list.map((fail: { model_id: any; failed_reason: any }) => ({
+              modelId: fail.model_id,
+              reason: fail.failed_reason
+            })),
+            message: result.warning || result.message || 'Terjadi kesalahan saat mengupdate stok'
+          };
+        }
+
+        return {
+          success: false,
+          message: result.warning || result.message || 'Terjadi kesalahan saat mengupdate stok'
+        };
       }
 
       // Update database untuk semua model
@@ -549,34 +545,28 @@ export function useProducts() {
           .eq('model_id', update.modelId);
 
         if (dbError) {
-          console.error('Error updating database:', dbError);
-          toast({
-            variant: 'destructive',
-            title: 'Peringatan',
-            description: 'Stok berhasil diupdate di Shopee tapi gagal update di database'
-          });
-          return true;
+          return {
+            success: false,
+            message: 'Stok berhasil diupdate di Shopee tapi gagal update di database',
+            error: dbError
+          };
         }
       }
 
-      // Refresh data stok setelah update berhasil
+      // Refresh data stok
       await getStockPrices(itemId);
 
-      toast({
-        title: 'Stok Berhasil Diupdate',
-        description: 'Stok produk telah berhasil diperbarui'
-      });
-
-      return true;
+      return {
+        success: true,
+        message: 'Stok berhasil diupdate'
+      };
 
     } catch (error) {
-      console.error('Error updating stock:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Gagal Update Stok',
-        description: error instanceof Error ? error.message : 'Terjadi kesalahan saat mengupdate stok'
-      });
-      return false;
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Terjadi kesalahan saat mengupdate stok',
+        error
+      };
     }
   };
 
