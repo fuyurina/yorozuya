@@ -21,6 +21,7 @@ interface Notification {
   type: 'shop_penalty' | 'shopee_update' | 'item_violation'
   action: string
   shop_id: number
+  shop_name: string
   details: any
   timestamp: number
   read: boolean
@@ -92,6 +93,7 @@ export function Header() {
         type: lastMessage.type,
         action: lastMessage.action,
         shop_id: lastMessage.shop_id,
+        shop_name: lastMessage.shop_name,
         details: lastMessage.details,
         timestamp: lastMessage.timestamp,
         read: false,
@@ -305,36 +307,60 @@ export function Header() {
                         {notification.type === 'shopee_update' ? (
                           <div className="flex flex-col gap-2 w-full">
                             <div className="flex items-start gap-3">
-                              <div className="mt-0.5 p-2 rounded-full bg-blue-100 text-blue-600">
+                              <div className="mt-1 p-2 rounded-full bg-blue-100 text-blue-600">
                                 <Bell className="h-4 w-4" />
                               </div>
                               <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {notification.shop_name}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {new Date(notification.timestamp * 1000).toLocaleString('id-ID', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: '2-digit'
+                                    }).replace(',', '')}
+                                  </span>
+                                </div>
                                 <p className="font-medium text-sm">{notification?.title}</p>
-                                <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                                  {notification?.content}
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {notification?.content?.replace(/<\/?[^>]+(>|$)/g, "")}
                                 </p>
                                 {notification?.url && (
                                   <a 
-                                    href={notification.url} 
-                                    target="_blank" 
+                                    href={notification.url}
+                                    target="_blank"
                                     rel="noopener noreferrer"
-                                    className="mt-2 text-xs text-blue-600 hover:underline"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleNotificationClick(notification.id);
-                                    }}
+                                    className="mt-2 inline-block text-xs text-blue-600 hover:underline"
                                   >
-                                    Buka Tautan
+                                    Lihat detail
                                   </a>
                                 )}
-                                <p className="mt-2 text-[11px] text-muted-foreground">
-                                  {new Date(notification.timestamp * 1000).toLocaleString('id-ID', {
-                                    day: 'numeric',
-                                    month: 'long',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
+                              </div>
+                            </div>
+                          </div>
+                        ) : notification.type === 'shop_penalty' ? (
+                          <div className="flex flex-col gap-2 w-full">
+                            <div className="flex items-start gap-3">
+                              <div className="mt-1 p-2 rounded-full bg-red-100 text-red-600">
+                                <AlertCircle className="h-4 w-4" />
+                              </div>
+                              <div className="flex-1">
+                                <span className="text-[10px] text-muted-foreground">
+                                  {notification.shop_name}
+                                </span>
+                                <p className="font-medium text-sm">Penalti Toko</p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {notification.details.points && `Poin: ${notification.details.points}`}
+                                  {notification.details.violation_type && (
+                                    <span className="block">Jenis: {notification.details.violation_type}</span>
+                                  )}
+                                  {notification.details.reason && (
+                                    <span className="block">Alasan: {notification.details.reason}</span>
+                                  )}
                                 </p>
                               </div>
                             </div>
@@ -342,95 +368,32 @@ export function Header() {
                         ) : notification.type === 'item_violation' ? (
                           <div className="flex flex-col gap-2 w-full">
                             <div className="flex items-start gap-3">
-                              <div className={cn(
-                                "mt-0.5 p-2 rounded-full",
-                                notification.action === 'ITEM_BANNED' && "bg-red-100 text-red-600",
-                                notification.action === 'ITEM_DELETED' && "bg-orange-100 text-orange-600",
-                                notification.action === 'ITEM_DEBOOSTED' && "bg-yellow-100 text-yellow-600"
-                              )}>
+                              <div className="mt-1 p-2 rounded-full bg-yellow-100 text-yellow-600">
                                 <AlertTriangle className="h-4 w-4" />
                               </div>
                               <div className="flex-1">
-                                <p className="font-medium text-sm">
-                                  {notification.action === 'ITEM_BANNED' && 'Produk Diblokir'}
-                                  {notification.action === 'ITEM_DELETED' && 'Produk Dihapus'}
-                                  {notification.action === 'ITEM_DEBOOSTED' && 'Produk Diturunkan'}
-                                </p>
-                                <p className="mt-1 text-xs font-medium text-muted-foreground">
+                                <span className="text-[10px] text-muted-foreground">
+                                  {notification.shop_name}
+                                </span>
+                                <p className="font-medium text-sm">Pelanggaran Produk</p>
+                                <p className="mt-1 text-xs font-medium">
                                   {notification.details.item_name}
                                 </p>
-                                <div className="mt-2 space-y-2">
+                                <div className="mt-1 text-xs text-muted-foreground">
                                   {notification.details.violations.map((v: any, i: number) => (
-                                    <div key={i} className="text-xs space-y-1">
-                                      <p className="text-red-600">{v.type}: {v.reason}</p>
-                                      <p className="text-muted-foreground">{v.suggestion}</p>
-                                      {v.suggested_category && (
-                                        <p className="text-muted-foreground">
-                                          Kategori yang disarankan: {v.suggested_category.map((c: { name: any }) => c.name).join(' > ')}
-                                        </p>
+                                    <div key={i} className="mt-1">
+                                      <span className="block">Jenis: {v.type}</span>
+                                      <span className="block">Alasan: {v.reason}</span>
+                                      {v.suggestion && (
+                                        <span className="block">Saran: {v.suggestion}</span>
                                       )}
-                                      <p className="text-[11px] text-muted-foreground">
-                                        Batas waktu: {new Date(v.deadline * 1000).toLocaleString('id-ID')}
-                                      </p>
                                     </div>
                                   ))}
                                 </div>
                               </div>
                             </div>
                           </div>
-                        ) : (
-                          <div className="flex flex-col gap-2 w-full">
-                            <div className="flex items-start gap-3">
-                              <div className={cn(
-                                "mt-0.5 p-2 rounded-full",
-                                notification.action === 'POINT_ISSUED' && "bg-red-100 text-red-600",
-                                notification.action === 'POINT_REMOVED' && "bg-green-100 text-green-600",
-                                notification.action === 'TIER_UPDATE' && "bg-orange-100 text-orange-600"
-                              )}>
-                                {notification.action === 'POINT_ISSUED' && <AlertCircle className="h-4 w-4" />}
-                                {notification.action === 'POINT_REMOVED' && <CheckCircle className="h-4 w-4" />}
-                                {notification.action === 'TIER_UPDATE' && <AlertTriangle className="h-4 w-4" />}
-                              </div>
-                              <div className="flex-1">
-                                <p className="font-medium text-sm">
-                                  {notification.action === 'POINT_ISSUED' && 'Penambahan Poin Penalti'}
-                                  {notification.action === 'POINT_REMOVED' && 'Penghapusan Poin Penalti'}
-                                  {notification.action === 'TIER_UPDATE' && 'Update Tier Hukuman'}
-                                </p>
-                                {/* Details */}
-                                <div className="mt-1 text-xs text-muted-foreground space-y-1">
-                                  {notification.details.points && (
-                                    <p>
-                                      <span className="font-medium">{notification.details.points} poin</span>
-                                      {notification.details.violation_type && 
-                                        <span className="text-muted-foreground"> - {notification.details.violation_type}</span>
-                                      }
-                                      {notification.details.reason && 
-                                        <span className="text-muted-foreground"> - {notification.details.reason}</span>
-                                      }
-                                    </p>
-                                  )}
-                                  {notification.details.old_tier && (
-                                    <p>
-                                      Perubahan dari Tier <span className="font-medium">{notification.details.old_tier}</span> ke 
-                                      Tier <span className="font-medium">{notification.details.new_tier}</span>
-                                    </p>
-                                  )}
-                                </div>
-                                {/* Timestamp */}
-                                <p className="mt-2 text-[11px] text-muted-foreground">
-                                  {new Date(notification.timestamp * 1000).toLocaleString('id-ID', {
-                                    day: 'numeric',
-                                    month: 'long',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                        ) : null}
                       </DropdownMenuItem>
                     ))}
                   </div>

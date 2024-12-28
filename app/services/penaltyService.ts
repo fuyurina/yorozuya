@@ -21,6 +21,7 @@ export interface ShopPenaltyWebhook {
     update_time: number;
   };
   shop_id: number;
+  shop_name: string;
   code: number;
   timestamp: number;
 }
@@ -29,6 +30,7 @@ export interface PenaltyNotification {
   type: 'shop_penalty';
   action: string;
   shop_id: number;
+  shop_name: string;
   details: any;
   timestamp: number;
   read: boolean;
@@ -81,7 +83,7 @@ export const PENALTY_ACTIONS = {
 
 // Service Class
 export class PenaltyService {
-  static async handlePenalty(data: ShopPenaltyWebhook) {
+  static async handlePenalty(data: ShopPenaltyWebhook & { shop_name: string }) {
     try {
       await this.processPenaltyAction(data);
       await this.updateProcessedStatus(data);
@@ -113,28 +115,28 @@ export class PenaltyService {
       .eq('data->timestamp', data.timestamp);
   }
 
-  private static async sendPenaltyNotification(data: ShopPenaltyWebhook) {
+  private static async sendPenaltyNotification(data: ShopPenaltyWebhook & { shop_name: string }) {
     try {
-      // Simpan ke database dulu dan dapatkan ID-nya
       const { data: insertedData, error } = await supabase
         .from('shopee_notifications')
         .insert({
           notification_type: 'shop_penalty',
           shop_id: data.shop_id,
+          shop_name: data.shop_name,
           data: data,
           processed: false,
           read: false
         })
-        .select('id') // Ambil ID yang baru dibuat
-        .single()
+        .select('id')
+        .single();
 
       if (error) throw error;
 
-      // Gunakan ID dari database untuk notifikasi
       const notification = this.createPenaltyNotification(data);
       const notificationWithId = {
         ...notification,
-        id: insertedData.id // Gunakan ID dari database
+        id: insertedData.id,
+        shop_name: data.shop_name
       };
 
       sendEventToAll(notificationWithId);
@@ -149,6 +151,7 @@ export class PenaltyService {
       type: 'shop_penalty',
       action: PENALTY_ACTIONS[data.data.action_type],
       shop_id: data.shop_id,
+      shop_name: data.shop_name,
       details: this.getPenaltyDetails(data),
       timestamp: data.timestamp,
       read: false

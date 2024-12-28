@@ -349,7 +349,7 @@ async function handlePenalty(data: any) {
   try {
     // Ambil data auto_ship untuk mendapatkan nama toko
     const autoShipData = await redis.get('auto_ship');
-    let shopName = '';
+    let shopName = 'Tidak diketahui';
     
     if (autoShipData) {
       const shops = JSON.parse(autoShipData);
@@ -359,10 +359,17 @@ async function handlePenalty(data: any) {
       }
     }
 
-    // Proses penalty menggunakan PenaltyService
+    const notificationData = {
+      type: 'penalty',
+      ...data,
+      shop_name: shopName
+    };
+    
+    sendEventToAll(notificationData);
+    
     await PenaltyService.handlePenalty({
       ...data,
-      shop_name: shopName // Tambahkan shop_name ke data
+      shop_name: shopName
     });
 
   } catch (error) {
@@ -371,10 +378,31 @@ async function handlePenalty(data: any) {
   }
 }
 
-
 async function handleUpdate(data: any) {
   try {
-    await UpdateService.handleUpdate(data);
+    const autoShipData = await redis.get('auto_ship');
+    let shopName = 'Tidak diketahui';
+    
+    if (autoShipData) {
+      const shops = JSON.parse(autoShipData);
+      const shop = shops.find((s: any) => s.shop_id === data.shop_id);
+      if (shop) {
+        shopName = shop.shop_name;
+      }
+    }
+
+    const notificationData = {
+      type: 'update',
+      ...data,
+      shop_name: shopName
+    };
+    
+    sendEventToAll(notificationData);
+
+    await UpdateService.handleUpdate({
+      ...data,
+      shop_name: shopName
+    });
   } catch (error) {
     console.error('Error handling update webhook:', error);
     throw error;
@@ -383,7 +411,29 @@ async function handleUpdate(data: any) {
 
 async function handleViolation(data: any) {
   try {
-    await ViolationService.handleViolation(data);
+    const autoShipData = await redis.get('auto_ship');
+    let shopName = 'Tidak diketahui';
+    
+    if (autoShipData) {
+      const shops = JSON.parse(autoShipData);
+      const shop = shops.find((s: any) => s.shop_id === data.shop_id);
+      if (shop) {
+        shopName = shop.shop_name;
+      }
+    }
+
+    const notificationData = {
+      type: 'violation',
+      ...data,
+      shop_name: shopName
+    };
+    
+    sendEventToAll(notificationData);
+
+    await ViolationService.handleViolation({
+      ...data,
+      shop_name: shopName
+    });
   } catch (error) {
     console.error('Error handling violation webhook:', error);
     throw error;

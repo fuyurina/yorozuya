@@ -38,17 +38,22 @@ export async function GET(req: Request) {
         case 'shop_penalty':
           return {
             id: notification.id,
-            ...PenaltyService.createPenaltyNotification(notification.data)
+            ...PenaltyService.createPenaltyNotification(notification.data),
+            shop_name: notification.shop_name
           };
         case 'shopee_update':
-          return UpdateService.createUpdateNotification({
-            ...notification,
-            id: notification.id
-          });
+          return {
+            ...UpdateService.createUpdateNotification({
+              ...notification,
+              id: notification.id
+            }),
+            shop_name: notification.shop_name
+          };
         case 'item_violation':
           return {
             id: notification.id,
-            ...ViolationService.createViolationNotification(notification.data)
+            ...ViolationService.createViolationNotification(notification.data),
+            shop_name: notification.shop_name
           };
         default:
           return null;

@@ -29,6 +29,7 @@ export interface ViolationItemWebhook {
     }>;
   };
   shop_id: number;
+  shop_name: string;
   code: number;
   timestamp: number;
 }
@@ -38,6 +39,7 @@ export interface ViolationNotification {
   type: 'item_violation';
   action: string;
   shop_id: number;
+  shop_name: string;
   details: {
     item_id: number;
     item_name: string;
@@ -59,7 +61,7 @@ export interface ViolationNotification {
 
 // Service Class
 export class ViolationService {
-  static async handleViolation(data: ViolationItemWebhook) {
+  static async handleViolation(data: ViolationItemWebhook & { shop_name: string }) {
     try {
       await this.sendViolationNotification(data);
     } catch (error) {
@@ -68,7 +70,7 @@ export class ViolationService {
     }
   }
 
-  private static async sendViolationNotification(data: ViolationItemWebhook) {
+  private static async sendViolationNotification(data: ViolationItemWebhook & { shop_name: string }) {
     try {
       // Simpan ke database dan dapatkan ID
       const { data: insertedData, error } = await supabase
@@ -76,6 +78,7 @@ export class ViolationService {
         .insert({
           notification_type: 'item_violation',
           shop_id: data.shop_id,
+          shop_name: data.shop_name,
           data: data,
           processed: true,
           read: false
@@ -89,7 +92,8 @@ export class ViolationService {
       const notification = this.createViolationNotification(data);
       const notificationWithId = {
         ...notification,
-        id: insertedData.id
+        id: insertedData.id,
+        shop_name: data.shop_name
       };
 
       sendEventToAll(notificationWithId);
@@ -108,6 +112,7 @@ export class ViolationService {
       type: 'item_violation',
       action: this.getViolationAction(data.data),
       shop_id: data.shop_id,
+      shop_name: data.shop_name,
       details: {
         item_id: data.data.item_id,
         item_name: data.data.item_name,

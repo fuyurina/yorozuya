@@ -21,6 +21,7 @@ export interface UpdateNotification {
   type: 'shopee_update';
   action: string;
   shop_id: number;
+  shop_name: string;
   title: string;
   content: string;
   url: string;
@@ -31,7 +32,7 @@ export interface UpdateNotification {
 
 // Service Class
 export class UpdateService {
-  static async handleUpdate(webhookData: any) {
+  static async handleUpdate(webhookData: any & { shop_name: string }) {
     try {
       let actionsToProcess = [];
       
@@ -48,7 +49,7 @@ export class UpdateService {
 
       // Proses setiap action
       for (const action of actionsToProcess) {
-        await this.sendUpdateNotification(webhookData.shop_id, action);
+        await this.sendUpdateNotification(webhookData.shop_id, action, webhookData.shop_name);
       }
     } catch (error) {
       console.error('Error handling update:', error);
@@ -56,7 +57,11 @@ export class UpdateService {
     }
   }
 
-  private static async sendUpdateNotification(shop_id: number, action: ShopeeUpdateWebhook['data']['actions'][0]) {
+  private static async sendUpdateNotification(
+    shop_id: number, 
+    action: ShopeeUpdateWebhook['data']['actions'][0],
+    shop_name: string
+  ) {
     try {
       console.log('[UpdateService] Memulai proses notifikasi untuk shop_id:', shop_id);
       console.log('[UpdateService] Data action yang diterima:', JSON.stringify(action, null, 2));
@@ -67,8 +72,10 @@ export class UpdateService {
         .insert({
           notification_type: 'shopee_update',
           shop_id: shop_id,
+          shop_name: shop_name,
           data: {
             shop_id,
+            shop_name,
             data: { actions: [action] }
           },
           processed: false,
@@ -90,6 +97,7 @@ export class UpdateService {
         type: 'shopee_update',
         action: 'UPDATE',
         shop_id: shop_id,
+        shop_name: shop_name,
         title: action.title,
         content: action.content,
         url: action.url,
@@ -116,6 +124,7 @@ export class UpdateService {
       type: 'shopee_update',
       action: 'UPDATE',
       shop_id: notification.data.shop_id,
+      shop_name: notification.data.shop_name,
       title: action.title,
       content: action.content,
       url: action.url,

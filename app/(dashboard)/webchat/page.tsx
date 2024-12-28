@@ -34,12 +34,16 @@ interface Message {
   sender: 'buyer' | 'seller';
   content: string;
   time: string;
-  type: 'text' | 'image' | 'image_with_text';
+  type: 'text' | 'image' | 'image_with_text' | 'order';
   imageUrl?: string;
   imageThumb?: {
     url: string;
     height: number;
     width: number;
+  };
+  orderData?: {
+    shopId: number;
+    orderSn: string;
   };
 }
 
@@ -443,39 +447,42 @@ const WebChatPage: React.FC = () => {
 
     const handleSSEMessage = (event: CustomEvent) => {
       const data = event.detail;
-      console.log('SSE Message received:', data); // Tambahkan log ini
       
-      // Cek apakah pesan untuk conversation ini
       if (data.type === 'new_message' && data.conversationId === selectedConversation) {
-        console.log('New message for current conversation:', data); // Tambahkan log ini
         const newMessage: Message = {
           id: data.messageId,
           sender: data.fromShopId === selectedShop ? 'seller' : 'buyer',
           type: data.messageType,
-          content: data.messageType === 'text' ? data.content.text : '',
-          imageUrl: data.messageType === 'image' ? data.content.url : undefined,
-          imageThumb: data.messageType === 'image' ? {
-            url: data.content.thumbUrl || data.content.url,
-            height: data.content.thumbHeight,
-            width: data.content.thumbWidth
+          content: ['text', 'image_with_text'].includes(data.messageType) 
+            ? data.content.text 
+            : data.messageType === 'order' 
+              ? 'Menampilkan detail pesanan'
+              : '',
+          imageUrl: data.messageType === 'image' 
+            ? data.content.url 
+            : data.messageType === 'image_with_text' 
+              ? data.content.image_url 
+              : undefined,
+          imageThumb: ['image', 'image_with_text'].includes(data.messageType) ? {
+            url: data.messageType === 'image' 
+              ? (data.content.thumb_url || data.content.url)
+              : (data.content.thumb_url || data.content.image_url),
+            height: data.content.thumb_height,
+            width: data.content.thumb_width
+          } : undefined,
+          orderData: data.messageType === 'order' ? {
+            shopId: data.content.shop_id,
+            orderSn: data.content.order_sn
           } : undefined,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
 
-        setMessages(prevMessages => {
-          console.log('Updating messages with new message:', newMessage); // Tambahkan log ini
-          return [...prevMessages, newMessage];
-        });
+        setMessages(prevMessages => [...prevMessages, newMessage]);
       }
     };
 
-    console.log('Setting up SSE listener for conversation:', selectedConversation); // Tambahkan log ini
     window.addEventListener('sse-message', handleSSEMessage as EventListener);
-
-    return () => {
-      console.log('Cleaning up SSE listener for conversation:', selectedConversation); // Tambahkan log ini
-      window.removeEventListener('sse-message', handleSSEMessage as EventListener);
-    };
+    return () => window.removeEventListener('sse-message', handleSSEMessage as EventListener);
   }, [selectedConversation, selectedShop]);
 
   // Modifikasi fungsi untuk memproses pesan dari API
@@ -503,12 +510,12 @@ const WebChatPage: React.FC = () => {
           ...baseMessage,
           type: 'image' as const,
           content: '',
-          imageUrl: apiMessage.content.image_url,
-          imageThumb: apiMessage.content.thumb_url ? {
-            url: apiMessage.content.thumb_url,
+          imageUrl: apiMessage.content.url,
+          imageThumb: {
+            url: apiMessage.content.thumb_url || apiMessage.content.url,
             height: apiMessage.content.thumb_height,
             width: apiMessage.content.thumb_width
-          } : undefined
+          }
         };
       
       case 'image_with_text':
@@ -518,9 +525,20 @@ const WebChatPage: React.FC = () => {
           content: apiMessage.content.text || '',
           imageUrl: apiMessage.content.image_url,
           imageThumb: {
-            url: apiMessage.content.thumb_url,
+            url: apiMessage.content.thumb_url || apiMessage.content.image_url,
             height: apiMessage.content.thumb_height,
             width: apiMessage.content.thumb_width
+          }
+        };
+      
+      case 'order':
+        return {
+          ...baseMessage,
+          type: 'order' as const,
+          content: 'Menampilkan detail pesanan',
+          orderData: {
+            shopId: apiMessage.content.shop_id,
+            orderSn: apiMessage.content.order_sn
           }
         };
       
@@ -714,7 +732,7 @@ const WebChatPage: React.FC = () => {
                           }`}>
                             {message.type === 'text' ? (
                               <p className="break-words">{message.content}</p>
-                            ) : (message.type === 'image' || message.type === 'image_with_text') && message.imageUrl && (
+                            ) : (message.type === 'image' || message.type === 'image_with_text') && message.imageUrl ? (
                               <div className="space-y-2">
                                 <div className="relative">
                                   <img
@@ -733,7 +751,22 @@ const WebChatPage: React.FC = () => {
                                   <p className="break-words mt-2">{message.content}</p>
                                 )}
                               </div>
-                            )}
+                            ) : message.type === 'order' && message.orderData ? (
+                              <div 
+                                className="flex items-center gap-2 cursor-pointer hover:opacity-80"
+                                onClick={() => {
+                                  // Optional: Tambahkan fungsi untuk menampilkan detail pesanan
+                                  const order = orders.find(o => o.order_sn === message.orderData?.orderSn);
+                                  if (order) {
+                                    // Tampilkan detail pesanan atau arahkan ke tab pesanan
+                                    setActiveTab('orders');
+                                  }
+                                }}
+                              >
+                                <ShoppingBag className="h-4 w-4" />
+                                <span>Pesanan #{message.orderData.orderSn}</span>
+                              </div>
+                            ) : null}
                             <p className="text-xs mt-1 opacity-70">{message.time}</p>
                           </div>
                         </div>
@@ -844,7 +877,7 @@ const WebChatPage: React.FC = () => {
                         }`}>
                           {message.type === 'text' ? (
                             <p className="break-words">{message.content}</p>
-                          ) : (message.type === 'image' || message.type === 'image_with_text') && message.imageUrl && (
+                          ) : (message.type === 'image' || message.type === 'image_with_text') && message.imageUrl ? (
                             <div className="space-y-2">
                               <div className="relative">
                                 <img
@@ -863,7 +896,22 @@ const WebChatPage: React.FC = () => {
                                 <p className="break-words mt-2">{message.content}</p>
                               )}
                             </div>
-                          )}
+                          ) : message.type === 'order' && message.orderData ? (
+                            <div 
+                              className="flex items-center gap-2 cursor-pointer hover:opacity-80"
+                              onClick={() => {
+                                // Optional: Tambahkan fungsi untuk menampilkan detail pesanan
+                                const order = orders.find(o => o.order_sn === message.orderData?.orderSn);
+                                if (order) {
+                                  // Tampilkan detail pesanan atau arahkan ke tab pesanan
+                                  setActiveTab('orders');
+                                }
+                              }}
+                            >
+                              <ShoppingBag className="h-4 w-4" />
+                              <span>Pesanan #{message.orderData.orderSn}</span>
+                            </div>
+                          ) : null}
                           <p className="text-xs mt-1 opacity-70">{message.time}</p>
                         </div>
                       </div>

@@ -33,7 +33,6 @@ def chatbot(conversation, user_id, ada_invoice, nomor_invoice, store_id, convers
         
 
         if hasil_cek['ada_keluhan']:
-            
             return None
         elif hasil_cek['ada_perubahan']:
           
@@ -48,7 +47,7 @@ def chatbot(conversation, user_id, ada_invoice, nomor_invoice, store_id, convers
                         f"• Detail perubahan: {detail.get('detail_perubahan', 'Tidak ada detail')}\n"
                         f"• Perubahan warna: {perubahan.get('warna', '-')}\n"
                         f"• Perubahan ukuran: {perubahan.get('ukuran', '-')}\n\n"
-                        f"Tanyakan apakah kakak ingin mengubah detail pesanan lagi?"
+                        f"Tanyakan apakah sudah sesuai dengan yang kakak inginkan?"
                     )
                     conversation.append({"role": "system", "content": pesan_perubahan})
                 except Exception as e:
@@ -56,8 +55,6 @@ def chatbot(conversation, user_id, ada_invoice, nomor_invoice, store_id, convers
                     return None
             else:
                 logging.warning("Data perubahan detail kosong atau tidak valid")
-            return None
-
 
     tools = [
         {

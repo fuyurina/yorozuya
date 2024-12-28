@@ -6,12 +6,16 @@ interface Message {
   sender: 'buyer' | 'seller';
   content: string;
   time: string;
-  type: 'text' | 'image' | 'image_with_text';
+  type: 'text' | 'image' | 'image_with_text' | 'order';
   imageUrl?: string;
   imageThumb?: {
     url: string;
     height: number;
     width: number;
+  };
+  orderData?: {
+    shopId: number;
+    orderSn: string;
   };
 }
 
@@ -49,12 +53,26 @@ export function useConversationMessages(conversationId: string | null, shopId: n
         id: msg.message_id,
         sender: msg.from_shop_id === shopId ? 'seller' : 'buyer',
         type: msg.message_type,
-        content: ['text', 'image_with_text'].includes(msg.message_type) ? msg.content.text : '',
-        imageUrl: ['image', 'image_with_text'].includes(msg.message_type) ? msg.content.image_url : undefined,
+        content: ['text', 'image_with_text'].includes(msg.message_type) 
+          ? msg.content.text 
+          : msg.message_type === 'order'
+            ? 'Menampilkan detail pesanan'
+            : '',
+        imageUrl: msg.message_type === 'image' 
+          ? msg.content.url 
+          : msg.message_type === 'image_with_text' 
+            ? msg.content.image_url 
+            : undefined,
         imageThumb: ['image', 'image_with_text'].includes(msg.message_type) ? {
-          url: msg.content.thumb_url || msg.content.image_url,
+          url: msg.message_type === 'image' 
+            ? (msg.content.thumb_url || msg.content.url)
+            : (msg.content.thumb_url || msg.content.image_url),
           height: msg.content.thumb_height,
           width: msg.content.thumb_width
+        } : undefined,
+        orderData: msg.message_type === 'order' ? {
+          shopId: msg.content.shop_id,
+          orderSn: msg.content.order_sn
         } : undefined,
         time: new Date(msg.created_timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }));
