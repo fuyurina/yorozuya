@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkShopHealth, checkOpenAIKey } from '@/app/services/SafeTool';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+
 
 interface SettingsResponse {
   pengaturan: Array<{
@@ -114,3 +113,5 @@ export async function POST(request: Request) {
     );
   }
 } 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
