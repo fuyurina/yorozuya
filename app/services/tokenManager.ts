@@ -27,6 +27,13 @@ async function getShopName(shopId: number, accessToken: string): Promise<string>
 
 export async function saveTokens(shopId: number, tokens: any, shopName?: string): Promise<void> {
     try {
+        // Ambil status is_active yang ada
+        const { data: existingData } = await supabase
+            .from('shopee_tokens')
+            .select('is_active')
+            .eq('shop_id', shopId)
+            .single();
+
         const now = new Date();
         const data: any = {
             partner_id: SHOPEE_PARTNER_ID,
@@ -37,7 +44,7 @@ export async function saveTokens(shopId: number, tokens: any, shopName?: string)
             refresh_token_expiry: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             authorization_expiry: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(),
             last_refresh_attempt: now.toISOString(),
-            is_active: true,
+            is_active: existingData ? existingData.is_active : true, // Gunakan status yang ada atau true jika baru
             updated_at: now.toISOString()
         };
 
