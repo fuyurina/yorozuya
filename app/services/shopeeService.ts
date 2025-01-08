@@ -1029,46 +1029,46 @@ export async function updateStock(
       throw new Error('stock_list tidak boleh kosong');
     }
 
-    if (stockInfo.stock_list.length > 50) {
-      throw new Error('stock_list tidak boleh lebih dari 50 item');
+    // Bagi stock_list menjadi batch-batch 50 item
+    const batchSize = 50;
+    const batches = [];
+    for (let i = 0; i < stockInfo.stock_list.length; i += batchSize) {
+      batches.push(stockInfo.stock_list.slice(i, i + batchSize));
     }
 
-    // Validasi nilai stok
-    for (const item of stockInfo.stock_list) {
-      for (const stock of item.seller_stock) {
-        if (stock.stock < 0) {
-          throw new Error('Nilai stok tidak boleh negatif');
+    let successList: any[] = [];
+    let failureList: any[] = [];
+
+    // Proses setiap batch
+    for (const batch of batches) {
+      const batchResult = await shopeeApi.updateStock(shopId, accessToken, itemId, {
+        stock_list: batch
+      });
+
+      if (batchResult.error) {
+        console.error(`Error saat mengupdate batch stok: ${JSON.stringify(batchResult)}`);
+        failureList = [...failureList, ...(batchResult.response?.failure_list || [])];
+      } else {
+        successList = [...successList, ...(batchResult.response?.success_list || [])];
+        if (batchResult.response?.failure_list?.length > 0) {
+          failureList = [...failureList, ...batchResult.response.failure_list];
         }
       }
     }
 
-    const result = await shopeeApi.updateStock(shopId, accessToken, itemId, stockInfo);
-
-    if (result.error) {
-      console.error(`Error saat mengupdate stok: ${JSON.stringify(result)}`);
-      return {
-        success: false,
-        error: result.error,
-        message: result.message || 'Gagal mengupdate stok produk',
-        request_id: result.request_id,
-        warning: result.warning
-      };
-    }
-
     // Log hasil update
-    if (result.response?.failure_list?.length > 0) {
-      console.warn(`Beberapa update stok gagal: ${JSON.stringify(result.response.failure_list)}`);
+    if (failureList.length > 0) {
+      console.warn(`Beberapa update stok gagal: ${JSON.stringify(failureList)}`);
     }
 
     console.info(`Berhasil mengupdate stok untuk produk ${itemId}`);
     return {
       success: true,
       data: {
-        success_list: result.response?.success_list || [],
-        failure_list: result.response?.failure_list || []
+        success_list: successList,
+        failure_list: failureList
       },
-      warning: result.warning,
-      request_id: result.request_id
+      warning: failureList.length > 0 ? 'Beberapa model gagal diupdate' : undefined
     };
 
   } catch (error) {
