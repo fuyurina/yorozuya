@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { upsertOrderData, upsertOrderItems, upsertLogisticData, trackingUpdate, updateDocumentStatus, withRetry } from '@/app/services/databaseOperations';
+import { upsertOrderData, upsertOrderItems, upsertLogisticData, trackingUpdate, updateDocumentStatus, withRetry, updateOrderStatusOnly } from '@/app/services/databaseOperations';
 import { prosesOrder } from '@/app/services/prosesOrder';
 import { getOrderDetail } from '@/app/services/shopeeService';
 import { redis } from '@/app/services/redis';
@@ -306,6 +306,13 @@ async function handleTrackingUpdate(data: any): Promise<void> {
 // Fungsi-fungsi helper (perlu diimplementasikan)
 async function updateOrderStatus(shop_id: number, ordersn: string, status: string, updateTime: number) {
   console.log(`Memulai updateOrderStatus untuk order ${ordersn}`);
+  
+  // Khusus untuk status TO_RETURN, langsung update status saja
+  if (status === 'TO_RETURN') {
+    await updateOrderStatusOnly(ordersn, status, updateTime);
+    return { order_sn: ordersn, status: status }; // Return minimal data yang diperlukan
+  }
+
   let orderDetail: any;
   
   try {
@@ -327,7 +334,6 @@ async function updateOrderStatus(shop_id: number, ordersn: string, status: strin
     
     console.log(`Berhasil memperbarui semua data untuk order ${ordersn}`);
     
-    // Return orderData untuk digunakan di handleOrder
     return orderData;
   } catch (error) {
     console.error(`Error kritis dalam updateOrderStatus untuk order ${ordersn}:`, error);

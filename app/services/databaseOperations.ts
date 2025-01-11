@@ -242,3 +242,21 @@ export async function upsertOrderData(orderData: any, shopId: number): Promise<v
       throw error;
     }
   }
+
+  export async function updateOrderStatusOnly(orderSn: string, status: string, updateTime: number): Promise<void> {
+    await withRetry(async () => {
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          order_status: status,
+          update_time: updateTime
+        })
+        .eq('order_sn', orderSn);
+
+      if (error) {
+        throw new Error(`Gagal memperbarui status pesanan: ${error.message}`);
+      }
+
+      console.log(`Status pesanan berhasil diperbarui untuk order_sn: ${orderSn} ke status: ${status}`);
+    });
+  }
