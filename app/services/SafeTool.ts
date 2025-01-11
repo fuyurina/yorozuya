@@ -44,6 +44,7 @@ export interface ShopHealthResponse {
   data?: {
     flashSaleIssues: FlashSaleIssue[];
     discountIssues: DiscountIssue;
+    returnIssues: ReturnIssue[];
     summary: {
       totalIssues: number;
       criticalShops: CriticalShop[];
@@ -58,10 +59,32 @@ interface CriticalShop {
   issues: string[];
 }
 
+export interface ReturnIssue {
+  return_sn: string;
+  order_sn: string;
+  reason: string;
+  text_reason: string;
+  create_time: number;
+  status: string;
+  return_solution: number;
+  refund_amount: number;
+  user: {
+    username: string;
+    email: string;
+  };
+  item: Array<{
+    name: string;
+    item_sku: string;
+    amount: number;
+    refund_amount: number;
+  }>;
+}
+
 // Constants
 const API_ENDPOINTS = {
   flashSale: 'http://localhost:10000/api/flashsale/cek-fs',
-  discount: 'http://localhost:10000/api/discount/cek-diskon'
+  discount: 'http://localhost:10000/api/discount/cek-diskon',
+  shops: 'http://localhost:10000/api/shops'
 } as const;
 
 // Helper Functions
@@ -169,9 +192,46 @@ export async function checkOpenAIKey(apiKey: string): Promise<OpenAICheckResult>
   }
 }
 
+// Tambahkan interface Shop
+interface Shop {
+  shop_id: number;
+  shop_name: string;
+  is_active: boolean;
+  access_token: string;
+}
+
+async function getAllShopIds(): Promise<number[]> {
+  try {
+    const response = await fetch(API_ENDPOINTS.shops);
+    if (!response.ok) {
+      throw new Error('Gagal mengambil daftar toko');
+    }
+    const result = await response.json();
+    
+    // Response selalu dalam format:
+    // {
+    //   status: 'success',
+    //   message: string,
+    //   data: Array<Shop>
+    // }
+    if (result.status === 'success' && Array.isArray(result.data)) {
+      // Ambil shop_id dari toko yang aktif
+      return result.data
+        .filter((shop: Shop) => shop.is_active)
+        .map((shop: Shop) => shop.shop_id);
+    }
+
+    return [];
+  } catch (error) {
+    console.error('Error fetching shops:', error);
+    return [];
+  }
+}
+
 // Main Function
 export async function checkShopHealth(): Promise<ShopHealthResponse> {
   try {
+    // Ambil data flash sale dan diskon
     const { flashSaleData, discountData } = await fetchHealthData();
 
     // Process Flash Sale issues
@@ -180,13 +240,29 @@ export async function checkShopHealth(): Promise<ShopHealthResponse> {
     // Process Discount issues
     const updatedCriticalShops = processDiscountIssues(discountData.data, criticalShops);
 
+    // Ambil data return issues untuk SEMUA toko
+    let returnIssues: ReturnIssue[] = [];
+    try {
+      // Ambil semua shop_id
+      const shopIds = await getAllShopIds();
+      
+      if (shopIds.length > 0) {
+        const returnPromises = shopIds.map(shopId => checkReturnIssues(shopId));
+        const returnResults = await Promise.all(returnPromises);
+        returnIssues = returnResults.flat();
+      }
+    } catch (error) {
+      console.error('Error fetching return issues:', error);
+    }
+
     return {
       success: true,
       data: {
         flashSaleIssues: flashSaleData.data,
         discountIssues: discountData.data,
+        returnIssues,
         summary: {
-          totalIssues: updatedCriticalShops.length,
+          totalIssues: updatedCriticalShops.length + returnIssues.length,
           criticalShops: updatedCriticalShops
         }
       },
@@ -199,5 +275,34 @@ export async function checkShopHealth(): Promise<ShopHealthResponse> {
       success: false,
       message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
     };
+  }
+}
+
+export async function checkReturnIssues(shopId: number): Promise<ReturnIssue[]> {
+  try {
+    
+    // Tambahkan parameter status=PROCESSED
+    const response = await fetch(
+      `http://localhost:10000/api/return?` + 
+      `shop_id=${shopId}&` +
+      `status=PROCESSING`
+    );
+    
+    if (!response.ok) {
+      throw new Error('Gagal mengambil data return');
+    }
+
+    const data = await response.json();
+    
+    // Filter return dengan return_solution = 1 dan status = PROCESSED
+    const criticalReturns = data.data.return.filter((item: any) => 
+      item.return_solution === 1 && 
+      item.status === 'PROCESSING'
+    );
+
+    return criticalReturns;
+  } catch (error) {
+    console.error('Error fetching return data:', error);
+    throw error;
   }
 }

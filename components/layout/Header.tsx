@@ -34,6 +34,52 @@ interface HealthCheckData {
   success: boolean;
   data: {
     shop_health: {
+      flashSaleIssues: Array<{
+        shop_id: number;
+        shop_name: string;
+        issues: {
+          inactive_current: number;
+          no_active_flashsale: boolean;
+          upcoming_count: number;
+          inactive_upcoming: number;
+        };
+        details: Array<any>;
+      }>;
+      discountIssues: {
+        shops_without_backup: Array<{
+          shop_name: string;
+          shop_id: number;
+          ongoing_discounts: Array<{
+            discount_id: number;
+            discount_name: string;
+            start_time_formatted: string;
+            end_time_formatted: string;
+            status: string;
+          }>;
+        }>;
+        ending_soon: Array<any>;
+        expired_without_ongoing: Array<any>;
+      };
+      returnIssues: Array<{
+        return_sn: string;
+        order_sn: string;
+        reason: string;
+        text_reason: string;
+        create_time: number;
+        status: string;
+        return_solution: number;
+        refund_amount: number;
+        user: {
+          username: string;
+          email: string;
+        };
+        item: Array<{
+          name: string;
+          item_sku: string;
+          amount: number;
+          refund_amount: number;
+        }>;
+      }>;
       summary: {
         totalIssues: number;
         criticalShops: Array<{
@@ -45,19 +91,6 @@ interface HealthCheckData {
             start_time: number;
             end_time: number;
             type: string;
-          }>;
-        }>;
-      };
-      discountIssues: {
-        shops_without_backup: Array<{
-          shop_name: string;
-          shop_id: number;
-          ongoing_discounts: Array<{
-            discount_id: number;
-            discount_name: string;
-            start_time_formatted: string;
-            end_time_formatted: string;
-            status: string;
           }>;
         }>;
       };
@@ -446,6 +479,43 @@ export function Header() {
                       {/* Shop Health Issues */}
                       {healthData.data.shop_health?.summary?.criticalShops?.length > 0 ? (
                         <div className="space-y-3">
+                          {/* Return Issues */}
+                          {healthData.data.shop_health.returnIssues?.length > 0 && (
+                            <div className="p-3 rounded-lg border">
+                              <div className="flex items-center gap-2 mb-2">
+                                <AlertTriangle className="h-4 w-4 text-red-500" />
+                                <span className="text-xs font-medium">Return Kritis</span>
+                              </div>
+                              <div className="space-y-2">
+                                {healthData.data.shop_health.returnIssues.map((returnIssue, index) => (
+                                  <div key={index} className="text-xs space-y-1 border-t pt-2 first:border-t-0 first:pt-0">
+                                    <div className="flex justify-between">
+                                      <span className="font-medium">Return #{returnIssue.return_sn}</span>
+                                      <span className="text-muted-foreground">
+                                        {new Date(returnIssue.create_time * 1000).toLocaleDateString('id-ID')}
+                                      </span>
+                                    </div>
+                                    <div className="text-muted-foreground">
+                                      <p>Order: {returnIssue.order_sn}</p>
+                                      <p>Status: {returnIssue.status}</p>
+                                      <p>Alasan: {returnIssue.text_reason}</p>
+                                      <p>Refund: Rp {returnIssue.refund_amount.toLocaleString('id-ID')}</p>
+                                    </div>
+                                    {returnIssue.item.map((item, itemIndex) => (
+                                      <div key={itemIndex} className="ml-2 text-muted-foreground">
+                                        <p>• {item.name}</p>
+                                        <p className="ml-2">SKU: {item.item_sku}</p>
+                                        <p className="ml-2">Jumlah: {item.amount}</p>
+                                        <p className="ml-2">Refund: Rp {item.refund_amount.toLocaleString('id-ID')}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Existing Critical Shops */}
                           {healthData.data.shop_health.summary.criticalShops.map((shop, index) => (
                             <div 
                               key={index} 
