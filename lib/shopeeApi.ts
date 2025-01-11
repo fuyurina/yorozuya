@@ -2343,6 +2343,115 @@ async getAppPushConfig(): Promise<any> {
     throw error;
   }
 }
+
+async getReturnList(
+  shopId: number,
+  accessToken: string,
+  options: {
+    page_no: number,
+    page_size: number,
+    create_time_from?: number,
+    create_time_to?: number, 
+    update_time_from?: number,
+    update_time_to?: number,
+    status?: 'REQUESTED' | 'ACCEPTED' | 'CANCELLED' | 'JUDGING' | 'CLOSED' | 'PROCESSING' | 'SELLER_DISPUTE',
+    return_solution?: 'RETURN_REFUND' | 'REFUND',
+    return_reason?: 'NONRECEIPT' | 'WRONG_ITEM' | 'ITEM_DAMAGED' | 'DIFF_DESC' | 'MUITAL_AGREE' | 
+      'OTHER' | 'USED' | 'NO_REASON' | 'ITEM_WRONGDAMAGED' | 'CHANGE_MIND' | 'ITEM_MISSING' | 
+      'EXPECTATION_FAILED' | 'ITEM_FAKE' | 'PHYSICAL_DMG' | 'FUNCTIONAL_DMG' | 'ITEM_NOT_FIT' | 
+      'SUSPICIOUS_PARCEL' | 'EXPIRED_PRODUCT' | 'WRONG_ORDER_INFO' | 'WRONG_ADDRESS' | 
+      'CHANGE_OF_MIND' | 'SELLER_SENT_WRONG_ITEM' | 'SPILLED_CONTENTS' | 'BROKEN_PRODUCTS' | 
+      'DAMAGED_PACKAGE' | 'SCRATCHED' | 'DAMAGED_OTHERS',
+    negotiation_status?: 'PENDING_RESPOND' | 'ACCEPTED' | 'REJECTED' | 'PENDING_BUYER_RESPOND' | 'TERMINATED',
+    seller_proof_status?: 'PENDING' | 'ACCEPTED' | 'REJECTED',
+    seller_compensation_status?: 'NOT_REQUIRED' | 'PENDING_REQUEST' | 'ACCEPTED' | 'REJECTED'
+  }
+): Promise<any> {
+  const url = 'https://partner.shopeemobile.com/api/v2/returns/get_return_list';
+  const path = '/api/v2/returns/get_return_list';
+  const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+  // Validasi input
+  if (options.page_size > 100) {
+    throw new Error('page_size tidak boleh lebih dari 100');
+  }
+
+  if (options.create_time_from && options.create_time_to) {
+    const diffDays = (options.create_time_to - options.create_time_from) / (24 * 60 * 60);
+    if (diffDays > 15) {
+      throw new Error('Rentang waktu create_time tidak boleh lebih dari 15 hari');
+    }
+  }
+
+  if (options.update_time_from && options.update_time_to) {
+    const diffDays = (options.update_time_to - options.update_time_from) / (24 * 60 * 60);
+    if (diffDays > 15) {
+      throw new Error('Rentang waktu update_time tidak boleh lebih dari 15 hari');
+    }
+  }
+
+  const params = new URLSearchParams({
+    partner_id: this.partnerId.toString(),
+    timestamp: timest.toString(),
+    sign,
+    shop_id: shopId.toString(),
+    access_token: accessToken,
+    page_no: options.page_no.toString(),
+    page_size: options.page_size.toString()
+  });
+
+  // Tambahkan parameter opsional
+  if (options.create_time_from) {
+    params.append('create_time_from', options.create_time_from.toString());
+  }
+  if (options.create_time_to) {
+    params.append('create_time_to', options.create_time_to.toString());
+  }
+  if (options.update_time_from) {
+    params.append('update_time_from', options.update_time_from.toString());
+  }
+  if (options.update_time_to) {
+    params.append('update_time_to', options.update_time_to.toString());
+  }
+  if (options.status) {
+    params.append('status', options.status);
+  }
+  if (options.negotiation_status) {
+    params.append('negotiation_status', options.negotiation_status);
+  }
+  if (options.seller_proof_status) {
+    params.append('seller_proof_status', options.seller_proof_status);
+  }
+  if (options.seller_compensation_status) {
+    params.append('seller_compensation_status', options.seller_compensation_status);
+  }
+  if (options.return_solution) {
+    params.append('return_solution', options.return_solution);
+  }
+  if (options.return_reason) {
+    params.append('return_reason', options.return_reason);
+  }
+
+  const fullUrl = `${url}?${params.toString()}`;
+  const headers = { 'Content-Type': 'application/json' };
+
+  console.info(`Mengirim permintaan untuk mendapatkan daftar retur: URL=${fullUrl}`);
+
+  try {
+    const response = await axios.get(fullUrl, { headers });
+    console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+    return response.data;
+  } catch (error) {
+    console.error('Kesalahan saat mengambil daftar retur:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('Error Response:', {
+        status: error.response.status,
+        data: error.response.data
+      });
+    }
+    throw error;
+  }
+}
 }
 
 export default ShopeeAPI;

@@ -1366,3 +1366,73 @@ export async function unblockShopWebhook(shopId: number): Promise<any> {
     };
   }
 }
+
+export async function getReturnList(
+  shopId: number,
+  options: {
+    page_no?: number,
+    page_size?: number,
+    create_time_from?: number,
+    create_time_to?: number,
+    update_time_from?: number,
+    update_time_to?: number,
+    status?: 'REQUESTED' | 'ACCEPTED' | 'CANCELLED' | 'JUDGING' | 'CLOSED' | 'PROCESSING' | 'SELLER_DISPUTE',
+    return_solution?: 'RETURN_REFUND' | 'REFUND',
+    return_reason?: 'NONRECEIPT' | 'WRONG_ITEM' | 'ITEM_DAMAGED' | 'DIFF_DESC' | 'MUITAL_AGREE' | 
+      'OTHER' | 'USED' | 'NO_REASON' | 'ITEM_WRONGDAMAGED' | 'CHANGE_MIND' | 'ITEM_MISSING' | 
+      'EXPECTATION_FAILED' | 'ITEM_FAKE' | 'PHYSICAL_DMG' | 'FUNCTIONAL_DMG' | 'ITEM_NOT_FIT' | 
+      'SUSPICIOUS_PARCEL' | 'EXPIRED_PRODUCT' | 'WRONG_ORDER_INFO' | 'WRONG_ADDRESS' | 
+      'CHANGE_OF_MIND' | 'SELLER_SENT_WRONG_ITEM' | 'SPILLED_CONTENTS' | 'BROKEN_PRODUCTS' | 
+      'DAMAGED_PACKAGE' | 'SCRATCHED' | 'DAMAGED_OTHERS',
+    negotiation_status?: 'PENDING_RESPOND' | 'ACCEPTED' | 'REJECTED' | 'PENDING_BUYER_RESPOND' | 'TERMINATED',
+    seller_proof_status?: 'PENDING' | 'ACCEPTED' | 'REJECTED',
+    seller_compensation_status?: 'NOT_REQUIRED' | 'PENDING_REQUEST' | 'ACCEPTED' | 'REJECTED'
+  } = {}
+): Promise<any> {
+  try {
+    const accessToken = await getValidAccessToken(shopId);
+    
+    // Set default values
+    const defaultOptions = {
+      page_no: 0,
+      page_size: 50,
+    };
+
+    // Merge dengan options yang diberikan
+    const finalOptions = {
+      ...defaultOptions,
+      ...options
+    };
+
+    const result = await shopeeApi.getReturnList(
+      shopId,
+      accessToken,
+      finalOptions
+    );
+
+    if (result.error) {
+      console.error(`Error saat mengambil daftar retur: ${JSON.stringify(result)}`);
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal mengambil daftar retur',
+        request_id: result.request_id
+      };
+    }
+
+    return {
+      success: true,
+      data: result.response,
+      more: result.more,
+      request_id: result.request_id
+    };
+
+  } catch (error) {
+    console.error('Kesalahan saat mengambil daftar retur:', error);
+    return {
+      success: false,
+      error: 'FETCH_RETURNS_FAILED',
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}

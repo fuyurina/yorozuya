@@ -14,7 +14,8 @@ import {
   Percent,
   ShoppingBag,
   Package,
-  Zap
+  Zap,
+  RotateCcw
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -33,6 +34,7 @@ export const navItems = [
   { href: '/webchat', icon: MessageSquare, label: 'Chat' },
   { href: '/orders', icon: ShoppingBag, label: 'Orders' },
   { href: '/ubah_pesanan', icon: ShoppingCart, label: 'Perubahan Pesanan' },
+  { href: '/return', icon: RotateCcw, label: 'Return' },
   { href: '/produk', icon: Package, label: 'Produk' },
   { href: '/flashsale', icon: Zap, label: 'Flash Sale' },
   { href: '/ads', icon: Megaphone, label: 'Iklan' },
