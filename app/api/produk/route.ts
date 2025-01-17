@@ -59,7 +59,7 @@ export async function GET(request: Request) {
     // Jika tidak ada item_id, ambil semua item (kode existing)
     const itemListResult = await getItemList(shopId, {
       page_size: 100,
-      item_status: ['NORMAL'],
+      item_status: ['NORMAL', 'UNLIST']
     });
 
     console.log('Respon getItemList:', JSON.stringify(itemListResult, null, 2));

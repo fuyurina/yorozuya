@@ -47,7 +47,7 @@ def chatbot(conversation, user_id, ada_invoice, nomor_invoice, store_id, convers
                         f"• Detail perubahan: {detail.get('detail_perubahan', 'Tidak ada detail')}\n"
                         f"• Perubahan warna: {perubahan.get('warna', '-')}\n"
                         f"• Perubahan ukuran: {perubahan.get('ukuran', '-')}\n\n"
-                        f"Tanyakan apakah sudah sesuai dengan yang kakak inginkan?"
+                        
                     )
                     conversation.append({"role": "system", "content": pesan_perubahan})
                 except Exception as e:
@@ -82,7 +82,7 @@ def chatbot(conversation, user_id, ada_invoice, nomor_invoice, store_id, convers
                             "enum": [
                                 "Produk Tidak Lengkap",
                                 "Produk Rusak",
-                                "Salah Kirim Model Pakaian",
+                                
 
                             ],
                             "description": "Jenis atau kategori keluhan"
@@ -174,7 +174,7 @@ def chatbot(conversation, user_id, ada_invoice, nomor_invoice, store_id, convers
                     if tool_call['function']['name'] == 'tangani_keluhan':
                         args = json.loads(tool_call['function']['arguments'])
                         tangani_keluhan(args['id_pengguna'], args['nama_toko'], args['jenis_keluhan'], args['deskripsi_keluhan'], args['nomor_invoice'], args['status_pesanan'], store_id, conversation_id, user_id_int)
-                        return f"Terima kasih telah memberi tahu kami tentang {args['jenis_keluhan']}. Kami telah mencatat keluhan Anda terkait pesanan dengan nomor invoice {nomor_invoice} dan akan menanganinya sesegera mungkin. Kakak juga bisa ajukan pengembalian lewat menu pengembalian di halaman pesanan ya kak dan mengikuti prosedur pengembalian dari Shopee."
+                        return f"Terima kasih telah memberi tahu kami tentang {args['jenis_keluhan']}. Kami telah mencatat keluhan Anda terkait pesanan dengan nomor invoice {nomor_invoice} dan akan menanganinya sesegera mungkin."
                     elif tool_call['function']['name'] == 'ubah_detail_pesanan':
                         args = json.loads(tool_call['function']['arguments'])
                         try:

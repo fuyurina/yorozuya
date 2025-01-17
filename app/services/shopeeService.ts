@@ -1436,3 +1436,67 @@ export async function getReturnList(
     };
   }
 }
+
+export async function unlistItems(
+  shopId: number,
+  items: Array<{
+    item_id: number,
+    unlist: boolean
+  }>
+): Promise<any> {
+  try {
+    // Validasi input
+    if (!shopId) {
+      throw new Error('ID Toko diperlukan');
+    }
+
+    if (!items || items.length === 0) {
+      throw new Error('Daftar item diperlukan');
+    }
+
+    if (items.length > 50) {
+      throw new Error('Maksimal 50 item dapat diproses dalam satu waktu');
+    }
+
+    // Dapatkan access token
+    const accessToken = await getValidAccessToken(shopId);
+
+    // Proses unlist item
+    const result = await shopeeApi.unlistItem(shopId, accessToken, items);
+
+    if (result.error) {
+      console.error(`Error saat unlist item: ${JSON.stringify(result)}`);
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal unlist item',
+        request_id: result.request_id
+      };
+    }
+
+    // Log hasil untuk item yang berhasil dan gagal
+    if (result.response.success_list?.length > 0) {
+      console.info(`Berhasil memproses ${result.response.success_list.length} item`);
+    }
+
+    if (result.response.failure_list?.length > 0) {
+      console.warn(`Gagal memproses ${result.response.failure_list.length} item:`, 
+        JSON.stringify(result.response.failure_list));
+    }
+
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id,
+      warning: result.warning
+    };
+
+  } catch (error) {
+    console.error('Kesalahan saat memproses unlist item:', error);
+    return {
+      success: false,
+      error: 'UNLIST_ITEMS_FAILED',
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}

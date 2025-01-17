@@ -1336,7 +1336,9 @@ export class ShopeeAPI {
     });
 
     if (options.item_status?.length) {
-      params.append('item_status', options.item_status.join(','));
+      options.item_status.forEach(status => {
+        params.append('item_status', status);
+      });
     }
     
     if (options.update_time_from) {
@@ -2443,6 +2445,56 @@ async getReturnList(
     return response.data;
   } catch (error) {
     console.error('Kesalahan saat mengambil daftar retur:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('Error Response:', {
+        status: error.response.status,
+        data: error.response.data
+      });
+    }
+    throw error;
+  }
+}
+
+async unlistItem(
+  shopId: number,
+  accessToken: string,
+  items: Array<{
+    item_id: number,
+    unlist: boolean
+  }>
+): Promise<any> {
+  const url = 'https://partner.shopeemobile.com/api/v2/product/unlist_item';
+  const path = '/api/v2/product/unlist_item';
+  const [timest, sign] = this._generateSign(path, accessToken, shopId);
+
+  // Validasi input
+  if (!items || items.length === 0 || items.length > 50) {
+    throw new Error('item_list harus berisi antara 1 sampai 50 item');
+  }
+
+  const params = new URLSearchParams({
+    partner_id: this.partnerId.toString(),
+    timestamp: timest.toString(),
+    sign,
+    shop_id: shopId.toString(),
+    access_token: accessToken
+  });
+
+  const body = {
+    item_list: items
+  };
+
+  const fullUrl = `${url}?${params.toString()}`;
+  const headers = { 'Content-Type': 'application/json' };
+
+  console.info(`Mengirim permintaan untuk unlist item: URL=${fullUrl}, Body=${JSON.stringify(body)}`);
+
+  try {
+    const response = await axios.post(fullUrl, body, { headers });
+    console.info(`Response status: ${response.status}, Konten response: ${JSON.stringify(response.data)}`);
+    return response.data;
+  } catch (error) {
+    console.error('Kesalahan saat unlist item:', error);
     if (axios.isAxiosError(error) && error.response) {
       console.error('Error Response:', {
         status: error.response.status,

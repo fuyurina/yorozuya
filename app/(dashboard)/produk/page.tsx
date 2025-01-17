@@ -2,7 +2,7 @@
 
 import { useProducts } from '@/app/hooks/useProducts'
 import { Button } from '@/components/ui/button'
-import { Loader2 } from 'lucide-react'
+import { Loader2, RefreshCcw, Search, Package } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,8 @@ import { formatRupiah } from "@/lib/utils"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
+import { Input } from "@/components/ui/input"
 
 interface StockPrice {
   model_id: number;
@@ -65,7 +67,8 @@ export default function ProdukPage() {
     loadProducts,
     getStockPrices,
     syncSingleProduct,
-    updateStock
+    updateStock,
+    toggleProductStatus
   } = useProducts()
   const [syncProgress, setSyncProgress] = useState(0)
   const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false)
@@ -87,10 +90,19 @@ export default function ProdukPage() {
   const [isBulkStockDialogOpen, setIsBulkStockDialogOpen] = useState(false)
   const [bulkStockValue, setBulkStockValue] = useState<number>(0)
   const [isSavingBulkStock, setIsSavingBulkStock] = useState(false)
+  const [isUnlisting, setIsUnlisting] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
 
   const filteredProducts = products.filter((product) => {
-    if (selectedShopId === 'all') return true
-    return product.shopee_tokens?.some(shop => shop.shop_id.toString() === selectedShopId)
+    const shopFilter = selectedShopId === 'all' || 
+      product.shopee_tokens?.some(shop => shop.shop_id.toString() === selectedShopId)
+
+    const searchFilter = searchQuery === "" || (
+      (product.item_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.item_sku?.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+
+    return shopFilter && searchFilter
   })
 
   useEffect(() => {
@@ -320,11 +332,78 @@ export default function ProdukPage() {
     }
   }
 
+  const handleToggleProductStatus = async () => {
+    if (selectedProducts.length === 0) {
+      toast.error("Pilih minimal satu produk");
+      return;
+    }
+
+    setIsUnlisting(true);
+    try {
+      const firstProduct = products.find(p => p.item_id === selectedProducts[0]);
+      if (!firstProduct?.shop_id) {
+        throw new Error("Shop ID tidak ditemukan");
+      }
+
+      // Cek status produk yang dipilih dan toggle statusnya
+      const items = selectedProducts.map(itemId => {
+        const product = products.find(p => p.item_id === itemId);
+        return {
+          item_id: itemId,
+          unlist: product?.item_status === 'NORMAL' // true jika NORMAL (akan di-unlist), false jika UNLIST (akan dinormalkan)
+        };
+      });
+
+      const result = await toggleProductStatus(firstProduct.shop_id, items);
+      
+      if (result.success) {
+        setSelectedProducts([]);
+        await loadProducts();
+      }
+    } catch (error) {
+      console.error('Error toggling products:', error);
+      toast.error("Gagal mengubah status produk");
+    } finally {
+      setIsUnlisting(false);
+    }
+  };
+
+  const handleToggleSingleProduct = async (itemId: number, currentStatus: string) => {
+    try {
+      const product = products.find(p => p.item_id === itemId);
+      if (!product?.shop_id) {
+        throw new Error("Shop ID tidak ditemukan");
+      }
+
+      const result = await toggleProductStatus(product.shop_id, [{
+        item_id: itemId,
+        unlist: currentStatus === 'NORMAL' // true jika NORMAL (akan di-unlist)
+      }]);
+      
+      if (result.success) {
+        await loadProducts();
+      }
+    } catch (error) {
+      console.error('Error toggling product:', error);
+      toast.error("Gagal mengubah status produk");
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Daftar Produk</h1>
         <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center w-full sm:w-auto">
+          <div className="relative w-full sm:w-[300px]">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cari berdasarkan nama atau SKU..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
           <Select
             value={selectedShopId}
             onValueChange={setSelectedShopId}
@@ -344,12 +423,32 @@ export default function ProdukPage() {
           </Select>
 
           {selectedProducts.length > 0 && (
-            <Button 
-              onClick={() => setIsBulkStockDialogOpen(true)}
-              variant="default"
-            >
-              Update Stok ({selectedProducts.length})
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setIsBulkStockDialogOpen(true)}
+                variant="default"
+              >
+                Update Stok ({selectedProducts.length})
+              </Button>
+              
+              <Button 
+                onClick={handleToggleProductStatus}
+                variant="default"
+                disabled={isUnlisting}
+              >
+                {isUnlisting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Memproses...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCcw className="mr-2 h-4 w-4" />
+                    Ubah Status ({selectedProducts.length})
+                  </>
+                )}
+              </Button>
+            </div>
           )}
 
           <Button 
@@ -361,6 +460,12 @@ export default function ProdukPage() {
           </Button>
         </div>
       </div>
+
+      {searchQuery && (
+        <div className="mb-4 text-sm text-muted-foreground">
+          Menampilkan {filteredProducts.length} hasil untuk "{searchQuery}"
+        </div>
+      )}
 
       <div className="rounded-md border overflow-x-auto">
         <Table>
@@ -417,7 +522,15 @@ export default function ProdukPage() {
                   </TableCell>
                   <TableCell>
                     <div className="space-y-2">
-                      <p className="font-medium line-clamp-2">{product.item_name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium line-clamp-2">{product.item_name}</p>
+                        <Badge 
+                          variant={product.item_status === 'NORMAL' ? 'default' : 'secondary'}
+                          className="whitespace-nowrap"
+                        >
+                          {product.item_status === 'NORMAL' ? 'Aktif' : 'Nonaktif'}
+                        </Badge>
+                      </div>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-primary whitespace-nowrap">
@@ -441,21 +554,26 @@ export default function ProdukPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleViewStockDetail(product.item_id)}
-                      disabled={loadingProductId === product.item_id}
-                    >
-                      {loadingProductId === product.item_id ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                       
-                        </>
-                      ) : (
-                        'Stok'
-                      )}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleViewStockDetail(product.item_id)}
+                        disabled={loadingProductId === product.item_id}
+                        className="h-8 w-8"
+                      >
+                        {loadingProductId === product.item_id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Package className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Switch
+                        checked={product.item_status === 'NORMAL'}
+                        onCheckedChange={() => handleToggleSingleProduct(product.item_id, product.item_status)}
+                        aria-label="Toggle product status"
+                      />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

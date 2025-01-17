@@ -570,6 +570,57 @@ export function useProducts() {
     }
   };
 
+  const toggleProductStatus = async (
+    shopId: number,
+    items: Array<{
+      item_id: number,
+      unlist: boolean // true untuk nonaktif, false untuk aktif
+    }>
+  ) => {
+    try {
+      const response = await fetch('/api/produk/unlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          shopId,
+          items
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        toast.error('Gagal Mengubah Status Produk', {
+          description: result.message || 'Terjadi kesalahan saat mengubah status produk'
+        });
+        return result;
+      }
+
+      // Refresh data produk setelah berhasil
+      await loadProducts();
+
+      // Tampilkan notifikasi sukses
+      const actionText = items[0]?.unlist ? 'dinonaktifkan' : 'diaktifkan';
+      toast.success(`Produk Berhasil ${actionText}`, {
+        description: `${items.length} produk telah diperbarui`
+      });
+
+      return result;
+
+    } catch (error) {
+      console.error('Error saat mengubah status produk:', error);
+      toast.error('Gagal Mengubah Status Produk', {
+        description: 'Terjadi kesalahan saat menghubungi server'
+      });
+      return {
+        success: false,
+        message: 'Terjadi kesalahan saat mengubah status produk'
+      };
+    }
+  };
+
   return {
     products,
     isSyncing,
@@ -583,6 +634,7 @@ export function useProducts() {
     stockPrices,
     isLoadingStockPrices,
     getStockPrices,
-    updateStock
+    updateStock,
+    toggleProductStatus
   }
 }
