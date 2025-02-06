@@ -13,7 +13,7 @@ export default function DashboardLayout({
     <SSEProvider>
       <Providers>
         <GlobalNotification />
-        <div className="flex min-h-screen max-h-screen w-full overflow-hidden">
+        <div className="flex h-[100dvh] w-full overflow-hidden">
           <Sidebar />
           <div className="flex flex-col flex-1 w-full md:pl-[56px] overflow-hidden">
             <Header />

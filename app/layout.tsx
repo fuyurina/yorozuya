@@ -1,12 +1,8 @@
 import '@/app/globals.css'
 import { Inter } from 'next/font/google'
-import { Header } from "@/components/layout/Header"
-import {Sidebar} from "@/components/layout/Sidebar"
 import dynamic from 'next/dynamic'
 import { Toaster } from 'sonner';
-import Providers from "./services/Providers"
-import { SSEProvider } from './services/SSEService';
-import { GlobalNotification } from '@/components/GlobalNotification';
+
 
 import type { Viewport } from 'next'
 
