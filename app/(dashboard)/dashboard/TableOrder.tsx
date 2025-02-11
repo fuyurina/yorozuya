@@ -24,6 +24,12 @@ import { toast } from "sonner";
 import { OrderHistory } from './OrderHistory';
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleString('id-ID', {
@@ -1118,6 +1124,134 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
     shopReports: []
   });
 
+  // Tambahkan state untuk tracking proses sync
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<{
+    total: number;
+    processed: number;
+    currentShop: string;
+  }>({
+    total: 0,
+    processed: 0,
+    currentShop: ''
+  });
+
+  // Tambahkan state untuk dialog ringkasan
+  const [isSyncSummaryOpen, setIsSyncSummaryOpen] = useState(false);
+  const [syncSummary, setSyncSummary] = useState<{
+    totalOrders: number;
+    processedOrders: number;
+    shopReports: {
+      shopName: string;
+      total: number;
+      processed: number;
+      failed: number;
+    }[];
+  }>({
+    totalOrders: 0,
+    processedOrders: 0,
+    shopReports: []
+  });
+
+  // Update fungsi handleSyncOrders
+  const handleSyncOrders = async () => {
+    try {
+      setIsSyncing(true);
+      
+      const ordersByShop = orders.reduce((acc, order) => {
+        if (!acc[order.shop_id]) {
+          acc[order.shop_id] = [];
+        }
+        acc[order.shop_id].push(order.order_sn);
+        return acc;
+      }, {} as { [key: number]: string[] });
+
+      const totalOrders = orders.length;
+      const shopReports: typeof syncSummary.shopReports = [];
+
+      for (const [shopId, orderSns] of Object.entries(ordersByShop)) {
+        const shopName = orders.find(o => o.shop_id === Number(shopId))?.shop_name || 'Unknown Shop';
+        
+        setSyncProgress(prev => ({
+          ...prev,
+          total: totalOrders,
+          currentShop: shopName
+        }));
+
+        try {
+          const response = await fetch('/api/sync', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              shopId: Number(shopId),
+              orderSns: orderSns
+            })
+          });
+
+          const result = await response.json();
+
+          if (!result.success) {
+            throw new Error(result.error || 'Gagal sinkronisasi');
+          }
+
+          shopReports.push({
+            shopName,
+            total: result.data.total,
+            processed: result.data.success,
+            failed: result.data.failed
+          });
+
+          setSyncProgress(prev => ({
+            ...prev,
+            processed: prev.processed + result.data.success
+          }));
+
+        } catch (error) {
+          console.error(`Error syncing ${shopName}:`, error);
+          shopReports.push({
+            shopName,
+            total: orderSns.length,
+            processed: 0,
+            failed: orderSns.length
+          });
+        }
+      }
+
+      // Set ringkasan sinkronisasi
+      const totalProcessed = shopReports.reduce((sum, report) => sum + report.processed, 0);
+      const totalFailed = shopReports.reduce((sum, report) => sum + report.failed, 0);
+
+      setSyncSummary({
+        totalOrders,
+        processedOrders: totalProcessed,
+        shopReports
+      });
+
+      // Tampilkan dialog ringkasan
+      setIsSyncSummaryOpen(true);
+
+      if (totalProcessed > 0) {
+        toast.success(`Berhasil mensinkronkan ${totalProcessed} pesanan`);
+      }
+      if (totalFailed > 0) {
+        toast.error(`Gagal mensinkronkan ${totalFailed} pesanan`);
+      }
+
+    } catch (error) {
+      console.error('Error syncing orders:', error);
+      toast.error('Gagal melakukan sinkronisasi');
+    } finally {
+      setIsSyncing(false);
+      setSyncProgress({
+        total: 0,
+        processed: 0,
+        currentShop: ''
+      });
+    }
+  };
+
   return (
     <div className="w-full">
       {documentBulkProgress.total > 0 && (
@@ -1302,9 +1436,9 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
             <div className="flex gap-2">
               <Button
                 onClick={() => setIsProcessAllConfirmOpen(true)}
-                className="px-2 sm:px-3 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap h-[32px] min-h-0 dark:bg-blue-700 dark:hover:bg-blue-800"
+                className="px-2 sm:px-3 py-2 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground dark:text-primary-foreground whitespace-nowrap h-[32px] min-h-0"
                 disabled={metrics.readyToShipCount === 0}
-                title="Proses Semua Pesanan"
+                title="Proses Pesanan"
               >
                 <Send size={14} className="sm:mr-1" />
                 <span className="hidden sm:inline">
@@ -1317,7 +1451,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
               <Button
                 onClick={() => setIsRejectAllConfirmOpen(true)}
-                className="px-2 sm:px-3 py-2 text-xs font-medium bg-red-600 hover:bg-red-700 text-white whitespace-nowrap h-[32px] min-h-0 dark:bg-red-700 dark:hover:bg-red-800"
+                className="px-2 sm:px-3 py-2 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground dark:text-primary-foreground whitespace-nowrap h-[32px] min-h-0"
                 disabled={metrics.cancelRequestCount === 0}
                 title="Tolak Semua Pembatalan"
               >
@@ -1329,13 +1463,26 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                   ({metrics.cancelRequestCount})
                 </span>
               </Button>
+
+              {/* Tombol sync */}
+              <Button
+                onClick={handleSyncOrders}
+                disabled={isSyncing}
+                className="px-2 sm:px-3 py-2 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground dark:text-primary-foreground whitespace-nowrap h-[32px] min-h-0"
+                title="Sinkronkan Pesanan"
+              >
+                <RefreshCcw size={14} className={`sm:mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">
+                  {isSyncing ? 'Sinkronisasi...' : 'Sinkronkan'}
+                </span>
+              </Button>
             </div>
 
             {/* Grup Tombol Cetak - Sebelah Kanan */}
             <div className="flex gap-2">
               <Button
                 onClick={handlePrintUnprinted}
-                className="px-2 sm:px-3 py-2 text-xs font-medium bg-green-600 hover:bg-green-700 text-white whitespace-nowrap h-[32px] min-h-0 dark:bg-green-700 dark:hover:bg-green-800"
+                className="px-2 sm:px-3 py-2 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground dark:text-primary-foreground whitespace-nowrap h-[32px] min-h-0"
                 disabled={metrics.unprintedCount === 0}
                 title="Cetak Dokumen Belum Print"
               >
@@ -1350,11 +1497,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
 
               <Button
                 onClick={handleBulkPrintClick}
-                className={`px-2 sm:px-3 py-2 text-xs font-medium text-white whitespace-nowrap h-[32px] min-h-0
-                  ${tableState.selectedOrders.length > 0 
-                    ? 'bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700' 
-                    : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800'
-                  }`}
+                className="px-2 sm:px-3 py-2 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground dark:text-primary-foreground whitespace-nowrap h-[32px] min-h-0"
                 title={tableState.selectedOrders.length > 0 
                   ? `Cetak ${tableState.selectedOrders.length} Dokumen`
                   : `Cetak Semua (${metrics.totalPrintableDocuments})`
@@ -1541,11 +1684,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleConfirmAction}
-              className={`${
-                selectedAction.action === 'ACCEPT'
-                  ? 'bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700'
-                  : 'bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700'
-              } text-white`}
+              className="bg-primary hover:bg-primary/90 text-white"
             >
               {selectedAction.action === 'ACCEPT' ? 'Terima Pembatalan' : 'Tolak Pembatalan'}
             </AlertDialogAction>
@@ -1813,12 +1952,12 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                                       disabled={isLoadingForOrder(order.orderSn)}
                                       variant="ghost"
                                       size="sm"
-                                      className="h-6 w-6 p-0"
+                                      className="h-6 w-6 p-0 hover:text-primary dark:hover:text-primary"
                                     >
                                       {isLoadingForOrder(order.orderSn) ? (
                                         <RefreshCcw size={12} className="animate-spin" />
                                       ) : (
-                                        <Printer size={12} className="text-primary hover:text-primary/80" />
+                                        <Printer size={12} />
                                       )}
                                     </Button>
                                   )}
@@ -1847,6 +1986,105 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Tambahkan progress bar jika sedang sync */}
+      {isSyncing && (
+        <div className="mt-2 mb-2 p-2 bg-white dark:bg-gray-800 border rounded-lg shadow-sm">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <RefreshCcw size={14} className="text-primary dark:text-white animate-spin" />
+                <span className="font-medium dark:text-white">
+                  {syncProgress.currentShop}
+                </span>
+              </div>
+              <span className="text-gray-600 dark:text-gray-400">
+                {syncProgress.processed}/{syncProgress.total}
+              </span>
+            </div>
+            <Progress 
+              value={(syncProgress.processed / syncProgress.total) * 100} 
+              className="h-1"
+            />
+          </div>
+        </div>
+      )}
+
+      <Dialog open={isSyncSummaryOpen} onOpenChange={setIsSyncSummaryOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle>Ringkasan Sinkronisasi</DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            {/* Statistik Utama */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                  {syncSummary.totalOrders}
+                </div>
+                <div className="text-sm text-blue-600 dark:text-blue-400">
+                  Total Pesanan
+                </div>
+              </div>
+              <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                  {syncSummary.processedOrders}
+                </div>
+                <div className="text-sm text-green-600 dark:text-green-400">
+                  Berhasil
+                </div>
+              </div>
+              <div className="p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
+                <div className="text-xl font-bold text-red-600 dark:text-red-400">
+                  {syncSummary.totalOrders - syncSummary.processedOrders}
+                </div>
+                <div className="text-sm text-red-600 dark:text-red-400">
+                  Gagal
+                </div>
+              </div>
+            </div>
+
+            {/* Detail per Toko */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
+                Detail per Toko
+              </h3>
+              <div className="space-y-2">
+                {syncSummary.shopReports.map((report, index) => (
+                  <div 
+                    key={index}
+                    className="p-3 border rounded-lg dark:border-gray-700 bg-white dark:bg-gray-800"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm dark:text-white">
+                        {report.shopName}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        Total: {report.total}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <div className="flex items-center gap-1">
+                        <span className="text-green-500">●</span>
+                        <span className="text-gray-600 dark:text-gray-300">
+                          Berhasil: {report.processed}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-red-500">●</span>
+                        <span className="text-gray-600 dark:text-gray-300">
+                          Gagal: {report.failed}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

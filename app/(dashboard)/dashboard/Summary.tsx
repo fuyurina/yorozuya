@@ -32,32 +32,47 @@ export function OrdersSummary({ summary }: OrdersSummaryProps) {
   return (
     <div className="space-y-2">
       <Card 
-        className="bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg cursor-pointer"
+        className="bg-primary hover:bg-primary/90 rounded-lg cursor-pointer transition-colors"
         onClick={toggleRingkasan}
       >
         <CardContent className="p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-12 gap-2">
-            <div className="col-span-1 sm:col-span-4 flex items-start">
-              <ShoppingCart className="h-4 w-4 sm:h-6 sm:w-6 mr-2" />
-              <div>
-                <div className="hidden sm:block text-xs font-medium">TOTAL PESANAN</div>
-                <div className="text-sm sm:text-xl font-bold">{summary.totalOrders}</div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-1">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center">
+                  <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-primary-foreground" />
+                  <div>
+                    <div className="text-xs font-medium text-primary-foreground/80">TOTAL PESANAN</div>
+                    <div className="text-sm sm:text-lg font-bold text-primary-foreground">{summary.totalOrders}</div>
+                  </div>
+                </div>
+
+                <div className="h-8 w-[1px] bg-primary-foreground/20" />
+
+                <div className="flex items-center">
+                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-primary-foreground" />
+                  <div>
+                    <div className="text-xs font-medium text-primary-foreground/80">TOTAL OMSET</div>
+                    <div className="text-sm sm:text-lg font-bold text-primary-foreground">Rp {summary.totalOmset.toLocaleString('id-ID')}</div>
+                  </div>
+                </div>
+
+                <div className="h-8 w-[1px] bg-primary-foreground/20" />
+
+                <div className="flex items-center">
+                  <BarChart2 className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-primary-foreground" />
+                  <div>
+                    <div className="text-xs font-medium text-primary-foreground/80">TOTAL IKLAN</div>
+                    <div className="text-sm sm:text-lg font-bold text-primary-foreground">Rp {summary.totalIklan.toLocaleString('id-ID')}</div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="col-span-1 sm:col-span-4 flex items-start justify-end sm:justify-center">
-              <DollarSign className="h-4 w-4 sm:h-6 sm:w-6 mr-2" />
-              <div>
-                <div className="hidden sm:block text-xs font-medium">TOTAL OMSET</div>
-                <div className="text-sm sm:text-xl font-bold">Rp {summary.totalOmset.toLocaleString('id-ID')}</div>
-              </div>
-            </div>
-            <div className="col-span-2 sm:col-span-4 flex items-start sm:justify-end">
-              <BarChart2 className="h-4 w-4 sm:h-6 sm:w-6 mr-2" />
-              <div>
-                <div className="hidden sm:block text-xs font-medium">TOTAL IKLAN</div>
-                <div className="text-sm sm:text-xl font-bold">Rp {summary.totalIklan.toLocaleString('id-ID')}</div>
-              </div>
-            </div>
+            {isRingkasanVisible ? (
+              <ChevronUp className="h-5 w-5 ml-2 text-primary-foreground" />
+            ) : (
+              <ChevronDown className="h-5 w-5 ml-2 text-primary-foreground" />
+            )}
           </div>
         </CardContent>
       </Card>

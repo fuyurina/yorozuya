@@ -125,6 +125,36 @@ interface VariationData {
   }
 }
 
+// Tambahkan interface untuk model dari API Shopee
+interface ShopeeModel {
+  model_id: number;
+  model_name: string;
+  price_info: {
+    current_price: number;
+    original_price: number;
+  };
+  stock_info: {
+    seller_stock: number;
+    shopee_stock: Array<{
+      stock: number;
+      location_id: string;
+    }>;
+    total_reserved_stock: number;
+    total_available_stock: number;
+  };
+  model_status: string;
+}
+
+interface ShopeeVariation {
+  variation_id: number;
+  variation_name: string;
+  variation_option_list: Array<{
+    variation_option_id: number;
+    variation_option_name: string;
+    image_url: string | null;
+  }>;
+}
+
 export function useProducts() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
@@ -206,7 +236,7 @@ export function useProducts() {
 
           // Simpan data produk ke Supabase
           for (const item of data.data.items) {
-            // 1. Insert/Update item utama
+            // Insert/Update item utama
             const { error: itemError } = await supabase
               .from('items')
               .upsert({
@@ -237,50 +267,6 @@ export function useProducts() {
               })
 
             if (itemError) throw itemError
-
-            // Proses variations
-            if (item.variations && item.variations.length > 0) {
-              for (const variation of item.variations) {
-                const { error: variationError } = await supabase
-                  .from('item_variations')
-                  .upsert({
-                    item_id: item.item_id,
-                    variation_id: variation.variation_id,
-                    variation_name: variation.variation_name,
-                    variation_option: {
-                      group_id: variation.variation_group_id || null,
-                      options: variation.variation_option_list.map((opt) => ({
-                        id: opt.variation_option_id,
-                        name: opt.variation_option_name,
-                        image_url: opt.image_url || null
-                      }))
-                    }
-                  }, {
-                    onConflict: 'item_id,variation_id'
-                  })
-
-                if (variationError) throw variationError
-              }
-            }
-
-            // Proses models
-            if (item.models && item.models.length > 0) {
-              for (const model of item.models) {
-                const { error: modelError } = await supabase
-                  .from('item_models')
-                  .upsert({
-                    item_id: item.item_id,
-                    model_id: model.model_id,
-                    model_name: model.model_name,
-                    current_price: model.price_info.current_price,
-                    original_price: model.price_info.original_price,
-                    stock_info: model.stock_info,
-                    model_status: model.model_status
-                  }, { onConflict: 'item_id,model_id' })
-
-                if (modelError) throw modelError
-              }
-            }
 
             processedProducts++
             
@@ -321,165 +307,50 @@ export function useProducts() {
 
   const getStockPrices = async (itemId: number): Promise<StockPrice[]> => {
     try {
-      setIsLoadingStockPrices(true);
-      
-      const { data: variations } = await supabase
-        .from('item_variations')
-        .select('variation_option')
-        .eq('item_id', itemId)
-        .not('variation_name', 'ilike', 'ukuran')
-        .single<VariationData>();
+      const product = products.find(p => p.item_id === itemId);
+      if (!product?.shop_id) {
+        throw new Error('Shop ID tidak ditemukan');
+      }
 
-      const { data: models, error } = await supabase
-        .from('item_models')
-        .select(`
-          model_id,
-          model_name,
-          current_price,
-          original_price,
-          stock_info,
-          model_status
-        `)
-        .eq('item_id', itemId);
+      const response = await fetch(`/api/produk?shop_id=${product.shop_id}&item_id=${itemId}`);
+      const data = await response.json();
 
-      if (error) throw error;
+      if (!data.success) {
+        throw new Error(data.error || 'Gagal mengambil data produk');
+      }
 
-      // Tambahkan type assertion untuk memastikan tipe data yang benar
-      const modelsWithImages: StockPrice[] = models.map(model => {
-        const modelColor = model.model_name.split(',')[0];
-        const matchingOption = variations?.variation_option.options.find(
-          (opt: VariationOption) => opt.name.toUpperCase() === modelColor.toUpperCase()
-        );
-        
-        return {
-          model_id: model.model_id,
-          model_name: model.model_name,
-          current_price: model.current_price,
-          original_price: model.original_price,
-          stock_info: model.stock_info,
-          model_status: model.model_status,
-          image_url: matchingOption?.image_url || null
-        };
-      });
+      const item = data.data.item;
 
-      setStockPrices(modelsWithImages);
-      return modelsWithImages;
+      const stockPrices: StockPrice[] = item.models.map((model: ShopeeModel) => ({
+        model_id: model.model_id,
+        model_name: model.model_name,
+        current_price: model.price_info.current_price,
+        original_price: model.price_info.original_price,
+        stock_info: {
+          seller_stock: model.stock_info.seller_stock,
+          shopee_stock: model.stock_info.shopee_stock || [],
+          total_reserved_stock: model.stock_info.total_reserved_stock || 0,
+          total_available_stock: model.stock_info.total_available_stock || 0
+        },
+        model_status: model.model_status,
+        image_url: item.variations?.find((v: ShopeeVariation) => 
+          v.variation_option_list?.some((opt) => 
+            model.model_name.toUpperCase().includes(opt.variation_option_name.toUpperCase())
+          )
+        )?.variation_option_list?.find((opt: { variation_option_id: number; variation_option_name: string; image_url: string | null }) => 
+          model.model_name.toUpperCase().includes(opt.variation_option_name.toUpperCase())
+        )?.image_url || null
+      }));
+
+      return stockPrices;
       
     } catch (error) {
       toast.error('Gagal Memuat Data Stok dan Harga', {
-        description: error instanceof Error ? error.message : 'Terjadi kesalahan saat memuat data stok dan harga',
+        description: error instanceof Error ? error.message : 'Terjadi kesalahan saat memuat data'
       });
       return [];
-    } finally {
-      setIsLoadingStockPrices(false);
     }
   };
-
-  const syncSingleProduct = async (shopId: number, itemId: number) => {
-    try {
-      setIsSyncing(true)
-      const response = await fetch(`/api/produk?shop_id=${shopId}&item_id=${itemId}`)
-      const data = await response.json()
-
-      if (data.success) {
-        const item = data.data.item
-
-        // 1. Insert/Update item utama
-        const { error: itemError } = await supabase
-          .from('items')
-          .upsert({
-            item_id: item.item_id,
-            shop_id: shopId,
-            category_id: item.category_id,
-            item_name: item.item_name,
-            description: item.description,
-            item_sku: item.item_sku,
-            create_time: item.create_time,
-            update_time: item.update_time,
-            weight: item.weight,
-            image: item.image,
-            logistic_info: item.logistic_info,
-            pre_order: item.pre_order,
-            condition: item.condition,
-            item_status: item.item_status,
-            has_model: item.has_model,
-            brand: item.brand,
-            item_dangerous: item.item_dangerous,
-            description_type: item.description_type,
-            size_chart_id: item.size_chart_id,
-            promotion_image: item.promotion_image,
-            deboost: item.deboost === 'FALSE' ? false : true,
-            authorised_brand_id: item.authorised_brand_id
-          }, { 
-            onConflict: 'item_id' 
-          })
-
-        if (itemError) throw itemError
-
-        // 2. Proses variations jika ada
-        if (item.variations && item.variations.length > 0) {
-          for (const variation of item.variations) {
-            const { error: variationError } = await supabase
-              .from('item_variations')
-              .upsert({
-                item_id: item.item_id,
-                variation_id: variation.variation_id,
-                variation_name: variation.variation_name,
-                variation_option: {
-                  group_id: variation.variation_group_id || null,
-                  options: variation.variation_option_list.map((opt: { variation_option_id: any; variation_option_name: any; image_url: any }) => ({
-                    id: opt.variation_option_id,
-                    name: opt.variation_option_name,
-                    image_url: opt.image_url || null
-                  }))
-                }
-              }, {
-                onConflict: 'item_id,variation_id'
-              })
-
-            if (variationError) throw variationError
-          }
-        }
-
-        // 3. Insert/Update models
-        if (item.models && item.models.length > 0) {
-          for (const model of item.models) {
-            const { error: modelError } = await supabase
-              .from('item_models')
-              .upsert({
-                item_id: item.item_id,
-                model_id: model.model_id,
-                model_name: model.model_name,
-                current_price: model.price_info.current_price,
-                original_price: model.price_info.original_price,
-                stock_info: model.stock_info,
-                model_status: model.model_status
-              }, { onConflict: 'item_id,model_id' })
-
-            if (modelError) throw modelError
-          }
-        }
-
-        // Refresh produk setelah sync
-        await loadProducts()
-
-        toast.success('Sinkronisasi Berhasil', {
-          description: `Produk ${item.item_name} telah disinkronkan`,
-        })
-
-        return true
-      } else {
-        throw new Error(data.error)
-      }
-    } catch (error) {
-      toast.error('Gagal Sinkronisasi', {
-        description: error instanceof Error ? error.message : 'Terjadi kesalahan saat sinkronisasi',
-      })
-      return false
-    } finally {
-      setIsSyncing(false)
-    }
-  }
 
   const updateStock = async (
     shopId: number,
@@ -528,33 +399,6 @@ export function useProducts() {
           message: result.warning || result.message || 'Terjadi kesalahan saat mengupdate stok'
         };
       }
-
-      // Update database untuk semua model
-      for (const update of modelUpdates) {
-        const { error: dbError } = await supabase
-          .from('item_models')
-          .update({
-            'stock_info': {
-              seller_stock: update.newStock,
-              shopee_stock: [{ stock: 0, location_id: "" }],
-              total_reserved_stock: update.reservedStock,
-              total_available_stock: update.newStock - update.reservedStock
-            }
-          })
-          .eq('item_id', itemId)
-          .eq('model_id', update.modelId);
-
-        if (dbError) {
-          return {
-            success: false,
-            message: 'Stok berhasil diupdate di Shopee tapi gagal update di database',
-            error: dbError
-          };
-        }
-      }
-
-      // Refresh data stok
-      await getStockPrices(itemId);
 
       return {
         success: true,
@@ -625,7 +469,6 @@ export function useProducts() {
     products,
     isSyncing,
     syncProducts,
-    syncSingleProduct,
     shops,
     loadShops,
     isLoadingShops,

@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
+import { useProductPromotions } from '@/app/hooks/useProductPromotions'
 
 interface StockPrice {
   model_id: number;
@@ -54,6 +55,7 @@ interface StockPrice {
   };
   model_status: string;
   image_url?: string;
+  shop_id: number;
 }
 
 export default function ProdukPage() {
@@ -66,7 +68,6 @@ export default function ProdukPage() {
     isLoadingShops, 
     loadProducts,
     getStockPrices,
-    syncSingleProduct,
     updateStock,
     toggleProductStatus
   } = useProducts()
@@ -92,6 +93,10 @@ export default function ProdukPage() {
   const [isSavingBulkStock, setIsSavingBulkStock] = useState(false)
   const [isUnlisting, setIsUnlisting] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [isDeletePromoDialogOpen, setIsDeletePromoDialogOpen] = useState(false)
+  const [selectedPromoModel, setSelectedPromoModel] = useState<{ modelId: number, modelName: string } | null>(null)
+  const [isDeactivatingPromo, setIsDeactivatingPromo] = useState(false)
+  const { isLoading: isLoadingPromotions, fetchPromotions, promotions } = useProductPromotions()
 
   const filteredProducts = products.filter((product) => {
     const shopFilter = selectedShopId === 'all' || 
@@ -114,18 +119,24 @@ export default function ProdukPage() {
     setSelectedItemId(itemId)
     setIsLoadingStocks(true)
     try {
+      const product = products.find(p => p.item_id === itemId);
+      if (!product?.shop_id) {
+        throw new Error('Shop ID tidak ditemukan');
+      }
+
       const response = await getStockPrices(itemId)
       const stocks = response as StockPrice[]
       setSelectedItemStocks(stocks)
       setStockPrices(stocks)
       setIsStockDialogOpen(true)
+      
+      // Fetch promotions untuk produk ini
+      await fetchPromotions(product.shop_id, [itemId])
     } finally {
       setLoadingProductId(null)
       setIsLoadingStocks(false)
     }
   }
-
-  
 
   const handleStockChange = (modelId: number, newValue: number) => {
     setEditedStocks(prev => ({
@@ -153,9 +164,7 @@ export default function ProdukPage() {
     
     setEditedStocks(newStocks);
     setMassUpdateStock('');
-    toast.success("Stok berhasil diperbarui untuk semua varian");
   };
-
 
   const handleSaveStocks = async () => {
     setIsSavingStocks(true);
@@ -389,6 +398,91 @@ export default function ProdukPage() {
     }
   };
 
+  // Fungsi helper untuk menghitung jumlah promosi
+  const getPromotionCount = (itemId: number, modelId: number) => {
+    const productPromo = promotions.find(p => p.item_id === itemId)
+    if (!productPromo?.promotion) return { count: 0, upcomingFlashSaleIds: [], ongoingFlashSaleIds: [] }
+
+    const activePromos = productPromo.promotion.filter(
+      promo => promo.model_id === modelId && 
+      (promo.promotion_staging === 'ongoing' || promo.promotion_staging === 'upcoming') &&
+      promo.promotion_type === 'In ShopFlash Sale'
+    )
+
+    return {
+      count: activePromos.length,
+      upcomingFlashSaleIds: activePromos
+        .filter(promo => promo.promotion_staging === 'upcoming')
+        .map(promo => Number(promo.promotion_id)),
+      ongoingFlashSaleIds: activePromos
+        .filter(promo => promo.promotion_staging === 'ongoing')
+        .map(promo => Number(promo.promotion_id))
+    }
+  }
+
+  const handleDeletePromotions = async () => {
+    if (!selectedPromoModel || !selectedItemId) return
+
+    setIsDeactivatingPromo(true)
+    try {
+      const product = products.find(p => p.item_id === selectedItemId)
+      if (!product?.shop_id) {
+        throw new Error('Shop ID tidak ditemukan')
+      }
+
+      const promoInfo = getPromotionCount(selectedItemId, selectedPromoModel.modelId)
+      if (promoInfo.upcomingFlashSaleIds.length === 0) {
+        throw new Error('Tidak ada Flash Sale upcoming yang dapat dinonaktifkan')
+      }
+
+      // Nonaktifkan semua Flash Sale yang upcoming
+      for (const flashSaleId of promoInfo.upcomingFlashSaleIds) {
+        const response = await fetch('/api/flashsale/items/update', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            shop_id: product.shop_id,
+            flash_sale_id: flashSaleId,
+            items: [{
+              item_id: selectedItemId,
+              models: [{
+                model_id: selectedPromoModel.modelId,
+                status: 0
+              }]
+            }]
+          })
+        })
+
+        const result = await response.json()
+        if (!result.success) {
+          throw new Error(result.message || 'Gagal menonaktifkan promosi')
+        }
+      }
+
+      // Tampilkan pesan sukses yang berbeda berdasarkan status promosi
+      let successMessage = `${promoInfo.upcomingFlashSaleIds.length} promosi upcoming berhasil dinonaktifkan`
+      if (promoInfo.ongoingFlashSaleIds.length > 0) {
+        successMessage += `. ${promoInfo.ongoingFlashSaleIds.length} promosi ongoing tidak diubah`
+      }
+
+      toast.success(successMessage)
+      setIsDeletePromoDialogOpen(false)
+      setSelectedPromoModel(null)
+      
+      // Refresh data promosi
+      await fetchPromotions(product.shop_id, [selectedItemId])
+    } catch (error) {
+      toast.error('Gagal menonaktifkan promosi', {
+        description: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+      })
+      console.error('Error deleting promotions:', error)
+    } finally {
+      setIsDeactivatingPromo(false)
+    }
+  }
+
   return (
     <div className="p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -618,53 +712,26 @@ export default function ProdukPage() {
                         >
                           Terapkan ke Semua
                         </Button>
-                        {selectedItemId && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={async () => {
-                              setIsSyncingItem(true)
-                              try {
-                                const product = products.find(p => p.item_id === selectedItemId)
-                                if (product) {
-                                  const success = await syncSingleProduct(product.shop_id, selectedItemId)
-                                  if (success) {
-                                    toast.success("Produk berhasil disinkronkan")
-                                    await handleViewStockDetail(selectedItemId)
-                                  }
-                                }
-                              } catch (error) {
-                                toast.error("Gagal menyinkronkan produk")
-                              } finally {
-                                setIsSyncingItem(false)
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              if (selectedItemId === null) {
+                                toast.error("ID produk tidak ditemukan")
+                                return
                               }
-                            }}
-                            disabled={isSyncingItem}
-                          >
-                            {isSyncingItem ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Sinkronisasi...
-                              </>
-                            ) : (
-                              <>
-                                <svg 
-                                  className="mr-2 h-4 w-4" 
-                                  xmlns="http://www.w3.org/2000/svg" 
-                                  viewBox="0 0 24 24" 
-                                  fill="none" 
-                                  stroke="currentColor" 
-                                  strokeWidth="2" 
-                                  strokeLinecap="round" 
-                                  strokeLinejoin="round"
-                                >
-                                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38" />
-                                </svg>
-                                Sinkronisasi
-                              </>
-                            )}
-                          </Button>
-                        )}
+                              // Langsung refresh data stok
+                              await handleViewStockDetail(selectedItemId)
+                              toast.success("Data stok berhasil diperbarui")
+                            } catch (error) {
+                              toast.error("Gagal memperbarui data stok")
+                            }
+                          }}
+                        >
+                          <RefreshCcw className="mr-2 h-4 w-4" />
+                          Refresh Data
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -680,12 +747,13 @@ export default function ProdukPage() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="min-w-[350px]">Varian</TableHead>
+                            <TableHead className="min-w-[200px] max-w-[200px]">Varian</TableHead>
                             <TableHead className="w-[150px] text-center">Harga</TableHead>
                             <TableHead className="w-[150px] text-center">Harga Asli</TableHead>
-                            <TableHead className="w-[120px] text-center">Stok Lock</TableHead>
-                            <TableHead className="w-[130px] text-center">Stok</TableHead>
+                            <TableHead className="w-[100px] text-center">Stok Lock</TableHead>
+                            <TableHead className="w-[150px] text-center">Stok</TableHead>
                             <TableHead className="w-[100px] text-center">Status</TableHead>
+                            <TableHead className="w-[80px] text-center">Promosi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -694,7 +762,7 @@ export default function ProdukPage() {
                               <TableCell className="font-medium">
                                 <div className="flex items-center gap-2">
                                   {stock.image_url ? (
-                                    <div className="w-10 h-10 rounded overflow-hidden">
+                                    <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
                                       <img 
                                         src={stock.image_url} 
                                         alt={stock.model_name}
@@ -702,11 +770,11 @@ export default function ProdukPage() {
                                       />
                                     </div>
                                   ) : (
-                                    <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                                    <div className="w-10 h-10 rounded bg-muted flex items-center justify-center flex-shrink-0">
                                       <span className="text-xs text-muted-foreground">No img</span>
                                     </div>
                                   )}
-                                  <span>{stock.model_name}</span>
+                                  <span className="truncate">{stock.model_name}</span>
                                 </div>
                               </TableCell>
                               <TableCell className="text-center">{formatRupiah(stock.current_price)}</TableCell>
@@ -741,6 +809,30 @@ export default function ProdukPage() {
                                   <Badge variant={stock.model_status === 'MODEL_NORMAL' ? 'default' : 'secondary'}>
                                     {stock.model_status === 'MODEL_NORMAL' ? 'Aktif' : 'Nonaktif'}
                                   </Badge>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <div className="flex justify-center">
+                                  {isLoadingPromotions ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Badge 
+                                      variant="secondary"
+                                      className="cursor-pointer hover:bg-secondary/80"
+                                      onClick={() => {
+                                        const promoInfo = getPromotionCount(selectedItemId!, stock.model_id)
+                                        if (promoInfo.count > 0) {
+                                          setSelectedPromoModel({
+                                            modelId: stock.model_id,
+                                            modelName: stock.model_name
+                                          })
+                                          setIsDeletePromoDialogOpen(true)
+                                        }
+                                      }}
+                                    >
+                                      {getPromotionCount(selectedItemId!, stock.model_id).count}
+                                    </Badge>
+                                  )}
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -813,6 +905,29 @@ export default function ProdukPage() {
                                   />
                                 </div>
                               </div>
+                            </div>
+                            <div className="mt-2">
+                              <p className="text-sm text-muted-foreground">Promosi</p>
+                              {isLoadingPromotions ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Badge 
+                                  variant="secondary"
+                                  className="cursor-pointer hover:bg-secondary/80"
+                                  onClick={() => {
+                                    const promoInfo = getPromotionCount(selectedItemId!, stock.model_id)
+                                    if (promoInfo.count > 0) {
+                                      setSelectedPromoModel({
+                                        modelId: stock.model_id,
+                                        modelName: stock.model_name
+                                      })
+                                      setIsDeletePromoDialogOpen(true)
+                                    }
+                                  }}
+                                >
+                                  {getPromotionCount(selectedItemId!, stock.model_id).count}
+                                </Badge>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
@@ -1062,6 +1177,51 @@ export default function ProdukPage() {
           </div>
         </div>
       )}
+
+      <Dialog open={isDeletePromoDialogOpen} onOpenChange={setIsDeletePromoDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Nonaktifkan Promosi Flash Sale</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Apakah Anda yakin ingin menonaktifkan promosi Flash Sale untuk varian{" "}
+              <span className="font-medium text-foreground">
+                {selectedPromoModel?.modelName}
+              </span>
+              ?
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeletePromoDialogOpen(false)
+                setSelectedPromoModel(null)
+              }}
+              disabled={isDeactivatingPromo}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeletePromotions}
+              disabled={isDeactivatingPromo}
+            >
+              {isDeactivatingPromo ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menonaktifkan...
+                </>
+              ) : (
+                'Nonaktifkan'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -98,18 +98,32 @@ export const useDashboard = () => {
         const newOrder = payload.new as OrderItem;
         
         if (newOrder.order_status === 'READY_TO_SHIP') {
-          
-          
           setDashboardData(prevData => {
+            const existingOrderIndex = prevData.orders.findIndex(
+              order => order.order_sn === newOrder.order_sn
+            );
+
             const newSummary = { ...prevData.summary };
             processOrder(newOrder, newSummary);
-            console.log('Summary diperbarui:', newSummary);
 
-            console.log('Menambahkan pesanan baru ke daftar');
-            return {
-              summary: newSummary,
-              orders: [newOrder, ...prevData.orders]
-            };
+            if (existingOrderIndex === -1) {
+              console.log('Menambahkan pesanan baru ke daftar:', newOrder.order_sn);
+              return {
+                summary: newSummary,
+                orders: [newOrder, ...prevData.orders]
+              };
+            } else {
+              console.log('Memperbarui pesanan yang sudah ada:', newOrder.order_sn);
+              const updatedOrders = [...prevData.orders];
+              updatedOrders[existingOrderIndex] = {
+                ...updatedOrders[existingOrderIndex],
+                ...newOrder
+              };
+              return {
+                summary: newSummary,
+                orders: updatedOrders
+              };
+            }
           });
 
           try {

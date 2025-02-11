@@ -1,46 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { syncOrders } from '@/app/services/orderSyncs';
+import { syncOrders, syncOrdersByOrderSns } from '@/app/services/orderSyncs';
 
-// Tambahkan validasi tipe data
+// Interface untuk request body
 interface SyncRequestBody {
   shopId: number;
-  timeRangeField?: 'create_time' | 'update_time';
-  startTime?: number;
-  endTime?: number;
-  orderStatus?: 'UNPAID' | 'READY_TO_SHIP' | 'PROCESSED' | 'SHIPPED' | 'COMPLETED' | 'IN_CANCEL' | 'CANCELLED' | 'ALL';
-  pageSize?: number;
+  orderSns: string[];
+}
+
+// Interface untuk response dari syncOrdersByOrderSns
+interface SyncOrdersResult {
+  success: boolean;
+  data?: {
+    total: number;
+    processed: number;
+    orderSns: string[];
+  };
+  error?: string;
 }
 
 export async function POST(request: NextRequest) {
-  const encoder = new TextEncoder();
-  const { shopId } = await request.json();
-
-  const stream = new TransformStream();
-  const writer = stream.writable.getWriter();
-
-  syncOrders(shopId, {
-    onProgress: async ({ current, total }) => {
-      const progressData = JSON.stringify({
-        processed: current,
-        total: total
-      });
-      await writer.write(encoder.encode(progressData + '\n'));
-    },
-    onError: async (error) => {
-      const errorData = JSON.stringify({ error });
-      await writer.write(encoder.encode(errorData + '\n'));
+  try {
+    const body = await request.json();
+    
+    // Validasi input
+    if (!body.shopId || !Array.isArray(body.orderSns)) {
+      return NextResponse.json(
+        { error: 'shopId dan orderSns harus diisi' },
+        { status: 400 }
+      );
     }
-  }).finally(() => {
-    writer.close();
-  });
 
-  return new Response(stream.readable, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
-  });
+    const { shopId, orderSns } = body as SyncRequestBody;
+
+    // Proses sinkronisasi
+    const result: SyncOrdersResult = await syncOrdersByOrderSns(shopId, orderSns);
+    
+    // Return hasil sinkronisasi
+    if (!result.success || !result.data) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: result.error || 'Gagal sinkronisasi',
+          data: {
+            total: orderSns.length,
+            success: 0,
+            failed: orderSns.length
+          }
+        }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        total: orderSns.length,
+        success: result.data.processed,
+        failed: orderSns.length - result.data.processed
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in sync route:', error);
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Terjadi kesalahan internal server',
+        data: {
+          total: 0,
+          success: 0,
+          failed: 0
+        }
+      },
+      { status: 500 }
+    );
+  }
 }
 
 // Tambahkan handler OPTIONS untuk CORS jika diperlukan

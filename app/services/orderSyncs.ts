@@ -195,4 +195,59 @@ export async function syncOrders(shopId: number, options: OrderSyncOptions = {})
       error: err.message || 'Terjadi kesalahan yang tidak diketahui'
     };
   }
+}
+
+export async function syncOrdersByOrderSns(shopId: number, orderSns: string[], options: Omit<OrderSyncOptions, 'timeRangeField' | 'startTime' | 'endTime' | 'orderStatus' | 'pageSize'> = {}) {
+  try {
+    let processedCount = 0;
+    const totalOrders = orderSns.length;
+    const processedOrders: string[] = [];
+
+    // Update progress awal
+    if (options.onProgress) {
+      options.onProgress({ 
+        current: 0, 
+        total: totalOrders 
+      });
+    }
+
+    // Proses dalam batch
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < orderSns.length; i += BATCH_SIZE) {
+      const orderBatch = orderSns.slice(i, i + BATCH_SIZE);
+      const results = await processOrderDetails(shopId, orderBatch);
+      
+      results.forEach(result => {
+        if (result.success) {
+          processedCount++;
+          processedOrders.push(result.orderSn);
+        }
+      });
+
+      if (options.onProgress) {
+        options.onProgress({ 
+          current: processedCount, 
+          total: totalOrders 
+        });
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        total: totalOrders,
+        processed: processedCount,
+        orderSns: processedOrders
+      }
+    };
+
+  } catch (err: any) {
+    if (options.onError) {
+      options.onError(err.message || 'Terjadi kesalahan yang tidak diketahui');
+    }
+    return {
+      success: false,
+      error: err.message || 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
 } 
