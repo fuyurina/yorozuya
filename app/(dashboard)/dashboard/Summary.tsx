@@ -38,40 +38,49 @@ export function OrdersSummary({ summary }: OrdersSummaryProps) {
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center justify-between flex-1">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center">
+              <div className="flex items-center space-x-2 sm:space-x-4 w-full justify-between">
+                <div className="flex items-center flex-1">
                   <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-primary-foreground" />
                   <div>
-                    <div className="text-xs font-medium text-primary-foreground/80">TOTAL PESANAN</div>
-                    <div className="text-sm sm:text-lg font-bold text-primary-foreground">{summary.totalOrders}</div>
+                    <div className="text-xs font-medium text-primary-foreground/80 hidden sm:block">TOTAL PESANAN</div>
+                    <div className="text-xs font-medium text-primary-foreground/80 sm:hidden">PESANAN</div>
+                    <div className="text-xs sm:text-lg font-bold text-primary-foreground">{summary.totalOrders}</div>
                   </div>
                 </div>
 
                 <div className="h-8 w-[1px] bg-primary-foreground/20" />
 
-                <div className="flex items-center">
-                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-primary-foreground" />
+                <div className="flex items-center flex-1 justify-center">
+                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 mr-1 text-primary-foreground" />
                   <div>
-                    <div className="text-xs font-medium text-primary-foreground/80">TOTAL OMSET</div>
-                    <div className="text-sm sm:text-lg font-bold text-primary-foreground">Rp {summary.totalOmset.toLocaleString('id-ID')}</div>
+                    <div className="text-xs font-medium text-primary-foreground/80 hidden sm:block">TOTAL OMSET</div>
+                    <div className="text-xs font-medium text-primary-foreground/80 sm:hidden">OMSET</div>
+                    <div className="text-xs sm:text-lg font-bold text-primary-foreground">
+                      <span className="hidden sm:inline">Rp </span>
+                      {summary.totalOmset.toLocaleString('id-ID')}
+                    </div>
                   </div>
                 </div>
 
                 <div className="h-8 w-[1px] bg-primary-foreground/20" />
 
-                <div className="flex items-center">
+                <div className="flex items-center flex-1 justify-end">
                   <BarChart2 className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-primary-foreground" />
                   <div>
-                    <div className="text-xs font-medium text-primary-foreground/80">TOTAL IKLAN</div>
-                    <div className="text-sm sm:text-lg font-bold text-primary-foreground">Rp {summary.totalIklan.toLocaleString('id-ID')}</div>
+                    <div className="text-xs font-medium text-primary-foreground/80 hidden sm:block">TOTAL IKLAN</div>
+                    <div className="text-xs font-medium text-primary-foreground/80 sm:hidden">IKLAN</div>
+                    <div className="text-xs sm:text-lg font-bold text-primary-foreground">
+                      <span className="hidden sm:inline">Rp </span>
+                      {summary.totalIklan.toLocaleString('id-ID')}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
             {isRingkasanVisible ? (
-              <ChevronUp className="h-5 w-5 ml-2 text-primary-foreground" />
+              <ChevronUp className="h-5 w-5 ml-2 text-primary-foreground hidden sm:block" />
             ) : (
-              <ChevronDown className="h-5 w-5 ml-2 text-primary-foreground" />
+              <ChevronDown className="h-5 w-5 ml-2 text-primary-foreground hidden sm:block" />
             )}
           </div>
         </CardContent>
@@ -95,10 +104,12 @@ export function OrdersSummary({ summary }: OrdersSummaryProps) {
                     <TableCell className="font-medium text-xs sm:text-sm truncate max-w-[120px]">{toko}</TableCell>
                     <TableCell className="text-right text-xs sm:text-sm">{summary.pesananPerToko[toko] || 0}</TableCell>
                     <TableCell className="text-right text-xs sm:text-sm whitespace-nowrap">
-                      Rp {(summary.omsetPerToko[toko] || 0).toLocaleString('id-ID')}
+                      <span className="hidden sm:inline">Rp </span>
+                      {(summary.omsetPerToko[toko] || 0).toLocaleString('id-ID')}
                     </TableCell>
                     <TableCell className="text-right text-xs sm:text-sm whitespace-nowrap">
-                      Rp {(summary.iklanPerToko[toko] || 0).toLocaleString('id-ID')}
+                      <span className="hidden sm:inline">Rp </span>
+                      {(summary.iklanPerToko[toko] || 0).toLocaleString('id-ID')}
                     </TableCell>
                   </TableRow>
                 ))}
