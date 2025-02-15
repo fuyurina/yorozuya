@@ -159,7 +159,7 @@ export default function FlashSaleDetailPage() {
   const [hasLoadedProducts, setHasLoadedProducts] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Tambahkan validasi parameter di awal
+  // Modifikasi useEffect untuk menginisialisasi collapsedItems
   useEffect(() => {
     // Pastikan searchParams sudah tersedia
     if (!searchParams.has('shop_id') || !searchParams.has('flash_sale_id')) {
@@ -193,6 +193,12 @@ export default function FlashSaleDetailPage() {
             items: itemsData.data.items,
             models: itemsData.data.models
           });
+
+          // Set semua item dalam keadaan collapse dengan type yang eksplisit
+          const allItemIds: Set<number> = new Set(
+            itemsData.data.items.map((item: { item_id: number }) => item.item_id)
+          );
+          setCollapsedItems(allItemIds);
 
           // Set activated models dan registered items berdasarkan data yang ada
           const activatedSet = new Set<string>();
@@ -1284,9 +1290,9 @@ export default function FlashSaleDetailPage() {
                               <TableCell>
                                 <Checkbox
                                   checked={selectedModels.has(`${model.item_id}-${model.model_id}`)}
-                                  onCheckedChange={() => toggleModelSelection(model.item_id, model.model_id)}
-                                  disabled={model.stock === 0}
-                                />
+                                    onCheckedChange={() => toggleModelSelection(model.item_id, model.model_id)}
+                                    disabled={model.stock === 0}
+                                  />
                               </TableCell>
                               <TableCell>{model.model_name}</TableCell>
                               <TableCell>{formatRupiah(model.original_price)}</TableCell>

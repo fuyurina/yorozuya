@@ -30,9 +30,6 @@ export function GlobalNotification() {
   }, [lastMessage]);
 
   const handleChatNotification = (message: any) => {
-    const audio = new Audio('/chat.mp3');
-    audio.play();
-    
     toast.info(`${message.shop_name}`, {
       icon: <MessageSquare className="w-4 h-4" />,
       description: (
