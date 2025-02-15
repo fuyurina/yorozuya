@@ -97,6 +97,7 @@ export default function ProdukPage() {
   const [selectedPromoModel, setSelectedPromoModel] = useState<{ modelId: number, modelName: string } | null>(null)
   const [isDeactivatingPromo, setIsDeactivatingPromo] = useState(false)
   const { isLoading: isLoadingPromotions, fetchPromotions, promotions } = useProductPromotions()
+  const [isConfirmStatusDialogOpen, setIsConfirmStatusDialogOpen] = useState(false)
 
   const filteredProducts = products.filter((product) => {
     const shopFilter = selectedShopId === 'all' || 
@@ -347,6 +348,11 @@ export default function ProdukPage() {
       return;
     }
 
+    // Buka dialog konfirmasi
+    setIsConfirmStatusDialogOpen(true);
+  };
+
+  const handleConfirmStatusUpdate = async () => {
     setIsUnlisting(true);
     try {
       const firstProduct = products.find(p => p.item_id === selectedProducts[0]);
@@ -359,7 +365,7 @@ export default function ProdukPage() {
         const product = products.find(p => p.item_id === itemId);
         return {
           item_id: itemId,
-          unlist: product?.item_status === 'NORMAL' // true jika NORMAL (akan di-unlist), false jika UNLIST (akan dinormalkan)
+          unlist: product?.item_status === 'NORMAL'
         };
       });
 
@@ -368,6 +374,11 @@ export default function ProdukPage() {
       if (result.success) {
         setSelectedProducts([]);
         await loadProducts();
+        setIsConfirmStatusDialogOpen(false);
+        
+        // Tampilkan toast sukses
+        const action = items[0].unlist ? 'dinonaktifkan' : 'mengaktifkan';
+        toast.success(`${selectedProducts.length} produk berhasil ${action}`);
       }
     } catch (error) {
       console.error('Error toggling products:', error);
@@ -1217,6 +1228,50 @@ export default function ProdukPage() {
                 </>
               ) : (
                 'Nonaktifkan'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tambahkan dialog konfirmasi status */}
+      <Dialog open={isConfirmStatusDialogOpen} onOpenChange={setIsConfirmStatusDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Ubah Status</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {selectedProducts.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                {(() => {
+                  const firstProduct = products.find(p => p.item_id === selectedProducts[0]);
+                  const action = firstProduct?.item_status === 'NORMAL' ? 'menonaktifkan' : 'mengaktifkan';
+                  return `Apakah Anda yakin ingin ${action} ${selectedProducts.length} produk yang dipilih?`;
+                })()}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsConfirmStatusDialogOpen(false)}
+              disabled={isUnlisting}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleConfirmStatusUpdate}
+              disabled={isUnlisting}
+            >
+              {isUnlisting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Memproses...
+                </>
+              ) : (
+                'Ya, Ubah Status'
               )}
             </Button>
           </DialogFooter>
