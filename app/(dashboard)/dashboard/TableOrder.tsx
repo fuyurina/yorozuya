@@ -12,7 +12,7 @@ import {
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 // Impor ikon-ikon yang diperlukan
-import { Package, Clock, Truck, XCircle, AlertCircle, RefreshCcw, Search, Filter, Printer, PrinterCheck, CheckSquare, CheckCircle, Send, MessageSquare } from 'lucide-react'
+import { Package, Clock, Truck, XCircle, AlertCircle, RefreshCcw, Search, Filter, Printer, PrinterCheck, CheckSquare, CheckCircle, Send, MessageSquare, Download } from 'lucide-react'
 import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { OrderDetails } from './OrderDetails'
@@ -502,6 +502,15 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
   // Tambahkan state untuk dialog failed orders
   const [isFailedOrdersDialogOpen, setIsFailedOrdersDialogOpen] = useState(false);
 
+  // Tambahkan interface untuk menyimpan blob
+  interface ShopBlob {
+    shopName: string;
+    blob: Blob;
+  }
+
+  // Tambahkan state untuk menyimpan blob
+  const [shopBlobs, setShopBlobs] = useState<ShopBlob[]>([]);
+
   // Buat fungsi helper untuk proses pencetakan dan laporan
   const processPrintingAndReport = async (ordersToPrint: OrderItem[]) => {
     let totalSuccess = 0;
@@ -512,6 +521,7 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
       failed: number;
     }[] = [];
     const newFailedOrders: typeof failedOrders = [];
+    const newShopBlobs: ShopBlob[] = []; // Tambahkan array untuk menyimpan blob baru
 
     try {
       // Kelompokkan berdasarkan shop_id
@@ -615,6 +625,12 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         if (blobs.length > 0) {
           try {
             const mergedPDF = await mergePDFs(blobs);
+            // Simpan blob untuk toko ini
+            newShopBlobs.push({
+              shopName,
+              blob: mergedPDF
+            });
+
             const pdfUrl = URL.createObjectURL(mergedPDF);
             
             const newWindow = window.open('', '_blank');
@@ -639,6 +655,9 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         }
       }
 
+      // Update state shopBlobs dengan blob yang baru
+      setShopBlobs(newShopBlobs);
+
       setPrintReport({
         totalSuccess,
         totalFailed,
@@ -660,6 +679,57 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
         currentCarrier: '',
         currentShop: ''
       });
+    }
+  };
+
+  // Tambahkan fungsi untuk membuka PDF yang tersimpan
+  const openSavedPDF = (shopName: string) => {
+    const shopBlob = shopBlobs.find(sb => sb.shopName === shopName);
+    
+    if (shopBlob) {
+      const pdfUrl = URL.createObjectURL(shopBlob.blob);
+      
+      // Deteksi perangkat mobile
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      if (isMobile) {
+        // Untuk mobile, buat link download dengan nama file yang sesuai
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = `${shopName.replace(/\s+/g, '_')}_shipping_labels.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // Untuk desktop, tetap buka di tab baru
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+          newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>${shopName}</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              </head>
+              <body style="margin:0;padding:0;height:100vh;">
+                <embed src="${pdfUrl}" type="application/pdf" width="100%" height="100%">
+                <div style="position:fixed;bottom:20px;right:20px;display:none;" class="mobile-download">
+                  <a href="${pdfUrl}" download="${shopName.replace(/\s+/g, '_')}_shipping_labels.pdf" 
+                     style="background:#2563eb;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;font-family:system-ui;">
+                    Download PDF
+                  </a>
+                </div>
+              </body>
+            </html>
+          `);
+          newWindow.document.close();
+        }
+      }
+
+      // Bersihkan URL setelah beberapa detik
+      setTimeout(() => URL.revokeObjectURL(pdfUrl), 5000); // Perpanjang timeout untuk mobile
+    } else {
+      toast.error(`PDF untuk ${shopName} tidak tersedia, silakan download ulang`);
     }
   };
 
@@ -1862,8 +1932,33 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
                           key={index}
                           className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700"
                         >
-                          <div className="font-medium text-sm dark:text-white truncate">
-                            {report.shopName}
+                          <div className="flex justify-between items-center">
+                            <div className="font-medium text-sm dark:text-white truncate flex-1 mr-2">
+                              {report.shopName}
+                            </div>
+                            <Button
+                              onClick={() => {
+                                // Cek apakah ada blob tersimpan
+                                if (shopBlobs.some(sb => sb.shopName === report.shopName)) {
+                                  openSavedPDF(report.shopName);
+                                } else {
+                                  // Jika tidak ada, download ulang
+                                  const shopOrders = orders.filter(order => 
+                                    order.shop_name === report.shopName && 
+                                    isOrderCheckable(order)
+                                  );
+                                  handleBulkPrint(shopOrders);
+                                }
+                              }}
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+                              title={`${shopBlobs.some(sb => sb.shopName === report.shopName) 
+                                ? 'Buka PDF tersimpan' 
+                                : 'Download ulang dokumen'} ${report.shopName}`}
+                            >
+                              <Download size={14} className="text-gray-600 dark:text-gray-400" />
+                            </Button>
                           </div>
                           <div className="text-xs mt-2 space-y-1">
                             <div className="flex justify-between items-center">
