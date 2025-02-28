@@ -1,31 +1,15 @@
-2024-12-28 01:07:42,888 - INFO - ==========================================Program dimulai==========================================
-2024-12-28 01:07:57,872 - INFO - ✅ Berhasil menjalankan proses order di server
-2024-12-28 01:07:58,266 - INFO - Total chats ditemukan: 9
-2024-12-28 01:07:59,169 - INFO - ==========================================Balasan AI==========================================
-2024-12-28 01:07:59,173 - INFO - ==========================================Balasan AI==========================================
-2024-12-28 01:07:59,173 - INFO - Invoice: 241227081E1WD1 - Status pesanan: IN_CANCEL
-2024-12-28 01:07:59,176 - INFO - Invoice: 241226SFGSGVUJ - Status pesanan: SHIPPED
-2024-12-28 01:07:59,177 - INFO - Tidak ada balasan yang dikirim sigmapay karena keluhan sudah ada untuk invoice: 241227081E1WD1, Status pesanan: IN_CANCEL
-2024-12-28 01:07:59,177 - INFO - Tidak ada balasan yang dikirim abp5117j_y karena keluhan sudah ada untuk invoice: 241226SFGSGVUJ, Status pesanan: SHIPPED
-2024-12-28 01:07:59,199 - INFO - ==========================================Balasan AI==========================================
-2024-12-28 01:07:59,199 - INFO - Invoice: 241221BX0TM148 - Status pesanan: COMPLETED
-2024-12-28 01:07:59,199 - INFO - Tidak ada balasan yang dikirim ami1234567891011 karena keluhan sudah ada untuk invoice: 241221BX0TM148, Status pesanan: COMPLETED
-2024-12-28 01:07:59,203 - INFO - ==========================================Balasan AI==========================================
-2024-12-28 01:07:59,203 - INFO - Invoice: 2412280DY62FM5 - Status pesanan: IN_CANCEL
-2024-12-28 01:07:59,203 - INFO - Tidak ada balasan yang dikirim indiyah1980 karena keluhan sudah ada untuk invoice: 2412280DY62FM5, Status pesanan: IN_CANCEL
-2024-12-28 01:07:59,210 - INFO - ==========================================Balasan AI==========================================
-2024-12-28 01:07:59,210 - INFO - Invoice: 241223J55V2G4Q - Status pesanan: TO_CONFIRM_RECEIVE
-2024-12-28 01:07:59,210 - INFO - Tidak ada balasan yang dikirim devisaptrip karena keluhan sudah ada untuk invoice: 241223J55V2G4Q, Status pesanan: TO_CONFIRM_RECEIVE
-2024-12-28 01:07:59,284 - INFO - ==========================================Balasan AI==========================================
-2024-12-28 01:07:59,284 - INFO - Invoice: 241226T1XRH3V6 - Status pesanan: SHIPPED
-2024-12-28 01:07:59,284 - INFO - Tidak ada balasan yang dikirim wahyuniwahyuni713 karena keluhan sudah ada untuk invoice: 241226T1XRH3V6, Status pesanan: SHIPPED
-2024-12-28 01:07:59,321 - INFO - ==========================================Balasan AI==========================================
-2024-12-28 01:07:59,321 - INFO - Invoice: 241224N6YVPHSS - Status pesanan: SHIPPED
-2024-12-28 01:07:59,321 - INFO - Tidak ada balasan yang dikirim sahbanhasibuan944 karena keluhan sudah ada untuk invoice: 241224N6YVPHSS, Status pesanan: SHIPPED
-2024-12-28 01:07:59,369 - INFO - ==========================================Balasan AI==========================================
-2024-12-28 01:07:59,369 - INFO - Invoice: 241225QGGS91NA - Status pesanan: TO_CONFIRM_RECEIVE
-2024-12-28 01:07:59,369 - INFO - Tidak ada balasan yang dikirim syifanaauliafadliani karena keluhan sudah ada untuk invoice: 241225QGGS91NA, Status pesanan: TO_CONFIRM_RECEIVE
-2024-12-28 01:07:59,606 - INFO - ==========================================Balasan AI==========================================
-2024-12-28 01:07:59,607 - INFO - Invoice: 2412185RXCH79D - Status pesanan: SHIPPED
-2024-12-28 01:07:59,607 - INFO - Tidak ada balasan yang dikirim z4ewn_b3y1 karena keluhan sudah ada untuk invoice: 2412185RXCH79D, Status pesanan: SHIPPED
-2024-12-28 01:07:59,614 - INFO - ==========================================Program selesai==========================================
+2025-02-28 17:15:09,426 - INFO - ==========================================Program dimulai==========================================
+2025-02-28 17:15:38,524 - INFO - ✅ Berhasil menjalankan proses order di server
+2025-02-28 17:15:39,874 - INFO - Total chats ditemukan: 3
+2025-02-28 17:15:40,105 - ERROR - Tidak ada pesan dalam response
+2025-02-28 17:16:17,284 - INFO - ==========================================Balasan AI==========================================
+2025-02-28 17:16:17,284 - INFO - Invoice: None - Status pesanan: None
+2025-02-28 17:16:17,284 - INFO - 👤 salsabilla439_: Hallo ka
+2025-02-28 17:16:17,284 - INFO - 🤖 AI: Tentu, kak! Pesanan akan dikirim setiap sore, perkiraan pengiriman 2-3 hari menggunakan reguler. Semoga cepat sampai ya! Jika ada yang mau ditanyakan, silakan! 😊
+2025-02-28 17:16:17,654 - INFO - ==========================================Balasan AI==========================================
+2025-02-28 17:16:17,654 - INFO - Invoice: None - Status pesanan: None
+2025-02-28 17:16:17,654 - INFO - 👤 nadiaputri.123: Kak, pesanan dengan nomor invoice 2502255MS6GPJC sudah kami terima untuk perubahan model kebaya. Kami akan segera proses permintaan kakak. Terima kasih atas kesabarannya! 😊
+2025-02-28 17:16:17,654 - INFO - 🤖 AI: Kak, maaf banget, tapi pesanan yang sudah masuk tidak bisa dibatalkan. Kakak bisa melakukan pemesanan baru. Kami siap bantu jika ada pertanyaan lain! 😊
+2025-02-28 17:16:17,696 - INFO - ✅ Pesan berhasil dikirim ke salsabilla439_
+2025-02-28 17:16:17,967 - INFO - ✅ Pesan berhasil dikirim ke nadiaputri.123
+2025-02-28 17:16:17,971 - INFO - ==========================================Program selesai==========================================

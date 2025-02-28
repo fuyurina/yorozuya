@@ -7,33 +7,30 @@ interface SyncRequestBody {
   orderSns: string[];
 }
 
-// Interface untuk response dari syncOrdersByOrderSns
-interface SyncOrdersResult {
-  success: boolean;
-  data?: {
-    total: number;
-    processed: number;
-    orderSns: string[];
-  };
-  error?: string;
-}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // Validasi input
-    if (!body.shopId || !Array.isArray(body.orderSns)) {
+    // Validasi shopId
+    if (!body.shopId) {
       return NextResponse.json(
-        { error: 'shopId dan orderSns harus diisi' },
+        { error: 'shopId harus diisi' },
         { status: 400 }
       );
     }
 
     const { shopId, orderSns } = body as SyncRequestBody;
 
-    // Proses sinkronisasi
-    const result: SyncOrdersResult = await syncOrdersByOrderSns(shopId, orderSns);
+    // Pilih fungsi sinkronisasi berdasarkan ketersediaan orderSns
+    let result;
+    if (!orderSns || orderSns.length === 0) {
+      // Gunakan syncOrders jika hanya ada shopId
+      result = await syncOrders(shopId);
+    } else {
+      // Gunakan syncOrdersByOrderSns jika ada orderSns
+      result = await syncOrdersByOrderSns(shopId, orderSns);
+    }
     
     // Return hasil sinkronisasi
     if (!result.success || !result.data) {
@@ -42,9 +39,9 @@ export async function POST(request: NextRequest) {
           success: false,
           error: result.error || 'Gagal sinkronisasi',
           data: {
-            total: orderSns.length,
+            total: orderSns?.length || 0,
             success: 0,
-            failed: orderSns.length
+            failed: orderSns?.length || 0
           }
         }
       );
@@ -53,9 +50,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        total: orderSns.length,
+        total: orderSns?.length || result.data.total || 0,
         success: result.data.processed,
-        failed: orderSns.length - result.data.processed
+        failed: (orderSns?.length || result.data.total || 0) - result.data.processed
       }
     });
 
