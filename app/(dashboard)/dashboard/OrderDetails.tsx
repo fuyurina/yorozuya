@@ -170,7 +170,7 @@ export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
     <>
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent 
-          className="w-[95%] sm:w-[80%] lg:max-w-[500px] p-3 sm:p-6" 
+          className="w-full sm:w-[80%] lg:max-w-[500px] p-2 sm:p-6 overflow-hidden" 
           side="right"
         >
           <SheetHeader className="mb-1">
@@ -182,7 +182,7 @@ export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
             </SheetDescription>
           </SheetHeader>
 
-          <ScrollArea className="h-[calc(100vh-80px)] pr-2 sm:pr-4">
+          <ScrollArea className="h-[calc(100vh-80px)] pr-1 sm:pr-4">
             {isLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-4 w-full" />
@@ -192,15 +192,15 @@ export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
             ) : orderDetails ? (
               <div className="space-y-6">
                 {/* Nomor Pesanan */}
-                <div className="bg-muted p-4 rounded-lg">
-                  <div className="flex flex-wrap items-center gap-2 justify-between">
-                    <h3 className="text-[10px] md:text-sm font-medium flex items-center gap-2 truncate">
+                <div className="bg-muted p-2 sm:p-4 rounded-lg">
+                  <div className="flex flex-wrap items-center gap-1 sm:gap-2 justify-between w-full min-w-0">
+                    <h3 className="text-xs sm:text-sm font-medium truncate min-w-0 flex-1">
                       {orderDetails.order_sn}
                     </h3>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                       <Badge 
                         variant="outline" 
-                        className={`text-[10px] md:text-sm ${getStatusBadgeVariant(orderDetails.order_status)}`}
+                        className="text-xs sm:text-sm whitespace-nowrap px-2 py-0.5"
                       >
                         {orderDetails.order_status}
                       </Badge>
@@ -261,46 +261,33 @@ export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
                     <Package2 className="h-4 w-4" />
                     Detail Produk
                   </h3>
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-[10px] md:text-xs">Produk</TableHead>
-                          <TableHead className="text-[10px] md:text-xs">Varian</TableHead>
-                          <TableHead className="text-[10px] md:text-xs text-right">Harga</TableHead>
-                          <TableHead className="text-[10px] md:text-xs text-center">Qty</TableHead>
-                          <TableHead className="text-[10px] md:text-xs text-right">Subtotal</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {orderDetails?.order_items && orderDetails.order_items.length > 0 ? (
-                          orderDetails.order_items.map((item, index) => (
-                            <TableRow key={index}>
-                              <TableCell className="text-[10px] md:text-xs w-full overflow-hidden text-ellipsis whitespace-nowrap">
-                                <div>
-                                  
-                                  <p className="text-[10px] md:text-xs">{item.item_sku}</p>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-[10px] md:text-xs whitespace-nowrap">{item.model_name}</TableCell>
-                              <TableCell className="text-[10px] md:text-xs text-right whitespace-nowrap">
-                                Rp {item.model_discounted_price.toLocaleString('id-ID')}
-                              </TableCell>
-                              <TableCell className="text-[10px] md:text-xs text-center whitespace-nowrap">{item.model_quantity_purchased}</TableCell>
-                              <TableCell className="text-[10px] md:text-xs text-right whitespace-nowrap">
-                                Rp {(item.model_discounted_price * item.model_quantity_purchased).toLocaleString('id-ID')}
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center py-4 text-[10px] md:text-sm text-gray-500">
-                              Tidak ada data produk
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
+                  <div className="space-y-2">
+                    {orderDetails?.order_items && orderDetails.order_items.length > 0 ? (
+                      orderDetails.order_items.map((item, index) => (
+                        <div key={index} className="border rounded-lg p-3 space-y-2">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">{item.item_sku}</p>
+                              <p className="text-xs text-muted-foreground truncate">{item.model_name}</p>
+                            </div>
+                            <div className="text-xs text-right flex-shrink-0">
+                              <p>Rp {item.model_discounted_price.toLocaleString('id-ID')}</p>
+                              <p className="text-muted-foreground">Qty: {item.model_quantity_purchased}</p>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pt-2 border-t">
+                            <span className="text-xs">Subtotal</span>
+                            <span className="text-xs font-medium">
+                              Rp {(item.model_discounted_price * item.model_quantity_purchased).toLocaleString('id-ID')}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-xs text-muted-foreground">
+                        Tidak ada data produk
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -150,22 +150,21 @@ export function OrderHistory({ userId, isOpen, onClose }: OrderHistoryProps) {
                 <Card key={order.order_sn} className="shadow-sm">
                   <CardContent className="space-y-6 pt-6">
                     {/* Nomor Pesanan */}
-                    <div className="bg-muted p-4 rounded-lg">
-                      <div className="flex flex-wrap items-center gap-2 justify-between">
-                        <h3 className="text-[11px] md:text-base font-semibold flex items-center gap-2">
-                          
+                    <div className="bg-muted p-2 sm:p-4 rounded-lg">
+                      <div className="flex flex-wrap items-center gap-1 sm:gap-2 justify-between w-full min-w-0">
+                        <h3 className="text-xs sm:text-sm font-medium truncate min-w-0 flex-1">
                           {order.order_sn}
                         </h3>
                         <Badge 
                           variant="outline" 
-                          className={`text-[10px] md:text-sm ${getStatusBadgeVariant(order.order_status)}`}
+                          className="text-xs sm:text-sm whitespace-nowrap px-2 py-0.5"
                         >
                           {order.order_status}
                         </Badge>
                       </div>
                       {order.order_status === 'IN_CANCEL' || order.order_status === 'CANCELLED' ? (
                         <div className="mt-2">
-                          <p className="text-[10px] md:text-sm font-medium text-red-600">
+                          <p className="text-xs sm:text-sm font-medium text-red-600">
                             {order.cancel_reason || 'Tidak ada alasan yang diberikan'}
                           </p>
                         </div>
@@ -217,54 +216,41 @@ export function OrderHistory({ userId, isOpen, onClose }: OrderHistoryProps) {
                         <Package2 className="h-4 w-4" />
                         Detail Produk
                       </h3>
-                      <div className="border rounded-lg overflow-hidden">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-[10px] md:text-xs">Produk</TableHead>
-                              <TableHead className="text-[10px] md:text-xs">Varian</TableHead>
-                              <TableHead className="text-[10px] md:text-xs text-right">Harga</TableHead>
-                              <TableHead className="text-[10px] md:text-xs text-center">Qty</TableHead>
-                              <TableHead className="text-[10px] md:text-xs text-right">Subtotal</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {order.order_items && order.order_items.length > 0 ? (
-                              order.order_items.map((item, index) => (
-                                <TableRow key={index}>
-                                  <TableCell className="text-[10px] md:text-xs w-full overflow-hidden text-ellipsis whitespace-nowrap">
-                                    <div>
-                                      
-                                      <p className="text-[10px] md:text-xs">{item.item_sku}</p>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-[10px] md:text-xs whitespace-nowrap">{item.model_name}</TableCell>
-                                  <TableCell className="text-[10px] md:text-xs text-right whitespace-nowrap">
-                                    Rp {item.model_discounted_price.toLocaleString('id-ID')}
-                                  </TableCell>
-                                  <TableCell className="text-[10px] md:text-xs text-center whitespace-nowrap">{item.model_quantity_purchased}</TableCell>
-                                  <TableCell className="text-[10px] md:text-xs text-right whitespace-nowrap">
-                                    Rp {(item.model_discounted_price * item.model_quantity_purchased).toLocaleString('id-ID')}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            ) : (
-                              <TableRow>
-                                <TableCell colSpan={5} className="text-center py-4 text-[10px] md:text-sm text-gray-500">
-                                  Tidak ada data produk
-                                </TableCell>
-                              </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
+                      <div className="space-y-2">
+                        {order.order_items && order.order_items.length > 0 ? (
+                          order.order_items.map((item, index) => (
+                            <div key={index} className="border rounded-lg p-3 space-y-2">
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium truncate">{item.item_sku}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{item.model_name}</p>
+                                </div>
+                                <div className="text-xs text-right flex-shrink-0">
+                                  <p>Rp {item.model_discounted_price.toLocaleString('id-ID')}</p>
+                                  <p className="text-muted-foreground">Qty: {item.model_quantity_purchased}</p>
+                                </div>
+                              </div>
+                              <div className="flex justify-between items-center pt-2 border-t">
+                                <span className="text-xs">Subtotal</span>
+                                <span className="text-xs font-medium">
+                                  Rp {(item.model_discounted_price * item.model_quantity_purchased).toLocaleString('id-ID')}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-4 text-xs text-muted-foreground">
+                            Tidak ada data produk
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* Total */}
                     <div className="bg-muted p-4 rounded-lg mt-4">
                       <div className="flex justify-between items-center">
-                        <span className="text-[12px] md:text-base font-semibold">Total Pembayaran</span>
-                        <span className="text-[12px] md:text-base font-semibold">
+                        <span className="text-xs sm:text-sm font-semibold">Total Pembayaran</span>
+                        <span className="text-xs sm:text-sm font-semibold">
                           Rp {order.total_belanja?.toLocaleString('id-ID') || '0'}
                         </span>
                       </div>
