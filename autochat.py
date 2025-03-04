@@ -504,7 +504,7 @@ def ubah_detail_pesanan(id_pengguna: str, nama_toko: str, nomor_invoice: str, de
         return False
 
 def ambil_data_pesanan_shopee(user_id: str) -> dict:
-    url = f"https://yorozuya-v73y.onrender.comapi/order_details?user_id={user_id}"
+    url = f"https://yorozuya-v73y.onrender.com/api/order_details?user_id={user_id}"
     try:
         response = requests.get(url)
         if response.status_code == 200:

@@ -5,6 +5,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -168,14 +169,20 @@ export function OrderDetails({ orderSn, isOpen, onClose }: OrderDetailsProps) {
   return (
     <>
       <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent className="w-[90%] md:w-[600px]">
-          <SheetHeader className="mb-5">
+        <SheetContent 
+          className="w-[95%] sm:w-[80%] lg:max-w-[500px] p-3 sm:p-6" 
+          side="right"
+        >
+          <SheetHeader className="mb-1">
             <SheetTitle className="text-lg font-bold">
               Detail Pesanan
             </SheetTitle>
+            <SheetDescription className="sr-only">
+              Detail informasi pesanan
+            </SheetDescription>
           </SheetHeader>
 
-          <ScrollArea className="h-[calc(100vh-180px)] pr-4">
+          <ScrollArea className="h-[calc(100vh-80px)] pr-2 sm:pr-4">
             {isLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-4 w-full" />
