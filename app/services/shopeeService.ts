@@ -1367,6 +1367,36 @@ export async function unblockShopWebhook(shopId: number): Promise<any> {
   }
 }
 
+export async function getAppPushConfig(): Promise<any> {
+  try {
+    const result = await shopeeApi.getAppPushConfig();
+
+    if (result.error) {
+      console.error(`Error saat mengambil konfigurasi push: ${JSON.stringify(result)}`);
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal mengambil konfigurasi push',
+        request_id: result.request_id
+      };
+    }
+
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+
+  } catch (error) {
+    console.error('Kesalahan saat mengambil konfigurasi push:', error);
+    return {
+      success: false,
+      error: 'GET_PUSH_CONFIG_FAILED',
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
+
 export async function getReturnList(
   shopId: number,
   options: {
@@ -1496,6 +1526,40 @@ export async function unlistItems(
     return {
       success: false,
       error: 'UNLIST_ITEMS_FAILED',
+      message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
+    };
+  }
+}
+
+export async function setAppPushConfig(config: {
+  callback_url?: string;
+  blocked_shop_id_list?: number[];
+}): Promise<any> {
+  try {
+    const result = await shopeeApi.setAppPushConfig({
+      callback_url: config.callback_url,
+      blocked_shop_id_list: config.blocked_shop_id_list
+    });
+
+    if (result.error) {
+      console.error(`Error saat menyimpan konfigurasi push: ${JSON.stringify(result)}`);
+      return {
+        success: false,
+        error: result.error,
+        message: result.message || 'Gagal menyimpan konfigurasi push'
+      };
+    }
+
+    return {
+      success: true,
+      data: result.response,
+      request_id: result.request_id
+    };
+  } catch (error) {
+    console.error('Kesalahan saat menyimpan konfigurasi push:', error);
+    return {
+      success: false,
+      error: 'SET_PUSH_CONFIG_FAILED',
       message: error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui'
     };
   }

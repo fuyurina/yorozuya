@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react" // Pastikan lucide-react sudah terinstall
+import { toast } from "@/components/ui/use-toast";
 
 // Tambahkan tipe data untuk memperjelas struktur
 interface AutoShipData {
@@ -29,77 +30,66 @@ export function SettingsForm({ children }: { children: React.ReactNode }) {
     message: string
   } | null>(null)
   
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setIsLoading(true)
-    setAlert(null) // Reset alert
-
-    const formData = new FormData(e.currentTarget)
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     
-    // Pastikan semua nilai dikonversi dengan benar
-    const updatedSettings: Settings = {
-      openai_api: formData.get('openai_api')?.toString() || null,
-      openai_model: formData.get('openai_model')?.toString() || null,
-      openai_temperature: formData.get('openai_temperature') ? 
-        parseFloat(formData.get('openai_temperature') as string) : null,
-      openai_prompt: formData.get('openai_prompt')?.toString() || null,
-      auto_ship: formData.get('auto_ship') === 'on',
-      auto_ship_interval: formData.get('auto_ship_interval') ? 
-        parseInt(formData.get('auto_ship_interval') as string) : 5
-    }
-
-    // Ambil data auto ship dari form dengan cara yang lebih aman
-    const autoShipElements = document.querySelectorAll<HTMLElement>('[data-shop-id]')
-    const updatedAutoShip: AutoShipData[] = Array.from(autoShipElements).map((element) => {
-      const shopId = element.getAttribute('data-shop-id')
-      const shopName = element.querySelector('[data-shop-name]')?.textContent || ''
-      const statusChat = element.querySelector<HTMLInputElement>('[name="status_chat"]')
-      const statusShip = element.querySelector<HTMLInputElement>('[name="status_ship"]')
-
-      return {
-        shop_id: shopId || '',
-        shop_name: shopName,
-        status_chat: statusChat?.checked || false,
-        status_ship: statusShip?.checked || false
-      }
-    })
+    const formData = new FormData(event.currentTarget);
+    const data = Object.fromEntries(formData);
 
     try {
-      console.log('Sending data:', { updatedSettings, updatedAutoShip }) // Debug log
-
-      const res = await fetch('/api/settings', {
+      // Simpan pengaturan umum
+      const settingsResponse = await fetch('/api/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          updatedSettings,
-          updatedAutoShip
+          openai_api: data.openai_api,
+          openai_model: data.openai_model,
+          openai_temperature: data.openai_temperature,
+          openai_prompt: data.openai_prompt,
+          auto_ship: data.auto_ship === 'on',
+          auto_ship_interval: Number(data.auto_ship_interval)
         }),
-      })
+      });
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        setAlert({
-          type: 'error',
-          message: data.details || 'Gagal menyimpan pengaturan'
-        })
-        throw new Error(data.details || 'Gagal menyimpan pengaturan')
+      // Parse blocked_shop_id_list dengan aman
+      let blockedShops: number[] = [];
+      try {
+        blockedShops = JSON.parse(data.blocked_shop_id_list as string || '[]');
+      } catch (e) {
+        console.error('Error parsing blocked_shop_id_list:', e);
       }
-      
-      setAlert({
-        type: 'success',
-        message: 'Pengaturan berhasil disimpan'
-      })
 
-      router.refresh()
+      // Simpan konfigurasi push
+      const pushConfigResponse = await fetch('/api/push-config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          callback_url: data.callback_url,
+          blocked_shop_id_list: blockedShops // Gunakan array yang sudah di-parse
+        }),
+      });
+
+      if (!settingsResponse.ok || !pushConfigResponse.ok) {
+        throw new Error('Gagal menyimpan pengaturan');
+      }
+
+      toast({
+        title: "Berhasil",
+        description: "Pengaturan berhasil disimpan",
+      });
+
+      router.refresh();
     } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      setIsLoading(false)
-      // Hilangkan alert setelah 3 detik
-      setTimeout(() => setAlert(null), 3000)
+      console.error('Error saving settings:', error);
+      toast({
+        title: "Gagal",
+        description: "Gagal menyimpan pengaturan",
+        variant: "destructive",
+      });
     }
   }
 
