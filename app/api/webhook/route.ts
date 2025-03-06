@@ -13,17 +13,41 @@ const clients = new Set<ReadableStreamDefaultController>();
 const connectionAttempts = new Map<string, { count: number, firstAttempt: number }>();
 
 export async function POST(req: NextRequest) {
-  // Segera kirim respons 200
-  const res = NextResponse.json({ received: true }, { status: 200 });
-  
+  // Langsung kirim respons 200
+  const startResponse = NextResponse.json({ 
+    received: true,
+    timestamp: new Date().toISOString() 
+  }, { status: 202 });
 
-  // Proses data webhook secara asinkron
+  // Ambil data webhook
   const webhookData = await req.json();
-  processWebhookData(webhookData).catch(error => {
-    console.error('Error processing webhook data:', error);
+  
+  // Proses di background
+  Promise.resolve().then(async () => {
+    try {
+      console.log('Memulai proses webhook di background:', webhookData);
+      const code = webhookData.code;
+      
+      const handlers: { [key: number]: (data: any) => Promise<void> } = {
+        10: handleChat,
+        3: handleOrder,
+        4: handleTrackingUpdate,
+        15: handleDocumentUpdate,
+        5: handleUpdate,
+        28: handlePenalty,
+        16: handleViolation
+      };
+
+      const handler = handlers[code] || handleOther;
+      await handler(webhookData);
+      
+      console.log('Proses webhook selesai untuk code:', code);
+    } catch (error) {
+      console.error('Error dalam proses background webhook:', error);
+    }
   });
 
-  return res;
+  return startResponse;
 }
 
 export async function GET(req: NextRequest) {
@@ -146,6 +170,7 @@ async function processWebhookData(webhookData: any) {
     console.error('Error processing webhook data:', error);
   }
 }
+
 async function handleChat(data: any) {
   if (data.data.type === 'message') {
     const messageContent = data.data.content;
@@ -183,10 +208,11 @@ async function handleChat(data: any) {
 }
 
 async function handleOrder(data: any) {
-  console.log('Memulai proses order:', data);
+  console.log('Memulai proses order di background:', data);
   const orderData = data.data;
   
   try {
+    // Ambil shop name dari redis (tetap async tapi lebih cepat)
     const autoShipData = await redis.get('auto_ship');
     let shopName = '';
     
@@ -198,104 +224,58 @@ async function handleOrder(data: any) {
       }
     }
 
-    // Sekarang updateOrderStatus akan mengembalikan data order
-    const orderDetail = await withRetry(
-      () => updateOrderStatus(data.shop_id, orderData.ordersn, orderData.status, orderData.update_time),
-      5,
-      2000
-    );
+    // Update order status di background
+    Promise.resolve().then(async () => {
+      try {
+        const orderDetail = await withRetry(
+          () => updateOrderStatus(data.shop_id, orderData.ordersn, orderData.status, orderData.update_time),
+          5,
+          2000
+        );
+        console.log('Order status updated:', orderData.ordersn);
 
-    if (orderData.status === 'READY_TO_SHIP') {
-      const notificationData = {
-        type: 'new_order',
-        order_sn: orderData.ordersn,
-        status: orderData.status,
-        buyer_name: orderData.buyer_username,
-        total_amount: orderData.total_amount,
-        sku: orderData.sku,
-        shop_name: shopName
-      };
-      
-      sendEventToAll(notificationData);
+        // Notifikasi bisa langsung dikirim
+        if (orderData.status === 'READY_TO_SHIP') {
+          const notificationData = {
+            type: 'new_order',
+            order_sn: orderData.ordersn,
+            status: orderData.status,
+            buyer_name: orderData.buyer_username,
+            total_amount: orderData.total_amount,
+            sku: orderData.sku,
+            shop_name: shopName
+          };
+          
+          sendEventToAll(notificationData);
 
-      // Cek apakah toko mengaktifkan fitur auto-ship
-      if (autoShipData) {
-        const shops = JSON.parse(autoShipData);
-        const shop = shops.find((s: any) => s.shop_id === data.shop_id);
-        
-        if (shop && shop.status_ship) {
-          await withRetry(
-            () => prosesOrder(data.shop_id, orderData.ordersn),
-            3,
-            2000
-          );
-        } else {
-          console.log(`Auto-ship tidak aktif untuk toko ${shopName} (${data.shop_id})`);
-        }
-      }
-    }
-    else if (orderData.status === 'IN_CANCEL') {
-      // Cek status_chat dari auto_ship data
-      if (autoShipData) {
-        const shops = JSON.parse(autoShipData);
-        const shop = shops.find((s: any) => s.shop_id === data.shop_id);
-        
-        if (shop && shop.status_chat) {
-          try {
-            // Kirim pesan pertama dengan tipe 'order'
-            const orderResponse = await fetch('http://localhost:10000/api/msg/send_message', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                toId: orderDetail.buyer_user_id,
-                messageType: 'order',
-                content: {
-                  order_sn: orderData.ordersn
-                },
-                shopId: data.shop_id
-              })
-            });
-
-            if (!orderResponse.ok) {
-              throw new Error(`Gagal mengirim pesan order ke pembeli ${orderDetail.buyer_username}`);
+          // Auto-ship dijalankan di background juga
+          if (autoShipData) {
+            const shops = JSON.parse(autoShipData);
+            const shop = shops.find((s: any) => s.shop_id === data.shop_id);
+            
+            if (shop && shop.status_ship) {
+              Promise.resolve().then(async () => {
+                try {
+                  await withRetry(
+                    () => prosesOrder(data.shop_id, orderData.ordersn),
+                    3,
+                    2000
+                  );
+                  console.log('Auto-ship selesai untuk order:', orderData.ordersn);
+                } catch (error) {
+                  console.error('Error dalam proses auto-ship:', error);
+                }
+              });
             }
-
-            // Tunggu sebentar sebelum mengirim pesan kedua
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // Kirim pesan kedua dengan teks informasi
-            const message = `Halo ${orderDetail.buyer_username},\n\nMohon maaf, pesanan dengan nomor ${orderData.ordersn} yang sudah masuk tidak bisa dibatalkan. Jika kakak ingin mengubah warna atau ukuran, silakan tulis permintaan kakak di sini.\n\nJika ingin mengganti alamat atau model, silakan pesan ulang maka pesanan yang salah akan otomatis dikonfirmasi pembatalannya.\n\nTerima kasih atas pengertiannya.`;
-
-            const textResponse = await fetch('http://localhost:10000/api/msg/send_message', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                toId: orderDetail.buyer_user_id,
-                messageType: 'text',
-                content: message,
-                shopId: data.shop_id
-              })
-            });
-
-            if (!textResponse.ok) {
-              throw new Error(`Gagal mengirim pesan teks ke pembeli ${orderDetail.buyer_username}`);
-            }
-
-            console.log(`Pesan pembatalan berhasil dikirim ke pembeli untuk order ${orderData.ordersn}`);
-          } catch (error) {
-            console.error(`Gagal mengirim pesan pembatalan untuk order ${orderData.ordersn}:`, error);
           }
-        } else {
-          console.log(`Auto-chat tidak aktif untuk toko ${shopName} (${data.shop_id})`);
         }
+      } catch (error) {
+        console.error('Error dalam update order status:', error);
       }
-    }
+    });
+
   } catch (error) {
-    console.error(`Gagal memproses order ${orderData.ordersn}:`, error);
+    console.error(`Error dalam proses order ${orderData.ordersn}:`, error);
   }
 }
 
@@ -303,20 +283,17 @@ async function handleTrackingUpdate(data: any): Promise<void> {
   await trackingUpdate(data);
 }
 
-// Fungsi-fungsi helper (perlu diimplementasikan)
+// Update fungsi database operations untuk parallel processing
 async function updateOrderStatus(shop_id: number, ordersn: string, status: string, updateTime: number) {
   console.log(`Memulai updateOrderStatus untuk order ${ordersn}`);
   
-  // Khusus untuk status TO_RETURN, langsung update status saja
   if (status === 'TO_RETURN') {
     await updateOrderStatusOnly(ordersn, status, updateTime);
-    return { order_sn: ordersn, status: status }; // Return minimal data yang diperlukan
+    return { order_sn: ordersn, status: status };
   }
 
-  let orderDetail: any;
-  
   try {
-    orderDetail = await withRetry(
+    const orderDetail = await withRetry(
       () => getOrderDetail(shop_id, ordersn),
       3,
       1000
@@ -328,15 +305,18 @@ async function updateOrderStatus(shop_id: number, ordersn: string, status: strin
 
     const orderData = orderDetail.order_list[0];
     
-    await withRetry(() => upsertOrderData(orderData, shop_id), 5, 1000);
-    await withRetry(() => upsertOrderItems(orderData), 5, 1000);
-    await withRetry(() => upsertLogisticData(orderData, shop_id), 5, 1000);
+    // Jalankan operasi database secara parallel
+    await Promise.all([
+      withRetry(() => upsertOrderData(orderData, shop_id), 5, 1000),
+      withRetry(() => upsertOrderItems(orderData), 5, 1000),
+      withRetry(() => upsertLogisticData(orderData, shop_id), 5, 1000)
+    ]);
     
     console.log(`Berhasil memperbarui semua data untuk order ${ordersn}`);
     
     return orderData;
   } catch (error) {
-    console.error(`Error kritis dalam updateOrderStatus untuk order ${ordersn}:`, error);
+    console.error(`Error dalam updateOrderStatus untuk order ${ordersn}:`, error);
     throw error;
   }
 }
