@@ -135,7 +135,22 @@ const StatusBadge = React.memo(({ status, order, onProcess, onCancellationAction
     )}
   </div>
 ));
+const handleSyncAllShops = async () => {
+  try {
+    const response = await fetch('/api/auto-sync', {
+      method: 'GET'
+    });
 
+    if (!response.ok) {
+      throw new Error('Gagal melakukan sinkronisasi');
+    }
+
+    toast.success('Proses sinkronisasi semua toko dimulai');
+  } catch (error) {
+    console.error('Error syncing all shops:', error);
+    toast.error('Gagal memulai sinkronisasi');
+  }
+};
 // Tambahkan baris ini setelah definisi komponen StatusBadge
 StatusBadge.displayName = 'StatusBadge';
 
@@ -1535,6 +1550,16 @@ export function OrdersDetailTable({ orders, onOrderUpdate }: OrdersDetailTablePr
               </Button>
 
               {/* Tombol sync */}
+              <Button
+                onClick={handleSyncAllShops}
+                className="px-2 sm:px-3 py-2 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground dark:text-primary-foreground whitespace-nowrap h-[32px] min-h-0"
+                title="Sinkronkan Semua Toko"
+              >
+                <RefreshCcw size={14} className="sm:mr-1" />
+                <span className="hidden sm:inline">
+                  Sync Semua Toko
+                </span>
+              </Button>
               <Button
                 onClick={handleSyncOrders}
                 disabled={isSyncing}
