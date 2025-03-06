@@ -5,7 +5,6 @@ export function middleware(request: NextRequest) {
   // Bypass semua autentikasi
   return NextResponse.next()
 }
-
 export const config = {
   matcher: []  // Kosongkan matcher agar tidak ada path yang diproteksi
 }
