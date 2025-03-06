@@ -2,20 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { refreshAllTokens } from '@/app/services/useTokenRefresh';
 
 export async function POST(req: NextRequest) {
-  try {
-    console.log('Cron job running: Refreshing tokens at', new Date().toISOString());
-    await refreshAllTokens();
-    return NextResponse.json(
-      { 
-        message: 'Semua token berhasil di-refresh',
-        timestamp: new Date().toISOString()
-      }, 
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error('Token refresh failed:', error);
-    return NextResponse.json({ error: 'Gagal me-refresh token' }, { status: 500 });
-  }
+  // Langsung kirim response bahwa proses refresh dimulai
+  const startResponse = NextResponse.json({
+    message: 'Proses refresh token dimulai di background',
+    timestamp: new Date().toISOString()
+  }, { status: 202 }); // 202 Accepted
+
+  // Jalankan refresh token di background
+  Promise.resolve().then(async () => {
+    try {
+      console.log('Mulai refresh token di background:', new Date().toISOString());
+      await refreshAllTokens();
+      console.log('Refresh token selesai:', new Date().toISOString());
+    } catch (error) {
+      console.error('Error refresh token di background:', error);
+    }
+  });
+
+  return startResponse;
 }
 
 export async function GET(req: NextRequest) {
