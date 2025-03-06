@@ -2,88 +2,85 @@ import { NextRequest, NextResponse } from 'next/server';
 import { syncOrders } from '@/app/services/orderSyncs';
 import { getAllShops } from '@/app/services/shopeeService';
 
-
 export async function GET(request: NextRequest) {
-  try {
-    console.log('Memulai sinkronisasi...');
+  // Langsung kirim response bahwa sync dimulai
+  const startResponse = NextResponse.json({
+    success: true,
+    message: 'Sync process started in background',
+    timestamp: new Date().toISOString()
+  }, { status: 202 }); // 202 Accepted
 
-    // Waktu sekarang dalam detik (tanpa perlu menambah offset)
-    const endTime = Math.floor(Date.now() / 1000); // Konversi ke detik
-    const startTime = endTime - (24 * 60 * 60); // 1 jam dalam detik
+  // Jalankan proses sync di background
+  Promise.resolve().then(async () => {
+    try {
+      console.log('Memulai sinkronisasi di background...');
+      
+      const endTime = Math.floor(Date.now() / 1000);
+      const startTime = endTime - (24 * 60 * 60);
 
-    // Tampilkan startTime dan endTime dalam format string
-    console.log('Start Time:', new Date(startTime * 1000).toLocaleString('id-ID', { 
-        timeZone: 'Asia/Jakarta',
-        hour12: false 
-    }));
-    console.log('End Time:', new Date(endTime * 1000).toLocaleString('id-ID', { 
-        timeZone: 'Asia/Jakarta',
-        hour12: false 
-    }));
-    
+      console.log('Start Time:', new Date(startTime * 1000).toLocaleString('id-ID', { 
+          timeZone: 'Asia/Jakarta',
+          hour12: false 
+      }));
+      console.log('End Time:', new Date(endTime * 1000).toLocaleString('id-ID', { 
+          timeZone: 'Asia/Jakarta',
+          hour12: false 
+      }));
 
-    // Daftar toko yang akan disinkronkan
-    const shops = await getAllShops();
+      const shops = await getAllShops();
+      
+      const results = await Promise.allSettled(
+        shops.map(async (shop) => {
+          return new Promise((resolve, reject) => {
+            syncOrders(shop.shop_id, {
+              timeRangeField: 'create_time',
+              startTime,
+              endTime,
+              orderStatus: 'ALL',
+              onProgress: ({ current, total }) => {
+                console.log(`Shop ${shop.shop_name} (${shop.shop_id}): ${current}/${total}`);
+              },
+              onError: (error) => {
+                console.error(`Error syncing shop ${shop.shop_name} (${shop.shop_id}):`, error);
+                reject(error);
+              }
+            }).then(resolve).catch(reject);
+          });
+        })
+      );
 
-    // Jalankan sinkronisasi untuk setiap toko
-    const results = await Promise.allSettled(
-      shops.map(async (shop) => {
-        return new Promise((resolve, reject) => {
-          syncOrders(shop.shop_id, {
-            timeRangeField: 'create_time',
-            startTime,
-            endTime,
-            orderStatus: 'ALL',
-            onProgress: ({ current, total }) => {
-              console.log(`Shop ${shop.shop_name} (${shop.shop_id}): ${current}/${total}`);
-            },
-            onError: (error) => {
-              console.error(`Error syncing shop ${shop.shop_name} (${shop.shop_id}):`, error);
-              reject(error);
-            }
-          }).then((orderCount) => {
-            resolve(orderCount); // Asumsikan syncOrders mengembalikan jumlah pesanan
-          }).catch(reject);
-        });
-      })
-    );
+      // Log hasil sync
+      const summary = results.reduce<Record<string, any>>((acc, result, index) => {
+        const shop = shops[index];
+        acc[`${shop.shop_name} (${shop.shop_id})`] = {
+          status: result.status,
+          ...(result.status === 'fulfilled' && { 
+            total_orders: (result.value as { data: { total: number } }).data.total
+          }),
+          ...(result.status === 'rejected' && { error: result.reason })
+        };
+        return acc;
+      }, {});
 
-    // Analisis hasil
-    const summary = results.reduce<Record<string, any>>((acc, result, index) => {
-      const shop = shops[index];
-      acc[`${shop.shop_name} (${shop.shop_id})`] = {
-        status: result.status,
-        ...(result.status === 'fulfilled' && { 
-          total_orders: (result.value as { data: { total: number } }).data.total // Ambil total dari data dengan type assertion
-        }),
-        ...(result.status === 'rejected' && { error: result.reason })
-      };
-      return acc;
-    }, {});
+      const totalOrders = results.reduce((total, result) => {
+        if (result.status === 'fulfilled') {
+          return total + (result.value as { data: { total: number } }).data.total;
+        }
+        return total;
+      }, 0);
 
-    // Hitung total keseluruhan
-    const totalOrders = results.reduce((total, result) => {
-      if (result.status === 'fulfilled') {
-        return total + (result.value as { data: { total: number } }).data.total;
-      }
-      return total;
-    }, 0);
+      console.log('Sync selesai:', {
+        total_orders: totalOrders,
+        summary
+      });
 
-    return NextResponse.json({
-      success: true,
-      message: `Sync completed`,
-      total_orders: totalOrders, // Tambahkan total keseluruhan
-      summary
-    });
+    } catch (error) {
+      console.error('Background sync failed:', error);
+    }
+  });
 
-  } catch (error: unknown) {
-    console.error('Auto sync failed:', error);
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    }, { status: 500 });
-  }
-} 
+  return startResponse;
+}
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
