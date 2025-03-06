@@ -3,4 +3,4 @@
     "path": "/api/refresh_token",
     "schedule": "0 */3 * * *"
   }]
-} 
+}
