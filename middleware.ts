@@ -1,26 +1,11 @@
-import { withAuth } from "next-auth/middleware"
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export default withAuth({
-  callbacks: {
-    authorized: ({ req, token }) => {
-      if (req.nextUrl.pathname === "/login") {
-        return true;
-      }
-      return !!token;
-    },
-  },
-})
+export function middleware(request: NextRequest) {
+  // Bypass semua autentikasi
+  return NextResponse.next()
+}
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - login
-     * - api (semua API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-
-     */
-    '/((?!login|api|_next/static|_next/image|favicon.ico).*)'
-  ]
-} 
+  matcher: []  // Kosongkan matcher agar tidak ada path yang diproteksi
+}
