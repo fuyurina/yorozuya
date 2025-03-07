@@ -239,11 +239,13 @@ async function handleOrder(data: any) {
       if (autoShipData) {
         const shops = JSON.parse(autoShipData);
         const shop = shops.find((s: any) => s.shop_id === data.shop_id);
-        
+        const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:10000';
+
         if (shop && shop.status_chat) {
           try {
             // Kirim pesan pertama dengan tipe 'order'
-            const orderResponse = await fetch('http://localhost:10000/api/msg/send_message', {
+            console.log('Memulai pengiriman pesan pertama ke pembeli');
+            const orderResponse = await fetch(`${API_BASE_URL}/api/msg/send_message`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
@@ -256,7 +258,8 @@ async function handleOrder(data: any) {
                 },
                 shopId: data.shop_id
               })
-            });
+            }
+          );
 
             if (!orderResponse.ok) {
               throw new Error(`Gagal mengirim pesan order ke pembeli ${orderDetail.buyer_username}`);
@@ -267,8 +270,8 @@ async function handleOrder(data: any) {
 
             // Kirim pesan kedua dengan teks informasi
             const message = `Halo ${orderDetail.buyer_username},\n\nMohon maaf, pesanan dengan nomor ${orderData.ordersn} yang sudah masuk tidak bisa dibatalkan. Jika kakak ingin mengubah warna atau ukuran, silakan tulis permintaan kakak di sini.\n\nJika ingin mengganti alamat atau model, silakan pesan ulang maka pesanan yang salah akan otomatis dikonfirmasi pembatalannya.\n\nTerima kasih atas pengertiannya.`;
-
-            const textResponse = await fetch('http://localhost:10000/api/msg/send_message', {
+            console.log('Memulai pengiriman pesan kedua ke pembeli');
+            const textResponse = await fetch(`${API_BASE_URL}/api/msg/send_message`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
