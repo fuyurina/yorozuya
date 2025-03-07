@@ -47,18 +47,8 @@ async function getSettings() {
   return res.json();
 }
 
-// Tambahkan fungsi untuk mengambil push config
-async function getPushConfig() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/push-config`, {
-    cache: 'no-store'
-  });
-  if (!res.ok) throw new Error('Gagal mengambil konfigurasi push');
-  return res.json();
-}
-
 export default async function PengaturanPage() {
   const { pengaturan, autoShip } = await getSettings();
-  const pushConfig = await getPushConfig();
   const settings = Array.isArray(pengaturan) ? pengaturan[0] : pengaturan;
 
   // Cek API key jika tersedia
@@ -192,61 +182,6 @@ export default async function PengaturanPage() {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-
-        <Card className="mb-4">
-          <CardHeader>
-            <CardTitle>Pengaturan Push Notification</CardTitle>
-            <CardDescription>Konfigurasi webhook dan notifikasi Shopee</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="callback_url">URL Callback</Label>
-                <Input 
-                  id="callback_url" 
-                  name="callback_url"
-                  defaultValue={pushConfig?.callback_url || ''}
-                  placeholder="https://example.com/webhook"
-                />
-              </div>
-              
-              <input 
-                type="hidden" 
-                name="blocked_shop_id_list" 
-                value={JSON.stringify(pushConfig?.blocked_shop_id_list || [])} 
-              />
-              
-              <div className="space-y-4">
-                <Label>Daftar Toko yang Diblokir</Label>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID Toko</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pushConfig?.blocked_shop_id_list?.map((shopId: number) => (
-                      <TableRow key={shopId}>
-                        <TableCell>{shopId}</TableCell>
-                        <TableCell>
-                          <span className="text-red-500">Diblokir</span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {(!pushConfig?.blocked_shop_id_list || pushConfig.blocked_shop_id_list.length === 0) && (
-                      <TableRow>
-                        <TableCell colSpan={2} className="text-center text-muted-foreground">
-                          Tidak ada toko yang diblokir
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
           </CardContent>
         </Card>
 

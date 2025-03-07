@@ -17,51 +17,8 @@ let lastRefreshStatus: RefreshStatus = {
   error: null
 };
 
-export async function POST(req: NextRequest) {
-  // Update status bahwa refresh sedang berjalan
-  lastRefreshStatus = {
-    inProgress: true,
-    lastUpdate: new Date().toISOString(),
-    result: null,
-    error: null
-  };
-
-  const startResponse = NextResponse.json({
-    message: 'Proses refresh token dimulai di background',
-    timestamp: new Date().toISOString()
-  }, { status: 202 });
-
-  Promise.resolve().then(async () => {
-    try {
-      console.log('Mulai refresh token di background:', new Date().toISOString());
-      const result = await refreshAllTokens();
-      console.log('Refresh token selesai:', new Date().toISOString());
-      
-      // Update status setelah selesai
-      lastRefreshStatus = {
-        inProgress: false,
-        lastUpdate: new Date().toISOString(),
-        result: result,
-        error: null
-      };
-    } catch (error) {
-      console.error('Error refresh token di background:', error);
-      
-      // Update status jika terjadi error
-      lastRefreshStatus = {
-        inProgress: false,
-        lastUpdate: new Date().toISOString(),
-        result: null,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  });
-
-  return startResponse;
-}
-
-export async function GET(req: NextRequest) {
-  // Cek apakah sedang dalam proses refresh
+// Fungsi helper untuk refresh token
+async function handleRefreshToken() {
   if (lastRefreshStatus.inProgress) {
     return NextResponse.json({
       message: 'Proses refresh token sedang berjalan',
@@ -69,7 +26,6 @@ export async function GET(req: NextRequest) {
     }, { status: 409 }); // Conflict
   }
 
-  // Update status bahwa refresh sedang berjalan
   lastRefreshStatus = {
     inProgress: true,
     lastUpdate: new Date().toISOString(),
@@ -82,7 +38,6 @@ export async function GET(req: NextRequest) {
     const result = await refreshAllTokens();
     console.log('Refresh token selesai:', new Date().toISOString());
     
-    // Update status setelah selesai
     lastRefreshStatus = {
       inProgress: false,
       lastUpdate: new Date().toISOString(),
@@ -98,7 +53,6 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Error refresh token:', error);
     
-    // Update status jika terjadi error
     lastRefreshStatus = {
       inProgress: false,
       lastUpdate: new Date().toISOString(),
@@ -111,4 +65,12 @@ export async function GET(req: NextRequest) {
       status: lastRefreshStatus
     }, { status: 500 });
   }
+}
+
+export async function POST(req: NextRequest) {
+  return handleRefreshToken();
+}
+
+export async function GET(req: NextRequest) {
+  return handleRefreshToken();
 }
