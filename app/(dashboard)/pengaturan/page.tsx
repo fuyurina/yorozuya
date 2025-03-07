@@ -11,6 +11,7 @@ import { TemperatureSlider } from "./TemperatureSlider"
 import { Textarea } from "@/components/ui/textarea"
 
 import { PromptDialog } from './PromptDialog'
+import { NotificationSettings } from './NotificationSettings'
 
 async function checkOpenAIKey(apiKey: string) {
   try {
@@ -184,6 +185,8 @@ export default async function PengaturanPage() {
             </Table>
           </CardContent>
         </Card>
+
+        <NotificationSettings />
 
         <CardFooter>
           <Button type="submit">Simpan Pengaturan</Button>
