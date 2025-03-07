@@ -4,7 +4,7 @@ from datetime import datetime
 import time
 
 def refresh_token():
-    url = "http://localhost:10000/api/refresh_token"
+    url = "https://yorozuya.me/api/refresh_token"
     
     try:
         response = requests.post(url)
