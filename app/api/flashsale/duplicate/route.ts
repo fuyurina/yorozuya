@@ -88,6 +88,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Pastikan ada environment variable NEXT_PUBLIC_BASE_URL
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:10000'; // sesuaikan port default-nya
+
     // Proses duplikasi
     (async () => {
       try {
@@ -115,9 +118,11 @@ export async function POST(request: NextRequest) {
           );
 
           // 2. Buat flash sale baru
-          const createResponse = await fetch('http://localhost:10000/api/flashsale/create', {
+          const createResponse = await fetch(`${baseUrl}/api/flashsale/create`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+            },
             body: JSON.stringify({ shop_id, timeslot_id })
           });
 
@@ -192,7 +197,7 @@ export async function POST(request: NextRequest) {
             .filter(Boolean);
 
           // 5. Tambahkan items ke flash sale
-          const addResponse = await fetch('http://localhost:10000/api/flashsale/items/add', {
+          const addResponse = await fetch(`${baseUrl}/api/flashsale/items/add`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
