@@ -57,7 +57,7 @@ interface DiscountDetail {
 
 export default function DiscountDetailPage({ params }: { params: { discountId: string } }) {
   const searchParams = useSearchParams();
-  const shopId = searchParams.get('shopId');
+  const shopId = searchParams?.get('shopId');
   const [discount, setDiscount] = useState<DiscountDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

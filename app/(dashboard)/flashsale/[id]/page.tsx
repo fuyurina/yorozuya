@@ -135,9 +135,9 @@ const roundToHundreds = (num: number) => {
 export default function FlashSaleDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const shopId = searchParams.get('shop_id');
-  const flashSaleId = searchParams.get('flash_sale_id');
-  const shopName = decodeURIComponent(searchParams.get('shop_name') || '');
+  const shopId = searchParams?.get('shop_id');
+  const flashSaleId = searchParams?.get('flash_sale_id');
+  const shopName = decodeURIComponent(searchParams?.get('shop_name') || '');
   
   const [flashSaleData, setFlashSaleData] = useState<FlashSaleData | null>(null);
   const [selectedModels, setSelectedModels] = useState<Set<string>>(new Set());
@@ -162,7 +162,7 @@ export default function FlashSaleDetailPage() {
   // Modifikasi useEffect untuk menginisialisasi collapsedItems
   useEffect(() => {
     // Pastikan searchParams sudah tersedia
-    if (!searchParams.has('shop_id') || !searchParams.has('flash_sale_id')) {
+    if (!searchParams?.has('shop_id') || !searchParams?.has('flash_sale_id')) {
       return;
     }
 
